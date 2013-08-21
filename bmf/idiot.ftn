@@ -1,0 +1,12 @@
+      program idiot
+      real Z(30,20,10)
+      do k=1,10
+      do j=1,20
+      do i=1,30
+        z(i,j,k)=SQRT(float((i-15)**2+(j-10)**2+(k-5)**2))
+      enddo
+      enddo
+      enddo
+      call bmf_statfld(Z,'test',0,'IDIOT',1,30,1,20,10,1,30,1,20,1,10)
+      stop
+      end
