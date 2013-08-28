@@ -19,22 +19,23 @@ PROGRAM DLFCN_Test
    END INTERFACE
    PROCEDURE(MySub), POINTER :: dll_sub ! Dynamically-linked procedure
    
+   call register_dl_routines
    WRITE(*,*) "Enter the name of the DL and the name of the DL subroutine:"
    READ(*,"(A)") dll_name ! Enter "shared.so"
    READ(*,"(A)") sub_name ! Enter "MySub"
    
    ! Open the DL:
-   handle=DLOpen(TRIM(dll_name)//C_NULL_CHAR, IOR(RTLD_NOW, RTLD_GLOBAL))
+   handle=DL_Open(TRIM(dll_name)//C_NULL_CHAR, IOR(RTLD_NOW, RTLD_GLOBAL))
       ! The use of IOR is not really proper...wait till Fortran 2008  
    IF(.NOT.C_ASSOCIATED(handle)) THEN
-      WRITE(*,*) "Error in dlopen: ", C_F_STRING(DLError())
+      WRITE(*,*) "Error in dlopen: ", C_F_STRING(DL_Error())
       STOP
    END IF
    
    ! Find the subroutine in the DL:
-   funptr=DLSym(handle,TRIM(sub_name)//C_NULL_CHAR)
+   funptr=DL_Sym(handle,TRIM(sub_name)//C_NULL_CHAR)
    IF(.NOT.C_ASSOCIATED(funptr)) THEN
-      WRITE(*,*) "Error in dlsym: ", C_F_STRING(DLError())
+      WRITE(*,*) "Error in dlsym: ", C_F_STRING(DL_Error())
       STOP
    END IF
    ! Now convert the C function pointer to a Fortran procedure pointer
@@ -43,9 +44,9 @@ PROGRAM DLFCN_Test
    CALL dll_sub(1.0_c_double)
    
    ! Now close the DL:
-   status=DLClose(handle)
+   status=DL_Close(handle)
    IF(status/=0) THEN
-      WRITE(*,*) "Error in dlclose: ", C_F_STRING(DLError())
+      WRITE(*,*) "Error in dlclose: ", C_F_STRING(DL_Error())
       STOP
    END IF
 

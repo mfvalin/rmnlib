@@ -37,14 +37,14 @@ MODULE DLFCN
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC :: DLOpen, DLSym, DLClose, DLError ! DL API
+   PUBLIC :: DL_Open, DL_Sym, DL_Close, DL_Error ! DL API
    
    ! Valid modes for mode in DLOpen:
    INTEGER, PARAMETER, PUBLIC :: RTLD_LAZY=1, RTLD_NOW=2, RTLD_GLOBAL=256, RTLD_LOCAL=0
       ! Obtained from the output of the previously listed C program 
          
    INTERFACE ! All we need is interfaces for the prototypes in <dlfcn.h>
-      FUNCTION DLOpen(file,mode) RESULT(handle) BIND(C,NAME="dlopen")
+      FUNCTION DL_Open(file,mode) RESULT(handle) BIND(C,NAME="DlOpen")
          ! void *dlopen(const char *file, int mode);
          USE ISO_C_BINDING
          CHARACTER(C_CHAR), DIMENSION(*), INTENT(IN) :: file
@@ -52,20 +52,20 @@ MODULE DLFCN
          INTEGER(C_INT), VALUE :: mode
          TYPE(C_PTR) :: handle
       END FUNCTION
-      FUNCTION DLSym(handle,name) RESULT(funptr) BIND(C,NAME="dlsym")
+      FUNCTION DL_Sym(handle,name) RESULT(funptr) BIND(C,NAME="DlSym")
          ! void *dlsym(void *handle, const char *name);
          USE ISO_C_BINDING
          TYPE(C_PTR), VALUE :: handle
          CHARACTER(C_CHAR), DIMENSION(*), INTENT(IN) :: name
          TYPE(C_FUNPTR) :: funptr ! A function pointer
       END FUNCTION
-      FUNCTION DLClose(handle) RESULT(status) BIND(C,NAME="dlclose")
+      FUNCTION DL_Close(handle) RESULT(status) BIND(C,NAME="DlClose")
          ! int dlclose(void *handle);
          USE ISO_C_BINDING
          TYPE(C_PTR), VALUE :: handle
          INTEGER(C_INT) :: status
       END FUNCTION
-      FUNCTION DLError() RESULT(error) BIND(C,NAME="dlerror")
+      FUNCTION DL_Error() RESULT(error) BIND(C,NAME="DlError")
          ! char *dlerror(void);
          USE ISO_C_BINDING
          TYPE(C_PTR) :: error

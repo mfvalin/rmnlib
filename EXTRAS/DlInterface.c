@@ -11,35 +11,44 @@
 */
 #define ERR_NOT_ACTIVE "ERROR: this is the dummy dynamic loader\n"
 
+static void *(*P_DlOpen)(const char *,int) = NULL;
+static void *(*P_DlSym)(void *,const char *) = NULL;
+static int (*P_DlClose)(void *) = NULL;
+static char *(*P_DlError)(void) = NULL;
+
 void *DlOpen(const char *filename, int flag)
 {
-#ifdef LIVE
-  return(dlopen(filename,flag));
-#else
+if(P_DlOpen != NULL)
+  return((*P_DlOpen)(filename,flag));
+else
   return(NULL);
-#endif
 }
 void *DlSym(void *handle, const char *symbol)
 {
-#ifdef LIVE
-  return (dlsym(handle,symbol));
-#else
+if(P_DlSym != NULL)
+  return ((*P_DlSym)(handle,symbol));
+else
   return(NULL);
-#endif
 }
 char *DlError(void)
 {
-#ifdef LIVE
-  return (dlerror());
-#else
+if(P_DlError != NULL)
+  return ((*P_DlError)());
+else
   return(ERR_NOT_ACTIVE);
-#endif
 }
 int DlClose(void *handle)
 {
-#ifdef LIVE
-  return (dlclose(handle));
-#else
+if(P_DlClose != NULL)
+  return ((*P_DlClose)(handle));
+else
   return(-1);
-#endif
+}
+
+void DlRegister(void *open, void *sym, void *error, void *close)
+{
+  P_DlOpen = (void *(*)(const char *,int)) open;
+  P_DlSym = (void *(*)(void *,const char *)) sym;
+  P_DlError = (char *(*)(void)) error;
+  P_DlClose = (int (*)(void *)) close;
 }
