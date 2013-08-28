@@ -1,6 +1,6 @@
 SHELL = /bin/sh
 
-LIBNAME = librmnbeta
+LIBNAME = librmnbeta_14.819u
 
 WORKDIR = ./WorkDir
 
