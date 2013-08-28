@@ -1,7 +1,10 @@
-EXTRAS = fstd98.o DlInterface.o convert_ip123.o
+EXTRAS = fstd98.o DlInterface.o convert_ip123.o fst_missing.o
 
 RMNLIB = librmnbeta_14.819u.a
 all:	obj
+
+fst_missing.o: fst_missing.c
+	s.cc -c -O 2 fst_missing.c
 
 fstd98.o: fstd98.c  if_fstd98.c
 	s.cc -c -O 2 fstd98.c
