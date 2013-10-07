@@ -20,7 +20,7 @@ localdist: $(EXTRAS)
 	rm -f *.o *.mod
 
 dist: $(EXTRAS)
-	ar rcv lib/$(EC_ARCH)/librmnbeta_014u.a $(EXTRAS)
+	ar rcv lib/$(EC_ARCH)/$(RMNLIB) $(EXTRAS)
 	mv convert_ip123.mod include/$(EC_ARCH)/convert_ip123.mod
 	cp convert_ip.h include/$(EC_ARCH)/convert_ip.h_new
 	mv include/$(EC_ARCH)/convert_ip.h_new include/$(EC_ARCH)/convert_ip.h
