@@ -59,6 +59,7 @@ logical :: same
 integer :: errors, delta, i
 character(len=*) :: copy_in
 
+print *,' ------------------------------------------'
 same = (locarray==loc(array))
 if(locarray==loc(array))then
  copy_in=' O.K.    '
@@ -82,9 +83,9 @@ if(copy_in/='         ' .or. errors/=0) then
     print 102,'',' errors=',errors
     print 103,'expected: ',(I0+I*stride , I=0,ni-1)
     print 103,'got     : ',array(1:ni)
+    if(copy_in==' O.K.    ')copy_in=' ERROR,'
   endif
 endif
-print *,' ------------------------------------------'
 end
 EOT
 
@@ -148,6 +149,11 @@ p0d(0:)=>p1d(I:I+9)
 locarray=loc(p1d(I))
 call print_ptr1d(copy_in,locarray,p0d(0),10,I,1)
 print *,copy_in,'1b- p0d(0:)=>p1d(I:I+9) passing p0d(0)'
+
+p0d(0:)=>p1d(I:I+9)
+locarray=loc(p1d(I))
+call print_ptr1d(copy_in,locarray,p0d(0:9),10,I,1)
+print *,copy_in,'1c- p0d(0:)=>p1d(I:I+9) passing p0d(0:9)'
 
 p0d(0:)=>bus(I:I+9)
 locarray=loc(bus(I))
@@ -255,7 +261,27 @@ print *,copy_in,'C - p0d(0:)=>p1d(1:) , passing p0d(0)'
 p1d=>ptr1ds(20,2)
 locarray=loc(p1d(1))
 call print_ptr1d(copy_in,locarray,p1d,10,1,2)
-print *,copy_in,'D - p1d=>ptr1ds(20,2) , passing p1d, COPY-IN expected'
+print *,copy_in,'Da - p1d=>ptr1ds(20,2) , passing p1d, COPY-IN expected'
+
+p0d(1:8)=>p1d(2:9)
+locarray=loc(p1d(2))
+call print_ptr1d(copy_in,locarray,p0d,8,3,2)
+print *,copy_in,'Dc - p1d=>ptr1ds(20,2) p0d(1:8)=>p1d(2:9), passing p0d, COPY-IN expected'
+
+p0d(1:8)=>p1d(2:9)
+locarray=loc(p1d(2))
+call print_ptr1d(copy_in,locarray,p0d(1),8,3,2)
+print *,copy_in,'Dd - p1d=>ptr1ds(20,2) p0d(1:8)=>p1d(2:9), passing p0d(1), ERRORS expected'
+
+p0d(1:8)=>p1d(2:9)
+locarray=loc(p1d(2))
+call print_ptr1d(copy_in,locarray,p0d(2),8,5,2)
+print *,copy_in,'De - p1d=>ptr1ds(20,2) p0d(1:8)=>p1d(2:9), passing p0d(2), ERRORS expected'
+
+p0d(1:8)=>p1d(2:9)
+locarray=loc(p1d(2))
+call print_ptr1d(copy_in,locarray,p0d(1:8),8,3,2)
+print *,copy_in,'Df - p1d=>ptr1ds(20,2) p0d(1:8)=>p1d(2:9), passing p0d(1:8), COPY-IN expected'
 
 p0d(0:)=>p1d(1:)
 locarray=loc(p1d(1))
