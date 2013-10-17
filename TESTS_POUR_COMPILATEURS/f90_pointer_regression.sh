@@ -76,14 +76,15 @@ enddo
 102 format(A,A,I2,A,I2)
 103 format(A,20i4)
 if(copy_in/='         ' .or. errors/=0) then
-  if(errors==0) then
-!    print 102,copy_in
-  else
-!    print 102,copy_in,' errors=',errors
-    print 102,'',' errors=',errors
+  if(errors>0) then
+!    print 102,'',' errors=',errors
     print 103,'expected: ',(I0+I*stride , I=0,ni-1)
     print 103,'got     : ',array(1:ni)
-    if(copy_in==' O.K.    ')copy_in=' ERROR,'
+    if(copy_in==' O.K.    ')then
+      copy_in=' ERROR'
+    else
+      copy_in=trim(copy_in)//'ERROR'
+    endif
   endif
 endif
 end
@@ -122,7 +123,7 @@ integer*8 :: locarray
 integer :: i
 integer, dimension(20), target :: bus2
 integer, dimension(30), target :: bus
-character(len=10) :: copy_in
+character(len=17) :: copy_in
 
 bus=[ (i, i=1,30) ]
 
@@ -130,11 +131,11 @@ p1d=>ptr1d(20)
 
 locarray=loc(p1d(1))
 call print_ptr1d(copy_in,locarray,p1d,10,1,1)
-print *,copy_in,'p1d=>ptr1d(10), passing p1d'
+print 100,copy_in//'p1d=>ptr1d(10), passing p1d'
 
 locarray=loc(p1d(1))
 call print_ptr1d(copy_in,locarray,p1d(1),10,1,1)
-print *,copy_in,'p1d=>ptr1d(10), passing p1d(1)'
+print 100,copy_in//'p1d=>ptr1d(10), passing p1d(1)'
 
 do I=5,8,3
 
@@ -143,74 +144,79 @@ print 100,'--------------------- I=',I,' ---------------------'
 p0d(0:)=>p1d(I:I+9)
 locarray=loc(p1d(I))
 call print_ptr1d(copy_in,locarray,p0d,10,I,1)
-print *,copy_in,'1a- p0d(0:)=>p1d(I:I+9) passing p0d'
+print 100,copy_in//'1a- p0d(0:)=>p1d(I:I+9) passing p0d'
 
 p0d(0:)=>p1d(I:I+9)
 locarray=loc(p1d(I))
 call print_ptr1d(copy_in,locarray,p0d(0),10,I,1)
-print *,copy_in,'1b- p0d(0:)=>p1d(I:I+9) passing p0d(0)'
+print 100,copy_in//'1b- p0d(0:)=>p1d(I:I+9) passing p0d(0)'
 
 p0d(0:)=>p1d(I:I+9)
 locarray=loc(p1d(I))
 call print_ptr1d(copy_in,locarray,p0d(0:9),10,I,1)
-print *,copy_in,'1c- p0d(0:)=>p1d(I:I+9) passing p0d(0:9)'
+print 100,copy_in//'1c- p0d(0:)=>p1d(I:I+9) passing p0d(0:9)'
 
 p0d(0:)=>bus(I:I+9)
 locarray=loc(bus(I))
 call print_ptr1d(copy_in,locarray,p0d,10,I,1)
-print *,copy_in,'2a- p0d(0:)=>bus(I:I+9) passing p0d'
+print 100,copy_in//'2a- p0d(0:)=>bus(I:I+9) passing p0d'
 
 p0d(0:)=>bus(I:I+9)
 locarray=loc(bus(I))
 call print_ptr1d(copy_in,locarray,p0d(0),10,I,1)
-print *,copy_in,'2b- p0d(0:)=>bus(I:I+9) passing p0d(0)'
+print 100,copy_in//'2b- p0d(0:)=>bus(I:I+9) passing p0d(0)'
+
+p0d(0:)=>bus(I:I+9)
+locarray=loc(bus(I))
+call print_ptr1d(copy_in,locarray,(p0d(0)),10,I,1)
+print 100,copy_in//'2c- p0d(0:)=>bus(I:I+9) passing (p0d(0)), ERRORS expected'
 
 p0d(0:)=>bus(I:I+9)
 ptd=>p0d
 locarray=loc(bus(I))
 call print_ptr1d(copy_in,locarray,ptd,10,I,1)
-print *,copy_in,'3a- p0d(0:)=>bus(I:I+9) ptd=>p0d passing ptd'
+print 100,copy_in//'3a- p0d(0:)=>bus(I:I+9) ptd=>p0d passing ptd'
 
 p0d(0:)=>bus(I:I+9)
 ptd=>p0d
 locarray=loc(bus(I))
 call print_ptr1d(copy_in,locarray,ptd(0),10,I,1)
-print *,copy_in,'3b- p0d(0:)=>bus(I:I+9) ptd=>p0d passing ptd(0)'
+print 100,copy_in//'3b- p0d(0:)=>bus(I:I+9) ptd=>p0d passing ptd(0)'
 
 p0d(0:)=>bus(I:I+9)
 locarray=loc(bus(I))
 call print_ptr1d(copy_in,locarray,p0d(0),10,I,1)
-print *,copy_in,'4 - p0d(0:)=>bus(I:I+9) passing p0d(0)'
+print 100,copy_in//'4 - p0d(0:)=>bus(I:I+9) passing p0d(0)'
 
 p0d=>bus(I:I+9)
 locarray=loc(bus(I))
 p2d(0:1,1:5)=>p0d
 call print_ptr1d(copy_in,locarray,p2d,10,I,1)
-print *,copy_in,'5a- p0d=>bus(I:I+9) p2d(0:1,1:5)=>p0d , passing p2d'
+print 100,copy_in//'5a- p0d=>bus(I:I+9) p2d(0:1,1:5)=>p0d , passing p2d'
 
 p0d=>bus(I:I+9)
 locarray=loc(bus(I))
 p2d(0:1,1:5)=>p0d
 call print_ptr1d(copy_in,locarray,p2d(0,1),10,I,1)
-print *,copy_in,'5b- p0d=>bus(I:I+9) p2d(0:1,1:5)=>p0d , passing p2d(0,1)'
+print 100,copy_in//'5b- p0d=>bus(I:I+9) p2d(0:1,1:5)=>p0d , passing p2d(0,1)'
 
 p0d=>bus(I:I+9)
 locarray=loc(bus(I))
 p2d(0:1,1:5)=>p0d(1:)
 call print_ptr1d(copy_in,locarray,p2d,10,I,1)
-print *,copy_in,'6 - p0d=>bus(I:I+9) p2d(0:1,1:5)=>p0d(1:) , passing p2d'
+print 100,copy_in//'6 - p0d=>bus(I:I+9) p2d(0:1,1:5)=>p0d(1:) , passing p2d'
 
 p0d=>bus(I:I+9)
 locarray=loc(bus(I))
 p2d(0:1,1:5)=>p0d(1:10)
 call print_ptr1d(copy_in,locarray,p2d,10,I,1)
-print *,copy_in,'7a- p0d=>bus(I:I+9) p2d(0:1,1:5)=>p0d(1:10) , passing p2d'
+print 100,copy_in//'7a- p0d=>bus(I:I+9) p2d(0:1,1:5)=>p0d(1:10) , passing p2d'
 
 p0d=>bus(I:I+9)
 locarray=loc(bus(I))
 p2d(0:1,1:5)=>p0d(1:10)
 call print_ptr1d(copy_in,locarray,p2d(0,1),10,I,1)
-print *,copy_in,'7b- p0d=>bus(I:I+9) p2d(0:1,1:5)=>p0d(1:10) , passing p2d(0,1)'
+print 100,copy_in//'7b- p0d=>bus(I:I+9) p2d(0:1,1:5)=>p0d(1:10) , passing p2d(0,1)'
 
 enddo
 print 100,'----------------------- ',0,' ---------------------'
@@ -218,104 +224,106 @@ print 100,'----------------------- ',0,' ---------------------'
 p0d(0:)=>p1d(1:)
 locarray=loc(p1d(1))
 call print_ptr1d(copy_in,locarray,p0d(0),10,1,1)
-print *,copy_in,'8 -p0d(0:)=>p1d(1:) passing p0d(0)'
+print 100,copy_in//'8 -p0d(0:)=>p1d(1:) passing p0d(0)'
 
 p0d(0:)=>bus2(1:10)
 locarray=loc(bus2)
 call print_ptr1d(copy_in,locarray,p0d,10,1,1)
-print *,copy_in,'9a- p0d(0:)=>bus2(1:10) passing p0d'
+print 100,copy_in//'9a- p0d(0:)=>bus2(1:10) passing p0d'
 
 p0d(0:)=>bus2(1:10)
 locarray=loc(bus2)
 call print_ptr1d(copy_in,locarray,p0d(0),10,1,1)
-print *,copy_in,'9b- p0d(0:)=>bus2(1:10) passing p0d(0)'
+print 100,copy_in//'9b- p0d(0:)=>bus2(1:10) passing p0d(0)'
 
 p0d(0:)=>bus(1:10)
 locarray=loc(bus)
 call print_ptr1d(copy_in,locarray,p0d,10,1,1)
-print *,copy_in,'0a- p0d(0:)=>bus(1:10) passing p0d'
+print 100,copy_in//'0a- p0d(0:)=>bus(1:10) passing p0d'
 
 locarray=loc(bus)
 call print_ptr1d(copy_in,locarray,p0d(0),10,1,1)
-print *,copy_in,'0b- p0d(0:)=>bus(1:10) passing p0d(0)'
+print 100,copy_in//'0b- p0d(0:)=>bus(1:10) passing p0d(0)'
 
 p2d(0:1,0:4)=>bus(1:10)
 locarray=loc(bus)
 call print_ptr1d(copy_in,locarray,p2d,10,1,1)
-print *,copy_in,'Aa- p2d(0:1,0:4)=>bus(1:10) , passing p2d'
+print 100,copy_in//'Aa- p2d(0:1,0:4)=>bus(1:10) , passing p2d'
 
 p2d(0:1,0:4)=>p1d(1:)
 locarray=loc(p1d(1))
 call print_ptr1d(copy_in,locarray,p2d(0,0),10,1,1)
-print *,copy_in,'Ab- p2d(0:1,0:4)=>p1d(1:) passing p2d(0,0)'
+print 100,copy_in//'Ab- p2d(0:1,0:4)=>p1d(1:) passing p2d(0,0)'
 
 p1d=>ptr1ds(20,1)
 locarray=loc(p1d(1))
 call print_ptr1d(copy_in,locarray,p1d,10,1,1)
-print *,copy_in,'B - p1d=>ptr1ds(20,1) , passing p1d'
+print 100,copy_in//'B - p1d=>ptr1ds(20,1) , passing p1d'
 
 p0d(0:)=>p1d(1:)
 call print_ptr1d(copy_in,locarray,p0d(0),10,1,1)
-print *,copy_in,'C - p0d(0:)=>p1d(1:) , passing p0d(0)'
+print 100,copy_in//'C - p0d(0:)=>p1d(1:) , passing p0d(0)'
 
 p1d=>ptr1ds(20,2)
 locarray=loc(p1d(1))
 call print_ptr1d(copy_in,locarray,p1d,10,1,2)
-print *,copy_in,'Da - p1d=>ptr1ds(20,2) , passing p1d, COPY-IN expected'
+print 100,copy_in//'Da - p1d=>ptr1ds(20,2) , passing p1d, COPY-IN expected'
 
 p0d(1:8)=>p1d(2:9)
 locarray=loc(p1d(2))
 call print_ptr1d(copy_in,locarray,p0d,8,3,2)
-print *,copy_in,'Dc - p1d=>ptr1ds(20,2) p0d(1:8)=>p1d(2:9), passing p0d, COPY-IN expected'
+print 100,copy_in//'Dc - p1d=>ptr1ds(20,2) p0d(1:8)=>p1d(2:9), passing p0d, COPY-IN expected'
 
 p0d(1:8)=>p1d(2:9)
 locarray=loc(p1d(2))
 call print_ptr1d(copy_in,locarray,p0d(1),8,3,2)
-print *,copy_in,'Dd - p1d=>ptr1ds(20,2) p0d(1:8)=>p1d(2:9), passing p0d(1), ERRORS expected'
+print 100,copy_in//'Dd - p1d=>ptr1ds(20,2) p0d(1:8)=>p1d(2:9), passing p0d(1), ERRORS expected'
 
 p0d(1:8)=>p1d(2:9)
 locarray=loc(p1d(2))
 call print_ptr1d(copy_in,locarray,p0d(2),8,5,2)
-print *,copy_in,'De - p1d=>ptr1ds(20,2) p0d(1:8)=>p1d(2:9), passing p0d(2), ERRORS expected'
+print 100,copy_in//'De - p1d=>ptr1ds(20,2) p0d(1:8)=>p1d(2:9), passing p0d(2), ERRORS expected'
 
 p0d(1:8)=>p1d(2:9)
 locarray=loc(p1d(2))
 call print_ptr1d(copy_in,locarray,p0d(1:8),8,3,2)
-print *,copy_in,'Df - p1d=>ptr1ds(20,2) p0d(1:8)=>p1d(2:9), passing p0d(1:8), COPY-IN expected'
+print 100,copy_in//'Df - p1d=>ptr1ds(20,2) p0d(1:8)=>p1d(2:9), passing p0d(1:8), COPY-IN expected'
 
 p0d(0:)=>p1d(1:)
 locarray=loc(p1d(1))
 call print_ptr1d(copy_in,locarray,p0d(0),10,1,1)
-print *,copy_in,'E - p0d(0:)=>p1d(1:) , passing p0d(0)'
+print 100,copy_in//'E - p0d(0:)=>p1d(1:) , passing p0d(0)'
 
 p0d(1:10)=>bus(1:10)
 locarray=loc(bus(1))
 p2d(1:2,1:5)=>p0d(1:10)
 call print_ptr1d(copy_in,locarray,p2d,10,1,1)
-print *,copy_in,'Fa- p0d=>bus(1:10) p2d(1:2,1:5)=>p0d(1:10) , passing p2d'
+print 100,copy_in//'Fa- p0d=>bus(1:10) p2d(1:2,1:5)=>p0d(1:10) , passing p2d'
 
 p0d(1:10)=>bus(1:10)
 locarray=loc(bus(1))
 p2d(1:2,1:5)=>p0d(1:10)
 call print_ptr1d(copy_in,locarray,p2d(1,1),10,1,1)
-print *,copy_in,'Fb- p0d=>bus(1:10) p2d(1:2,1:5)=>p0d(1:10) , passing p2d(1,1)'
+print 100,copy_in//'Fb- p0d=>bus(1:10) p2d(1:2,1:5)=>p0d(1:10) , passing p2d(1,1)'
 
 p0d(1:10)=>bus2(5:14)
 locarray=loc(bus2(5))
 p2d(0:1,1:5)=>p0d(1:10)
 call print_ptr1d(copy_in,locarray,p2d(0,1),10,5,1)
-print *,copy_in,'G - p0d=>bus2(5:14) p2d(0:1,1:5)=>p0d(1:10) , passing p2d(0,1)'
+print 100,copy_in//'G - p0d=>bus2(5:14) p2d(0:1,1:5)=>p0d(1:10) , passing p2d(0,1)'
 
 !p0d(1:)=>bus(1:10)
 !locarray=loc(bus)
 !p2d(0:1,1:5)=>p0d(1:10)
 !call print_ptr1d(copy_in,locarray,p2d,10,1,1)
-!print *,copy_in,'p0d=bus(1:10) p2d(0:1,1:5)=>p0d(1:10) , passing p2d'
+!print 100,copy_in//'p0d=bus(1:10) p2d(0:1,1:5)=>p0d(1:10) , passing p2d'
 
 return
 end
 EOT
 rm -f a.out pointers_nd.mod
+set -x
 ${compiler} f90_pointer_regression_[0-4].f90
+set +x
 [[ -x ./a.out ]] && ./a.out
 rm -f f90_pointer_regression_[0-4].f90 f90_pointer_regression_[0-4].o pointers_nd.mod a.out
