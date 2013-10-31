@@ -1032,7 +1032,7 @@ subroutine test_convip_plus() ! test routine for convip_plus
     if(ip1/=ip2) nip=nip+1
     if(p/=p2 .and. abs(p2/p-1.0) < .0000002) nip2=nip2+1
     if(ip1/=ip2 .and. p /= p2) then
-      if(abs(p2/p-1.0) > .0000002) then ! not within tolerance
+      if(abs(p2/p-1.0) >= .0000002) then ! not within tolerance
         print 111, j,i,ip1,ip2,iand(ip1,1048575),iand(ip2,1048575),p,p2,abs(p2/p-1.0)
         nip3 = nip3+1
 !           stop
