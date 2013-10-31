@@ -23,7 +23,8 @@ use ISO_C_BINDING
 public  :: encode_ip_0, encode_ip_1, decode_ip_0, decode_ip_1
 public  :: encode_ip_2, encode_ip_3, decode_ip_2, decode_ip_3
 public  :: convip_plus, test_convip_plus, test_value_to_string
-private :: conv_kind_15, value_to_string
+public  :: value_to_string
+private :: conv_kind_15
 
 type, BIND(C) :: float_ip
 real(C_FLOAT) :: lo, hi
@@ -908,6 +909,7 @@ integer function value_to_string(val,string,maxlen)  ! write value val into stri
       grosint=grosint*10  ! largest integer value that will fit in maxc characters
     enddo
     if(value >= grosint) goto 444   ! try something else
+    if(val>0) intdig = intdig - 1   ! one less character if number is positive
     write(fstring,12)'(I',min(maxc,intdig),')'    ! use I format
     value_to_string=min(maxc,intdig)
     goto 777
@@ -981,26 +983,36 @@ subroutine test_value_to_string
 
   value=1.000001
   do i=1,9
+    status=value_to_string(real(nint(value)),stringa,15)
+    stringc = stringa
+    print 101,stringc,trim(stringa),'',status*.01
+    value=value*10.0
+  enddo
+
+  value=1.000001
+  do i=1,9
     status=value_to_string(real(nint(-value)),stringa,15)
-    print 101,trim(stringa),'mb',status*.01
+    stringc = stringa
+    print 101,stringc,trim(stringa),'mb',status*.01
     value=value*10.0
   enddo
 
   value=1.234567
   do i=1,12
     status=value_to_string(-value,stringb,15)
-    print 101,trim(stringb),'mb',status*.01
+    stringc = stringb
+    print 101,stringc,trim(stringb),'mb',status*.01
     value=value*10.0
   enddo
 
   value=1.23456789
   do i=1,12
     status=value_to_string(-value,stringc,12)
-    print 101,trim(stringc),'mb',status*.01
+    print 101,stringc,trim(stringc),'mb',status*.01
     value=value*0.1
   enddo
 
-101 format(A15,1X,A2,3X,f6.2)
+101 format(1H|,A15,1H|,A15,1H|,1X,A2,3X,f6.2)
 return
 end subroutine test_value_to_string
 !===============================================================================================
@@ -1025,7 +1037,7 @@ subroutine test_convip_plus() ! test routine for convip_plus
     if(ip1/=ip2) nip=nip+1
     if(p/=p2 .and. abs(p2/p-1.0) < .0000002) nip2=nip2+1
     if(ip1/=ip2 .and. p /= p2) then
-      if(abs(p2/p-1.0) > .0000002) then ! not within tolerance
+      if(abs(p2/p-1.0) >= .0000002) then ! not within tolerance
         print 111, j,i,ip1,ip2,iand(ip1,1048575),iand(ip2,1048575),p,p2,abs(p2/p-1.0)
         nip3 = nip3+1
 !           stop
