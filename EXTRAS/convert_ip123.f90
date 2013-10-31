@@ -981,6 +981,13 @@ subroutine test_value_to_string
 
   value=1.000001
   do i=1,9
+    status=value_to_string(real(nint(value)),stringa,15)
+    print 101,trim(stringa),'',status*.01
+    value=value*10.0
+  enddo
+
+  value=1.000001
+  do i=1,9
     status=value_to_string(real(nint(-value)),stringa,15)
     print 101,trim(stringa),'mb',status*.01
     value=value*10.0
@@ -1000,7 +1007,7 @@ subroutine test_value_to_string
     value=value*0.1
   enddo
 
-101 format(A15,1X,A2,3X,f6.2)
+101 format(1H|,A15,1H|,1X,A2,3X,f6.2)
 return
 end subroutine test_value_to_string
 !===============================================================================================
