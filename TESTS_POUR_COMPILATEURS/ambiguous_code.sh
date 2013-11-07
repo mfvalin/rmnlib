@@ -24,5 +24,5 @@ echo no compiler error is an error
 echo ===============================================================
 rm -f a.out
 ${compiler} ambiguous.f90 
-[[ -x ./a.out ]] && a.out
+[[ -x ./a.out ]] && ./a.out
 rm -f a.out ambiguous.o ambiguous.f90

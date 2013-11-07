@@ -533,6 +533,8 @@ SUBROUTINE CONVIP_plus( ip, p, kind, mode, string, flagv )
 !                               comme valeurs arbitraires
 !     Revision 011  M. Valin  - Mai/Juin 2013 activation du code 15, ajout de la conversion groupee,
 !                               menage dans le code, changement de nom, refactoring
+!     Revision 012  M. Valin  - Oct/Nov 2013 bug de conversion corrige pour certains cas limites
+!                               enleve une amelioration qui entrainait une non compatibilite avec convip
 !
 !     Input:    MODE = -1, de IP -->  P
 !               MODE =  0, forcer conversion pour ip a 31 bits
@@ -884,6 +886,8 @@ function conv_kind_15(p,mykind,ip,mode) result(status) ! convert kind = 15 and s
 end function conv_kind_15
 !===============================================================================================
 integer function value_to_string(val,string,maxlen)  ! write value val into string using at most maxlen characters
+! Version originale M.Valin 2013
+! Revision 001 :    M.Valin  Oct 2013 alignement a droite corrige pour valeurs entieres > 0
   integer :: maxlen
   character (len=*) :: string
   character (len=32) :: fstring

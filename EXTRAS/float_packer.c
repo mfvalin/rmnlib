@@ -47,11 +47,13 @@ typedef union {
 
 */
 
-INT_32 float_unpacker_1_new(float *dest, INT_32 *header, short *stream, INT_32 npts)
+
+/* strean is really INT32 but addressed as INT16, one MUST account for endianness of machines */
+INT_32 float_unpacker_1(float *dest, INT_32 *header, short *stream, INT_32 npts)
 {
   floatint temp,temp2;
   INT_32 n, shft1_23, shft1_31, m23;
-  INT_32 MaxExp, Mantis, Mantis0, Mantis1, Mantis2, Mantis3, Sgn, Sgn0, Sgn1, Sgn2, Sgn3, Minimum, Shift2, Fetch, Accu, i0;
+  INT_32 MaxExp, Mantis, Mantis0, Mantis1, Mantis2, Mantis3, Sgn, Sgn0, Sgn1, Sgn2, Sgn3, Minimum, Shift2, i0;
 
   Minimum = header[1];                     /* get Minimum, MaxExp, Shift2 from header */
   MaxExp = (header[0] >> 8) & 0xFF;
@@ -70,10 +72,17 @@ INT_32 float_unpacker_1_new(float *dest, INT_32 *header, short *stream, INT_32 n
     return (0);
     }
   while(n>3){
-    Mantis1 = *stream++ ;
+#if defined(__x86_64__) || defined(__i386__)
+    Mantis1 = *stream++ ;  /* little endian machines */
     Mantis0 = *stream++ ;
     Mantis3 = *stream++ ;
     Mantis2 = *stream++ ;
+#else
+    Mantis0 = *stream++ ;
+    Mantis1 = *stream++ ;
+    Mantis2 = *stream++ ;
+    Mantis3 = *stream++ ;
+#endif
     Mantis0 = Mantis0 << Shift2;
     Mantis1 = Mantis1 << Shift2;
     Mantis2 = Mantis2 << Shift2;
@@ -94,7 +103,7 @@ INT_32 float_unpacker_1_new(float *dest, INT_32 *header, short *stream, INT_32 n
     if(Mantis1 > 0xFFFFFF) Mantis1 = 0xFFFFFF; 
     if(Mantis2 > 0xFFFFFF) Mantis2 = 0xFFFFFF; 
     if(Mantis3 > 0xFFFFFF) Mantis3 = 0xFFFFFF; 
-	temp2.i = m23 | Sgn0 ;
+    temp2.i = m23 | Sgn0 ;
     temp.i  = (Mantis0 & 0x7FFFFF) | temp2.i;  /* eliminate bit 23 (hidden 1) and add exponent */
     if(Mantis0 & shft1_23) {
       temp2.i = 0;                                /* hidden 1 is genuine */
@@ -122,7 +131,11 @@ INT_32 float_unpacker_1_new(float *dest, INT_32 *header, short *stream, INT_32 n
     }
   i0 = 0;
   while(n>0){
-    Mantis = stream[i0^1] ;                    /* get upper 16 bits of token */
+#if defined __x86_64__ || defined(__i386__)
+    Mantis = stream[i0^1] ;    /* little endian machines */
+#else
+    Mantis = stream[i0] ;
+#endif
     Mantis = Mantis << Shift2;
     Mantis = Mantis + Minimum;                         /* regenerate mantissa, possibly not normalized */
     Sgn = 0;
@@ -255,6 +268,7 @@ INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32 *strea
 /* fprintf(stderr,"Debug+ MaxExp=%d\n",MaxExp);
   fprintf(stderr,"Debug+ min=%f fmin.i=%X max=%f Minimum=%d Maximum=%d\n",fmin.f,fmin.i,fmax.f,Minimum,Maximum); */
   Store = 0;
+  Accu = 0;
   n=npts;
   while(n--){                               /* transform input floating point into 16 bit integers */
     Src = *intsrc++;
@@ -292,7 +306,7 @@ INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32 *strea
     return value is zero if OK, error code from float_unpacker_1 otherwise 
    ===================================================================================================== */
 
-INT_32 c_float_unpacker_new(float *dest, INT_32 *header, INT_32 *stream, INT_32 npts, INT_32 *nbits)
+INT_32 c_float_unpacker(float *dest, INT_32 *header, void *stream, INT_32 npts, INT_32 *nbits)
 {
   INT_32 ierror;
 
@@ -305,12 +319,12 @@ INT_32 c_float_unpacker_new(float *dest, INT_32 *header, INT_32 *stream, INT_32 
     printf("float_unpacker: ERROR inconsistent number of points (header/request mismatch)\n");
     return -1;
     }
-  ierror = float_unpacker_1_new(dest, header, stream, npts);
+  ierror = float_unpacker_1(dest, header, stream, npts);
   if(ierror) return ierror;
   return 0;
 }
 
-INT_32 c_float_unpacker_orig(float *dest, INT_32 *header, INT_32 *stream, INT_32 npts, INT_32 *nbits)
+INT_32 c_float_unpacker_orig(float *dest, INT_32 *header, void *stream, INT_32 npts, INT_32 *nbits)
 {
   INT_32 ierror;
 
@@ -328,9 +342,9 @@ INT_32 c_float_unpacker_orig(float *dest, INT_32 *header, INT_32 *stream, INT_32
   return 0;
 }
 
-ftnword f77name(float_unpacker_new)(float *dest, INT_32 *header, INT_32 *stream, INT_32 *npts, INT_32 *nbits)
+ftnword f77name(float_unpacker)(float *dest, INT_32 *header, INT_32 *stream, INT_32 *npts, INT_32 *nbits)
 {
-  return c_float_unpacker_new(dest, header, stream, *npts, nbits);
+  return c_float_unpacker(dest, header, stream, *npts, nbits);
 }
 
 ftnword f77name(float_unpacker_orig)(float *dest, INT_32 *header, INT_32 *stream, INT_32 *npts, INT_32 *nbits)
@@ -399,13 +413,14 @@ void f77name(float_packer_params)(INT_32 *header_size, INT_32 *stream_size, INT_
 #ifdef TEST
 #include <sys/time.h>
 /* test program to verify that results are identical on all machines */
-#define NPTS (1+4000*4000)
-main()
+#define NPTS (1+2000*1400)
+int main()
 {
-  struct timeval {
-    time_t      tv_sec;     /* seconds */
-    suseconds_t tv_usec;    /* microseconds */
-  }t1,t2;
+//  struct timeval {
+//    time_t      tv_sec;     /* seconds */
+//    suseconds_t tv_usec;    /* microseconds */
+//  }t1,t2;
+  struct timeval t1,t2;
   long long T1, T2;
   int duree;
 
@@ -417,7 +432,7 @@ main()
   INT_32 npts=NPTS;
   INT_32 header[1+2*((NPTS+32767)/32768)], stream[(NPTS+1)/2];
   INT_32 signature;
-  int i,j,nhead;
+  int i,j;
   INT_32 p1,p2,header_size,stream_size;
   
   f77name(float_packer_params)(&header_size, &stream_size, &p1, &p2, &npts);
@@ -433,14 +448,16 @@ main()
   duree = T2-T1;
   printf("packing time = %d usec\n",duree);
 
+  for ( i=0 ; i<NPTS ; i++ ) { source2[i]=-2000.; };
   gettimeofday(&t1,NULL);
-  f77name(float_unpacker_new)(source2, header, stream, &npts, &NBITS);
+  f77name(float_unpacker)(source2, header, stream, &npts, &NBITS);
   gettimeofday(&t2,NULL);
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
   printf("unpacking new time = %d usec\n",duree);
 
+  for ( i=0 ; i<NPTS ; i++ ) { source2[i]=-2000.; };
   gettimeofday(&t1,NULL);
   f77name(float_unpacker_orig)(source2, header, stream, &npts, &NBITS);
   gettimeofday(&t2,NULL);
@@ -449,37 +466,14 @@ main()
   duree = T2-T1;
   printf("unpacking orig time = %d usec\n",duree);
 
+  for ( i=0 ; i<NPTS ; i++ ) { source2[i]=-2000.; };
   gettimeofday(&t1,NULL);
-  f77name(float_unpacker_new)(source2, header, stream, &npts, &NBITS);
+  f77name(float_unpacker)(source2, header, stream, &npts, &NBITS);
   gettimeofday(&t2,NULL);
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
   printf("unpacking new time = %d usec\n",duree);
-
-  gettimeofday(&t1,NULL);
-  f77name(float_unpacker_orig)(source2, header, stream, &npts, &NBITS);
-  gettimeofday(&t2,NULL);
-  T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
-  T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
-  duree = T2-T1;
-  printf("unpacking orig time = %d usec\n",duree);
-
-  gettimeofday(&t1,NULL);
-  f77name(float_unpacker_new)(source2, header, stream, &npts, &NBITS);
-  gettimeofday(&t2,NULL);
-  T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
-  T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
-  duree = T2-T1;
-  printf("unpacking new time = %d usec\n",duree);
-
-  gettimeofday(&t1,NULL);
-  f77name(float_unpacker_orig)(source2, header, stream, &npts, &NBITS);
-  gettimeofday(&t2,NULL);
-  T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
-  T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
-  duree = T2-T1;
-  printf("unpacking orig time = %d usec\n",duree);
   
   printf("source2[0],source2[1],source2[2],source2[NPTS-1]=%f,%f,%f,%f\n",source2[0],source2[1],source2[2],source2[NPTS-1]);
   printf("nbits = %d ,nbits from unpacker = %d\n",nbits,NBITS);
@@ -526,7 +520,7 @@ main()
     duree = T2-T1;
     printf("unpacking orig time = %d usec\n",duree);
     gettimeofday(&t1,NULL);
-    f77name(float_unpacker_new)(source2, header, stream, &npts, &NBITS);
+    f77name(float_unpacker)(source2, header, stream, &npts, &NBITS);
     gettimeofday(&t2,NULL);
     T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
     T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
@@ -543,6 +537,7 @@ main()
     errormax=error>errormax?error:errormax;
     }
   printf("after REpacking errormax=%f,erroravg=%f\n",errormax,erroravg/NPTS);  /* better be zero */
+  return (0);
 }
 #endif
 
