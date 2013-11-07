@@ -20,6 +20,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 #include <rpnmacros.h>
 #include <unistd.h>
@@ -74,7 +75,9 @@ static int swapStream           =  1;
 static unsigned char fastlog[256];
 static int once = 0;
 int zfst_msglevel = 2;
-        
+
+static void *junk=NULL;
+
 /*-------------------------------------------------------------------------------------------------------------------- */
 
 /*
@@ -173,7 +176,7 @@ switch (op_code)
       }
     else
       {
-      memcpy(fld, zfld_minimum, zlng_minimum);
+      junk = memcpy(fld, zfld_minimum, zlng_minimum);
       free(zfld_minimum);
       free(zfld_lle);
 /*      printf("zlng_minimum: %d\n", zlng_minimum);*/
@@ -209,7 +212,7 @@ switch (op_code)
       return -1;
       }
   
-    memcpy(fld, zfld_lle, zlng_lle);
+    junk = memcpy(fld, zfld_lle, zlng_lle);
     free(zfld_minimum);
     free(zfld_lle);
 /*  printf("zlng_lle: %d\n", zlng_lle);*/
@@ -227,7 +230,7 @@ switch (op_code)
   
   unzfld = (unsigned short *)malloc(sizeof(unsigned int)*ni*nj); 
   c_fstunzip((unsigned int *)unzfld, (unsigned int *)fld, ni, nj, nbits);
-  memcpy(fld, unzfld, (1+ni*nj/2)*sizeof(unsigned int));
+  junk = memcpy(fld, unzfld, (1+ni*nj/2)*sizeof(unsigned int));
 #if defined (Little_Endian)
   if (swapStream == 1)
    {
@@ -251,7 +254,7 @@ void c_fstzip(unsigned int *zfld, int *zlng, unsigned int *fld, int ni, int nj, 
 {
   _fstzip zfstzip;
 
-  memset(&zfstzip, (int)NULL, sizeof(_fstzip));
+  junk = memset(&zfstzip, (int) 0, sizeof(_fstzip));
   
   zfstzip.predictor_type = code_methode;
   zfstzip.step           = step;
@@ -299,8 +302,8 @@ void c_fstunzip(unsigned int *fld, unsigned int *zfld, int ni, int nj, int nbits
 {
   _fstzip zfstzip;
 
-  memset(&zfstzip, (int)NULL, sizeof(_fstzip));
-  memcpy(&zfstzip, &zfld[0], sizeof(float));
+  junk = memset(&zfstzip, (int) 0, sizeof(_fstzip));
+  junk = memcpy(&zfstzip, &zfld[0], sizeof(float));
   
   switch (zfstzip.predictor_type)
     {
@@ -654,7 +657,7 @@ void packTokensMinimum(unsigned int z[], int *zlng, unsigned short ufld[], int n
    
   lastWordShifted = 0;
   spaceInLastWord = 32;
-  memcpy(cur, header, sizeof(unsigned int));
+  junk = memcpy(cur, header, sizeof(unsigned int));
   cur++;
   *cur = 0;
   for (j=1; j <= nj; j+=istep)
@@ -768,7 +771,7 @@ void unpackTokensMinimum(unsigned short ufld[], unsigned int z[], int ni, int nj
   
 /*   memset(ufld, NULL, ni*nj*sizeof(short)); */
   cur = z;
-  memcpy(header, cur, sizeof(unsigned int));
+  junk = memcpy(header, cur, sizeof(unsigned int));
   cur++;
   curword = *cur;
   for (j=1; j <= nj; j+=istep)
@@ -832,14 +835,14 @@ void unpackTokensMinimumNEW(unsigned short ufld[], unsigned int z[], int ni, int
   int bitPackInWord;
 
   unsigned int *cur, local_min;
-  unsigned int  nbits_needed, curword;
+  unsigned int  nbits_needed, curword, token, rowbump;
   int lcl_m, lcl_n;
 
   bitPackInWord = 32;
   
 /*   memset(ufld, NULL, ni*nj*sizeof(short)); */
   cur = z;
-  memcpy(header, cur, sizeof(unsigned int));
+  junk = memcpy(header, cur, sizeof(unsigned int));
   cur++;
   curword = *cur;
   for (j=1; j <= nj; j+=istep)
@@ -848,47 +851,42 @@ void unpackTokensMinimumNEW(unsigned short ufld[], unsigned int z[], int ni, int
     for (i=1; i <= ni; i+=istep)
       {
       lcl_m = ((i + istep - 1) >= ni ? ni - i : istep - 1);
+      k = FTN2C(i,j,ni) ;
+      rowbump = ni - lcl_m + 1;
       extract(nbits_needed, cur, 32, 4, curword, bitPackInWord); 
-//    if(nbits_needed == 15) { nbits_needed = 16; local_min = 0 ; }  // and case 15/15 can now go to default case
       switch (nbits_needed)
         {
         case 0:
         extract(local_min, cur, 32, nbits, curword, bitPackInWord);
-//      k = FTN2C(i,j,ni) ;
         for (n=0; n <= lcl_n; n++)
           {
           for (m=0; m <= lcl_m; m++)
             {
-            k = FTN2C(i+m,j+n,ni);
             ufld[k] = local_min;
-//          k++;
+            k++;               /* bump along row */
             }
-//         k = k + ni - lcl_m + 1 ;
-          }
-        break;
-        
-        case 15:
-        case 16:
-        for (n=0; n <= lcl_n; n++)
-          {
-          for (m=0; m <= lcl_m; m++)
-            {
-            k = FTN2C(i+m,j+n,ni);
-            extract(ufld[k], cur, 32, 16, curword, bitPackInWord);
-            }
+          k = k + rowbump ;    /* bump along column */
           }
         break;
         
         default:
-        extract(local_min, cur, 32, nbits, curword, bitPackInWord);
+        if(nbits_needed >= 15) 
+          {    /*  case 15/16 can now processed by default case */
+          nbits_needed = 16; 
+          local_min = 0 ;
+          }
+        else{
+          extract(local_min, cur, 32, nbits, curword, bitPackInWord);
+          }
         for (n=0; n <= lcl_n; n++)
           {
           for (m=0; m <= lcl_m; m++)
             {
-            k = FTN2C(i+m,j+n,ni);
-            extract(ufld[k], cur, 32, nbits_needed, curword, bitPackInWord); 
-            ufld[k] += local_min;
+            extract(token, cur, 32, nbits_needed, curword, bitPackInWord); 
+            ufld[k] = token + local_min;
+            k++;               /* bump along row */
             }
+          k = k + rowbump ;    /* bump along column */
           }
         break;
         }
@@ -987,7 +985,7 @@ if (once == 0)
  
   lastWordShifted = 0;
   spaceInLastWord = 32;
-  memcpy(cur, header, sizeof(unsigned int));
+  junk = memcpy(cur, header, sizeof(unsigned int));
   cur++;
   *cur = 0;
   
@@ -1121,7 +1119,7 @@ void unpackTokensParallelogram(unsigned short ufld[], unsigned int z[], int ni, 
   bitPackInWord = 32;
   
   cur = z;
-  memcpy(header, cur, sizeof(unsigned int));
+  junk = memcpy(header, cur, sizeof(unsigned int));
   cur++;
   curword = *cur;
   ufld_tmp = (int *) malloc(ni*nj*sizeof(int));
@@ -1218,41 +1216,39 @@ void unpackTokensParallelogramNEW(unsigned short ufld[], unsigned int z[], int n
   unsigned int *cur, local_min;
   unsigned int  nbits_needed, curword;
   int lcl_m, lcl_n;
-  int *ufld_tmp;
   int k11, k12, k21, k22;
   unsigned int nbits_req_container, gt16, token, nbits2;
 
   bitPackInWord = 32;
   
   cur = z;
-  memcpy(header, cur, sizeof(unsigned int));
+  junk = memcpy(header, cur, sizeof(unsigned int));
   cur++;
   curword = *cur;
-  ufld_tmp = (int *) malloc(ni*nj*sizeof(int));
   
   extract(nbits_req_container, cur, 32, 3, curword, bitPackInWord); 
-  
-  for (i=1; i <= ni; i++)
+  k=0 ;
+  for (i=1; i <= ni; i++)  /* get first row */
    {
-   k = FTN2C(i,1,ni);
    extract(token, cur, 32, nbits, curword, bitPackInWord); 
    ufld[k] = token;
+   k++ ;
    }
-   
-  for (j=2; j <= nj; j++)
+  k=ni ;
+  for (j=2; j <= nj; j++) /* get first column (elements 2->nj) */
    {
-   k = FTN2C(1,j,ni);
    extract(token, cur, 32, nbits, curword, bitPackInWord); 
    ufld[k] = token;
+   k += ni ;
    }
-  
-  
+
   for (j=2; j <= nj; j+=istep)
     {
     lcl_n = ((j + istep - 1) >= nj ? nj - j : istep - 1);
     for (i=2; i <= ni; i+=istep)
       {
       lcl_m = ((i + istep - 1) >= ni ? ni - i : istep - 1);
+      k = FTN2C(i,j,ni);
       extract(nbits_needed, cur, 32, nbits_req_container, curword, bitPackInWord); 
       switch (nbits_needed)
         {
@@ -1261,57 +1257,33 @@ void unpackTokensParallelogramNEW(unsigned short ufld[], unsigned int z[], int n
           {
           for (m=0; m <= lcl_m; m++)
             {
-            k = FTN2C(i+m,j+n,ni);
-            ufld_tmp[k] = 0;
+            ufld[k] = 0 + ufld[k-1] + ufld[k-ni] - ufld[k-ni-1] ; /* apply parallelogram rule */
+            k++ ;                   /* bump along row */
             }
-          }
-        break;
-
-        case 15:
-        case 16:
-        for (n=0; n <= lcl_n; n++)
-          {
-          for (m=0; m <= lcl_m; m++)
-            {
-              k = FTN2C(i+m,j+n,ni);
-              extract(token, cur, 32, 17, curword, bitPackInWord);
-              ufld_tmp[k] = token;
-              ufld_tmp[k] = (ufld_tmp[k] << 15) >> 15;
-            }  
+          k = k + ni - lcl_m + 1 ;  /* bump along column, going back to proper point on row */
           }
         break;
         
         default:
+        if(k >= 15 ){
+          nbits_needed = 16;
+          }
         nbits2 = nbits_needed + 1;
         for (n=0; n <= lcl_n; n++)
           {
           for (m=0; m <= lcl_m; m++)
             {
-            k = FTN2C(i+m,j+n,ni);
             extract(token, cur, 32, nbits2, curword, bitPackInWord);
-            ufld_tmp[k] = token; 
-            ufld_tmp[k] = (ufld_tmp[k] << (32-nbits2)) >> (32-nbits2);
+            token = (token << (32-nbits2)) >> (32-nbits2);
+            ufld[k] = token + ufld[k-1] + ufld[k-ni] - ufld[k-ni-1] ;  /* apply parallelogram rule */
+            k++ ;                   /* bump along row */
             }  
+          k = k + ni - lcl_m + 1 ;  /* bump along column, going back to proper point on row */
           }
-         } 
-                
         }
       }
-      
-  for (j=2; j<=nj; j++)
-   {
-   for (i=2; i <=ni; i++)
-      {
-      k11 = FTN2C(i-1,j-1,ni);
-      k12 = FTN2C(i-1,j  ,ni);
-      k21 = FTN2C(i,  j-1,ni);
-      k22 = FTN2C(i,  j,  ni);
-      ufld[k22] =  ufld_tmp[k22] + (ufld[k21]+ufld[k12]-ufld[k11]);
-      }
-   }  
-  
-      free(ufld_tmp);
-    }   
+    }
+}
 
 
 /**********************************************************************************************************************************/
@@ -1435,7 +1407,7 @@ void packTokensSample(unsigned int z[], int *zlng, unsigned int zc[], int nicoar
     {
     lastSlot = 0;
     cur = z;
-    memset(z, (int)NULL, ni*nj*sizeof(unsigned int));
+    junk = memset(z, (int) 0, ni*nj*sizeof(unsigned int));
     for (i=0; i <= 20; i++)
       {
       local_bins[i] = 0;
@@ -1443,7 +1415,7 @@ void packTokensSample(unsigned int z[], int *zlng, unsigned int zc[], int nicoar
   
     lastWordShifted = 0;
     spaceInLastWord = 32;
-    memcpy(cur, header, sizeof(unsigned int));
+    junk = memcpy(cur, header, sizeof(unsigned int));
     cur++;
     *cur = 0;
     }
@@ -1593,13 +1565,13 @@ void unpackTokensSample(unsigned int zc[], int diffs[], unsigned int z[], int ni
     {
     bitPackInWord = 32;
 
-    memset(zc, (int )NULL, nicoarse*njcoarse*sizeof(int));
+    junk = memset(zc, (int ) 0, nicoarse*njcoarse*sizeof(int));
     cur = z;
-    memcpy(header, cur, sizeof(unsigned int));
+    junk = memcpy(header, cur, sizeof(unsigned int));
     cur++;
     curword = *cur;
     }
-  memset(diffs, (int) NULL, ni*nj*sizeof(int));
+  junk = memset(diffs, (int) 0, ni*nj*sizeof(int));
   
   if (start == 1)
     {
