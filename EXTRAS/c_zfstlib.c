@@ -48,7 +48,9 @@ void init_comp_settings(char *comp_settings);
 int is_on_coarse(int i, int j, int ni, int nj, int step);
 void packTokensSample(unsigned int z[], int *zlng, unsigned int zc[], int nicoarse, int njcoarse, int diffs[], int ni, int nj, int nbits, int step, word *header, int start, int end);
 void unpackTokensMinimum(unsigned short ufld[], unsigned int z[], int ni, int nj, int nbits, int istep, word *header);
+void unpackTokensMinimumNEW(unsigned short ufld[], unsigned int z[], int ni, int nj, int nbits, int istep, word *header);
 void unpackTokensParallelogram(unsigned short ufld[], unsigned int z[], int ni, int nj, int nbits, int istep, word *header);
+void unpackTokensParallelogramNEW(unsigned short ufld[], unsigned int z[], int ni, int nj, int nbits, int istep, word *header);
 void unpackTokensSample(unsigned int zc[], int diffs[], unsigned int z[], int nicoarse, int njcoarse,  int ni, int nj, int nbits, int step, word *header, int start);
 void unpackTokensSample(unsigned int zc[], int diffs[], unsigned int z[], int nicoarse, int njcoarse,  int ni, int nj, int nbits, int step, word *header, int start);
 void c_armn_compress_setlevel(int level);
@@ -70,6 +72,8 @@ void f77name(armn_compress_setlevel)(wordint *level);
 void make_shorts(unsigned short *z16, unsigned int *z32, int npts);
 void unpack_tokens(unsigned int *ufld, unsigned int *z, int ni, int nj, int nbits);
 
+static int USE_NEW=0;
+
 static int fstcompression_level = -1;
 static int swapStream           =  1;
 static unsigned char fastlog[256];
@@ -77,6 +81,7 @@ static int once = 0;
 int zfst_msglevel = 2;
 
 static void *junk=NULL;
+static int bit_tab[65];
 
 /*-------------------------------------------------------------------------------------------------------------------- */
 
@@ -308,6 +313,7 @@ void c_fstunzip(unsigned int *fld, unsigned int *zfld, int ni, int nj, int nbits
   switch (zfstzip.predictor_type)
     {
     case MINIMUM:
+      printf("DEBUG: step=%d, nbits=%d,ni=%d,nj=%d\n",zfstzip.step, zfstzip.nbits,ni, nj);
       c_fstunzip_minimum((unsigned short *)fld, zfld, ni, nj, zfstzip.step, zfstzip.nbits, (word *)&zfstzip);
       break;
       
@@ -353,12 +359,18 @@ int c_fstzip_parallelogram(unsigned int *zfld, int *zlng, unsigned short *fld, i
 
 void c_fstunzip_minimum(unsigned short *fld, unsigned int *zfld, int ni, int nj, int step, int nbits, word *header)
   {
-  unpackTokensMinimum(fld, zfld, ni, nj, nbits, step, header);
+  if(USE_NEW)
+    unpackTokensMinimumNEW(fld, zfld, ni, nj, nbits, step, header);
+  else
+    unpackTokensMinimum(fld, zfld, ni, nj, nbits, step, header);
   }
 
 void c_fstunzip_parallelogram(unsigned short *fld, unsigned int *zfld, int ni, int nj, int step, int nbits, word *header)
   {
-  unpackTokensParallelogram(fld, zfld, ni, nj, nbits, step, header);
+  if(USE_NEW)
+    unpackTokensParallelogramNEW(fld, zfld, ni, nj, nbits, step, header);
+  else
+    unpackTokensParallelogram(fld, zfld, ni, nj, nbits, step, header);
   }
 
 /**********************************************************************************************************************************/
@@ -852,7 +864,7 @@ void unpackTokensMinimumNEW(unsigned short ufld[], unsigned int z[], int ni, int
       {
       lcl_m = ((i + istep - 1) >= ni ? ni - i : istep - 1);
       k = FTN2C(i,j,ni) ;
-      rowbump = ni - lcl_m + 1;
+      rowbump = ni - lcl_m - 1;  /* + ni for row up, -(lcl_m +1) to undo the lcl_m +1 bumps along row in m loop */
       extract(nbits_needed, cur, 32, 4, curword, bitPackInWord); 
       switch (nbits_needed)
         {
@@ -1148,6 +1160,7 @@ void unpackTokensParallelogram(unsigned short ufld[], unsigned int z[], int ni, 
       {
       lcl_m = ((i + istep - 1) >= ni ? ni - i : istep - 1);
       extract(nbits_needed, cur, 32, nbits_req_container, curword, bitPackInWord); 
+//  printf("DEBUG: lcl_m=%d, lcl_n=%d, nbits_needed=%d\n",lcl_m,lcl_n,nbits_needed);
       switch (nbits_needed)
         {
         case 0:
@@ -1171,6 +1184,7 @@ void unpackTokensParallelogram(unsigned short ufld[], unsigned int z[], int ni, 
               extract(token, cur, 32, 17, curword, bitPackInWord);
               ufld_tmp[k] = token;
               ufld_tmp[k] = (ufld_tmp[k] << 15) >> 15;
+// printf("DEBUG: i=%d, j=%d, token=%d | %d | %d\n",i+m,j+n,token,nbits2,ufld_tmp[k]);
             }  
           }
         break;
@@ -1185,6 +1199,7 @@ void unpackTokensParallelogram(unsigned short ufld[], unsigned int z[], int ni, 
             extract(token, cur, 32, nbits2, curword, bitPackInWord);
             ufld_tmp[k] = token; 
             ufld_tmp[k] = (ufld_tmp[k] << (32-nbits2)) >> (32-nbits2);
+// printf("DEBUG: i=%d, j=%d, token=%d | %d | %d\n",i+m,j+n,token,nbits2,ufld_tmp[k]);
             }  
           }
          } 
@@ -1215,12 +1230,13 @@ void unpackTokensParallelogramNEW(unsigned short ufld[], unsigned int z[], int n
 
   unsigned int *cur, local_min;
   unsigned int  nbits_needed, curword;
-  int lcl_m, lcl_n;
+  int lcl_m, lcl_n, rowbump;
   int k11, k12, k21, k22;
-  unsigned int nbits_req_container, gt16, token, nbits2;
+  unsigned int nbits_req_container, gt16, nbits2;
+  int token, token2 ;
 
   bitPackInWord = 32;
-  
+// printf("DEBUG: unpackTokensParallelogramNEW, step=%d, nbits=%d\n",istep,nbits);
   cur = z;
   junk = memcpy(header, cur, sizeof(unsigned int));
   cur++;
@@ -1232,6 +1248,7 @@ void unpackTokensParallelogramNEW(unsigned short ufld[], unsigned int z[], int n
    {
    extract(token, cur, 32, nbits, curword, bitPackInWord); 
    ufld[k] = token;
+// printf("DEBUG: i=%d, j=%d, token=%d\n",i,1,token);
    k++ ;
    }
   k=ni ;
@@ -1239,6 +1256,7 @@ void unpackTokensParallelogramNEW(unsigned short ufld[], unsigned int z[], int n
    {
    extract(token, cur, 32, nbits, curword, bitPackInWord); 
    ufld[k] = token;
+// printf("DEBUG: i=%d, j=%d, token=%d\n",1,j,token);
    k += ni ;
    }
 
@@ -1249,7 +1267,10 @@ void unpackTokensParallelogramNEW(unsigned short ufld[], unsigned int z[], int n
       {
       lcl_m = ((i + istep - 1) >= ni ? ni - i : istep - 1);
       k = FTN2C(i,j,ni);
+      rowbump = ni - lcl_m - 1 ;
       extract(nbits_needed, cur, 32, nbits_req_container, curword, bitPackInWord); 
+//  printf("DEBUG: lcl_m=%d, lcl_n=%d, nbits_needed=%d\n",lcl_m,lcl_n,nbits_needed);
+//      bit_tab[nbits_needed]++;
       switch (nbits_needed)
         {
         case 0:
@@ -1260,12 +1281,12 @@ void unpackTokensParallelogramNEW(unsigned short ufld[], unsigned int z[], int n
             ufld[k] = 0 + ufld[k-1] + ufld[k-ni] - ufld[k-ni-1] ; /* apply parallelogram rule */
             k++ ;                   /* bump along row */
             }
-          k = k + ni - lcl_m + 1 ;  /* bump along column, going back to proper point on row */
+          k = k + rowbump ;  /* bump along column, going back to proper point on row */
           }
         break;
         
         default:
-        if(k >= 15 ){
+        if(nbits_needed >= 15 ){
           nbits_needed = 16;
           }
         nbits2 = nbits_needed + 1;
@@ -1274,11 +1295,12 @@ void unpackTokensParallelogramNEW(unsigned short ufld[], unsigned int z[], int n
           for (m=0; m <= lcl_m; m++)
             {
             extract(token, cur, 32, nbits2, curword, bitPackInWord);
-            token = (token << (32-nbits2)) >> (32-nbits2);
-            ufld[k] = token + ufld[k-1] + ufld[k-ni] - ufld[k-ni-1] ;  /* apply parallelogram rule */
+            token2 = (token << (32-nbits2)) >> (32-nbits2);
+            ufld[k] = token2 + ufld[k-1] + ufld[k-ni] - ufld[k-ni-1] ;  /* apply parallelogram rule */
+// printf("DEBUG: i=%d, j=%d, token=%d | %d | %d %d %d %d\n",i+m,j+n,token,nbits2,ufld[k-1],token2,ufld[k-ni-1],ufld[k-ni]);
             k++ ;                   /* bump along row */
             }  
-          k = k + ni - lcl_m + 1 ;  /* bump along column, going back to proper point on row */
+          k = k + rowbump ;  /* bump along column, going back to proper point on row */
           }
         }
       }
@@ -1924,9 +1946,101 @@ int c_armn_compress_getswap()
 {
   return swapStream;
 }
-#if defined(TEST)
+#if defined(TEST_TURBO)
+#define NI 2000
+#define NJ 1400
+#include <sys/time.h>
 main()
 {
+  int buffer[NI*NJ];
+  short zo[NI*NJ];
+  short zi[NI*NJ];
+  int i,j ;
+  int nbits = 16;
+  int zlng = 0;
+  int errors;
+  struct timeval t1,t2;
+  long long T1, T2;
+  int duree;
+  float rlog2;
+
   printf("INFO: second stage compression test \n");
+  rlog2 = 1.0/log(2.0);  /* initialize log tables for MINIMUM */
+  for (i=0; i < 256; i++)
+     {
+     fastlog[i] = (int)(1+log(i+0.5)*rlog2);
+     }
+  for (i = 1 ; i <= NI ; i++)
+    for (j = 1 ; j <= NJ ; j++ )
+    { zi[FTN2C(i,j,NI)] = i*7.567 + j*7.234 ; }
+  for (i = 2 ; i <= NI ; i+=9)
+    for (j = 2 ; j <= NJ ; j+=6 )
+    { zi[FTN2C(i,j,NI)] = 32000 ; }
+//  c_armn_compress_setlevel(FAST);
+  c_fstzip(buffer, &zlng, (int *)zi, NI, NJ, MINIMUM, 0, 5, nbits, 0);
+  printf("INFO: MINIMUM compressed length = %d buffer : %8.8x %8.8x %8.8x\n",zlng,buffer[0],buffer[1],buffer[2]);
+
+  errors = 0; USE_NEW=0 ;
+  for (i = 1 ; i <= NI ; i++)
+    for (j = 1 ; j <= NJ ; j++ )
+    { zo[FTN2C(i,j,NI)] = 32767 ; }
+  gettimeofday(&t1,NULL);
+  c_fstunzip((int *)zo, buffer, NI, NJ, nbits);
+  gettimeofday(&t2,NULL);
+  T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
+  T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
+  duree = T2-T1;
+  printf("MINIMUM unpacking old time = %d usec\n",duree);
+  for (i=0 ; i<NI*NJ ; i++) { if(zi[i] != zo[i]) { errors++; } }
+  printf("INFO: decompression errors = %d\n",errors);
+
+  errors = 0; USE_NEW=1 ;
+  for (i = 1 ; i <= NI ; i++)
+    for (j = 1 ; j <= NJ ; j++ )
+    { zo[FTN2C(i,j,NI)] = 32767 ; }
+  gettimeofday(&t1,NULL);
+  c_fstunzip((int *)zo, buffer, NI, NJ, nbits);
+  gettimeofday(&t2,NULL);
+  T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
+  T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
+  duree = T2-T1;
+  printf("MINIMUM unpacking new time = %d usec\n",duree);
+  for (i=0 ; i<NI*NJ ; i++) { if(zi[i] != zo[i]) { errors++;} }
+  printf("INFO: decompression errors = %d\n",errors);
+
+  printf("------------------------------------------------------------\n");
+
+  c_fstzip(buffer, &zlng, (int *)zi, NI, NJ, PARALLELOGRAM, 1, 3, nbits, 0);
+  printf("INFO: PARALLELOGRAM compressed length = %d buffer : %8.8x %8.8x %8.8x\n",zlng,buffer[0],buffer[1],buffer[2]);
+
+  errors = 0; USE_NEW=0 ;
+  for (i = 1 ; i <= NI ; i++)
+    for (j = 1 ; j <= NJ ; j++ )
+    { zo[FTN2C(i,j,NI)] = 32767 ; }
+  gettimeofday(&t1,NULL);
+  c_fstunzip((int *)zo, buffer, NI, NJ, nbits);
+  gettimeofday(&t2,NULL);
+  T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
+  T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
+  duree = T2-T1;
+  printf("PARALLELOGRAM unpacking old time = %d usec\n",duree);
+  for (i=0 ; i<NI*NJ ; i++) { if(zi[i] != zo[i]) { errors++; printf(" expected %d, got %d\n",zi[i],zo[i]); break ;} }
+  printf("INFO: decompression errors = %d\n",errors);
+
+  c_fstzip(buffer, &zlng, (int *)zi, NI, NJ, PARALLELOGRAM, 1, 3, nbits, 0);
+  errors = 0; USE_NEW=1 ;
+  for (i = 1 ; i <= NI ; i++)
+    for (j = 1 ; j <= NJ ; j++ )
+    { zo[FTN2C(i,j,NI)] = 32767 ; }
+  gettimeofday(&t1,NULL);
+  c_fstunzip((int *)zo, buffer, NI, NJ, nbits);
+  gettimeofday(&t2,NULL);
+  T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
+  T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
+  duree = T2-T1;
+  printf("PARALLELOGRAM unpacking new time = %d usec\n",duree);
+  for (i=0 ; i<NI*NJ ; i++) { if(zi[i] != zo[i]) { errors++; } }
+  printf("INFO: decompression errors = %d\n",errors);
+  for (i=0 ; i<16 ; i++) { printf("%d:%d ",i,bit_tab[i]);} printf("\n");
 }
 #endif

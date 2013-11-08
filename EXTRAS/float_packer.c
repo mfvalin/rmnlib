@@ -48,12 +48,13 @@ typedef union {
 */
 
 
-/* strean is really INT32 but addressed as INT16, one MUST account for endianness of machines */
-INT_32 float_unpacker_1(float *dest, INT_32 *header, short *stream, INT_32 npts)
+/* stream is really INT32 but addressed as INT16, one MUST account for endianness of machines */
+INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_32 npts)
 {
   floatint temp,temp2;
   INT_32 n, shft1_23, shft1_31, m23;
   INT_32 MaxExp, Mantis, Mantis0, Mantis1, Mantis2, Mantis3, Sgn, Sgn0, Sgn1, Sgn2, Sgn3, Minimum, Shift2, i0;
+  INT_32 StReAm[3];
 
   Minimum = header[1];                     /* get Minimum, MaxExp, Shift2 from header */
   MaxExp = (header[0] >> 8) & 0xFF;
@@ -72,17 +73,15 @@ INT_32 float_unpacker_1(float *dest, INT_32 *header, short *stream, INT_32 npts)
     return (0);
     }
   while(n>3){
-#if defined(__x86_64__) || defined(__i386__)
-    Mantis1 = *stream++ ;  /* little endian machines */
     Mantis0 = *stream++ ;
-    Mantis3 = *stream++ ;
     Mantis2 = *stream++ ;
-#else
-    Mantis0 = *stream++ ;
-    Mantis1 = *stream++ ;
-    Mantis2 = *stream++ ;
-    Mantis3 = *stream++ ;
-#endif
+    Mantis1 = Mantis0 & 0xFFFF ;
+    Mantis3 = Mantis2 & 0xFFFF ;
+    Mantis0 >>= 16;
+    Mantis2 >>= 16;
+    Mantis0 = Mantis0 & 0xFFFF ;
+    Mantis2 = Mantis2 & 0xFFFF ;
+
     Mantis0 = Mantis0 << Shift2;
     Mantis1 = Mantis1 << Shift2;
     Mantis2 = Mantis2 << Shift2;
@@ -130,12 +129,15 @@ INT_32 float_unpacker_1(float *dest, INT_32 *header, short *stream, INT_32 npts)
     n -=4;
     }
   i0 = 0;
+  Mantis0 = *stream++ ;
+  if(n>2) Mantis2 = *stream++ ;
+  StReAm[1] = Mantis0 & 0xFFFF ;
+  Mantis0 >>= 16;
+  Mantis2 >>= 16;
+  StReAm[0] = Mantis0 & 0xFFFF ;
+  StReAm[2] = Mantis2 & 0xFFFF ;
   while(n>0){
-#if defined __x86_64__ || defined(__i386__)
-    Mantis = stream[i0^1] ;    /* little endian machines */
-#else
-    Mantis = stream[i0] ;
-#endif
+    Mantis = StReAm[i0] ;
     Mantis = Mantis << Shift2;
     Mantis = Mantis + Minimum;                         /* regenerate mantissa, possibly not normalized */
     Sgn = 0;
@@ -410,10 +412,10 @@ void f77name(float_packer_params)(INT_32 *header_size, INT_32 *stream_size, INT_
 {
   c_float_packer_params(header_size,stream_size,p1,p2,*npts);
 }
-#ifdef TEST
+#ifdef TEST_PACK
 #include <sys/time.h>
 /* test program to verify that results are identical on all machines */
-#define NPTS (1+2000*1400)
+#define NPTS (3+2000*1400)
 int main()
 {
 //  struct timeval {
