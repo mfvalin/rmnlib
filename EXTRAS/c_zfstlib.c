@@ -26,6 +26,73 @@
 #include <unistd.h>
 #include <zfstlib.h>
 
+/*****************************************************************************
+ *                                                                           *
+ *  Objective : extract a token from a stream of 64 bit packed tokens stored in 32 bit words   *
+ *  Arguments :                                                              *
+ *      OUT     packedToken           token extracted                        *
+ *   IN/OUT     packedWordPtr         pointer to the token to be extracted   *
+ *   IN         bitSizeOfPackedToken  size of a token in bit                 *
+ *   IN/OUT     packedWord            word holding the desired token         *
+ *   IN/OUT     bitPackInWord         no. of bits remained packed            *
+ *                                    in the packedWord                      *
+ *                                                                           *
+ ****************************************************************************/
+#define extract64( packedToken, packedWordPtr, bitSizeOfPackedToken,               \
+                 packedWord, bitPackInWord)                                                  \
+  {                                                                                          \
+        if (  bitPackInWord >= bitSizeOfPackedToken )                                        \
+          {                                                                                  \
+            packedToken = (packedWord >> ( 64 - bitSizeOfPackedToken ) );              \
+            packedWord <<= bitSizeOfPackedToken;                                             \
+            bitPackInWord -= bitSizeOfPackedToken;                                           \
+          }                                                                                  \
+        else                                                                                 \
+          {                                                                                  \
+            packedToken = (packedWord >> ( 64 - bitSizeOfPackedToken ));               \
+            packedWordPtr++;                                                                 \
+            packedWord = *packedWordPtr++;  packedWord = ( packedWord << 32) |  *packedWordPtr  ;        \
+            packedToken |= ( packedWord >> ( 64 - (bitSizeOfPackedToken-bitPackInWord)));\
+            packedWord <<= ( bitSizeOfPackedToken - bitPackInWord );                         \
+            bitPackInWord = 64 - (bitSizeOfPackedToken - bitPackInWord);               \
+          };                                                                       \
+        if ( bitPackInWord == 0 )                                                            \
+          {                                                                                  \
+            packedWordPtr++;                                                                \
+            packedWord = *packedWordPtr++;    packedWord = ( packedWord << 32) |  *packedWordPtr ;     \
+            bitPackInWord = 64;                                                        \
+          };/* if */                                                                         \
+  } 
+#define extract64n( pToken,n, packedWordPtr, bitSizeOfPackedToken,               \
+                 packedWord, bitPackInWord)                                                  \
+  {                                                         \
+     while (n > 0)                                                                           \
+        {                                                                                        \
+        while (  bitPackInWord >= bitSizeOfPackedToken && n > 0 )                            \
+          {                                                                                  \
+            *pToken++ = (packedWord >> ( 64 - bitSizeOfPackedToken ) ); n-- ;             \
+            packedWord <<= bitSizeOfPackedToken;                                             \
+            bitPackInWord -= bitSizeOfPackedToken;                                           \
+          }                                                                                  \
+        if(n>0)                                                                                 \
+          {                                                                                  \
+            *pToken = (packedWord >> ( 64 - bitSizeOfPackedToken )); n-- ;              \
+            packedWordPtr++;                                                                 \
+            packedWord = *packedWordPtr++;  packedWord = ( packedWord << 32) |  *packedWordPtr  ;        \
+            *pToken |= ( packedWord >> ( 64 - (bitSizeOfPackedToken-bitPackInWord)));\
+            pToken++ ;                                                                \
+            packedWord <<= ( bitSizeOfPackedToken - bitPackInWord );                         \
+            bitPackInWord = 64 - (bitSizeOfPackedToken - bitPackInWord);               \
+          };                                                                       \
+        }                                                                           \
+        if ( bitPackInWord == 0 )                                                            \
+          {                                                                                  \
+            packedWordPtr++;                                                                \
+            packedWord = *packedWordPtr++;    packedWord = ( packedWord << 32) |  *packedWordPtr ;     \
+            bitPackInWord = 64;                                                        \
+          };/* if */                                                                         \
+  }                                                                                          \
+
 /* 
 ----------------------------------------------------------------------- 
   Librairie de compression des enregistrements de fichiers standards RPN
@@ -847,16 +914,19 @@ void unpackTokensMinimumNEW(unsigned short ufld[], unsigned int z[], int ni, int
   int bitPackInWord;
 
   unsigned int *cur, local_min;
-  unsigned int  nbits_needed, curword, token, rowbump;
+  unsigned int  nbits_needed, token, rowbump, ntok;
+  unsigned long long curword;
   int lcl_m, lcl_n;
+  unsigned int tokens[25];
+  unsigned int *ptok;
 
-  bitPackInWord = 32;
+  bitPackInWord = 64;
   
 /*   memset(ufld, NULL, ni*nj*sizeof(short)); */
   cur = z;
   junk = memcpy(header, cur, sizeof(unsigned int));
   cur++;
-  curword = *cur;
+  curword = *cur++; curword = (curword<<32) | *cur ;
   for (j=1; j <= nj; j+=istep)
     {
     lcl_n = ((j + istep - 1) >= nj ? nj - j : istep - 1);
@@ -865,11 +935,11 @@ void unpackTokensMinimumNEW(unsigned short ufld[], unsigned int z[], int ni, int
       lcl_m = ((i + istep - 1) >= ni ? ni - i : istep - 1);
       k = FTN2C(i,j,ni) ;
       rowbump = ni - lcl_m - 1;  /* + ni for row up, -(lcl_m +1) to undo the lcl_m +1 bumps along row in m loop */
-      extract(nbits_needed, cur, 32, 4, curword, bitPackInWord); 
+      extract64(nbits_needed, cur, 4, curword, bitPackInWord); 
       switch (nbits_needed)
         {
         case 0:
-        extract(local_min, cur, 32, nbits, curword, bitPackInWord);
+        extract64(local_min, cur, nbits, curword, bitPackInWord);
         for (n=0; n <= lcl_n; n++)
           {
           for (m=0; m <= lcl_m; m++)
@@ -888,14 +958,21 @@ void unpackTokensMinimumNEW(unsigned short ufld[], unsigned int z[], int ni, int
           local_min = 0 ;
           }
         else{
-          extract(local_min, cur, 32, nbits, curword, bitPackInWord);
+          extract64(local_min, cur,nbits, curword, bitPackInWord);
           }
+        ptok = &tokens[0] ; ntok = (lcl_n+1) * (lcl_m+1) ;
+        extract64n(ptok,ntok, cur, nbits_needed, curword, bitPackInWord);
+        ptok = &tokens[0] ;
         for (n=0; n <= lcl_n; n++)
           {
+//          ntok = lcl_n + 1;
+//          ptok = &ufld[k] ;
+//          extract64n(ptok,ntok, cur, nbits_needed, curword, bitPackInWord);
           for (m=0; m <= lcl_m; m++)
             {
-            extract(token, cur, 32, nbits_needed, curword, bitPackInWord); 
-            ufld[k] = token + local_min;
+//            extract64(token, cur, nbits_needed, curword, bitPackInWord); 
+//            ufld[k] = token + local_min;
+            ufld[k] =  *ptok++ + local_min;
             k++;               /* bump along row */
             }
           k = k + rowbump ;    /* bump along column */
