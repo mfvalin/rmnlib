@@ -38,6 +38,23 @@
  *                                    in the packedWord                      *
  *                                                                           *
  ****************************************************************************/
+
+#define extract32( Token, packedWordPtr,notused,bitSizeOfPackedToken, packedWord, bitPackInWord)   \
+  {                                                                       \
+        Token = (packedWord >> ( 32 - bitSizeOfPackedToken ) );           \
+        packedWord <<= bitSizeOfPackedToken;                              \
+        bitPackInWord -= bitSizeOfPackedToken;                            \
+        if(bitPackInWord <= 0 )                                           \
+          {                                                               \
+            packedWordPtr++;                                              \
+            packedWord = *packedWordPtr;                                  \
+            if(bitPackInWord<0) {                                         \
+              Token |= ( packedWord >> ( 32 + bitPackInWord));            \
+              packedWord <<= ( - bitPackInWord );                         \
+            }                                                             \
+            bitPackInWord += 32  ;                                        \
+          }                                                               \
+  } 
 #define extract64( packedToken, packedWordPtr, bitSizeOfPackedToken,               \
                  packedWord, bitPackInWord)                                                  \
   {                                                                                          \
@@ -859,22 +876,18 @@ void unpackTokensMinimum(unsigned short ufld[], unsigned int z[], int ni, int nj
     for (i=1; i <= ni; i+=istep)
       {
       lcl_m = ((i + istep - 1) >= ni ? ni - i : istep - 1);
-      extract(nbits_needed, cur, 32, 4, curword, bitPackInWord); 
-//    if(nbits_needed == 15) { nbits_needed = 16; local_min = 0 ; }  // and case 15/15 can now go to default case
+      extract32(nbits_needed, cur, 32, 4, curword, bitPackInWord); 
       switch (nbits_needed)
         {
         case 0:
-        extract(local_min, cur, 32, nbits, curword, bitPackInWord);
-//      k = FTN2C(i,j,ni) ;
+        extract32(local_min, cur, 32, nbits, curword, bitPackInWord);
         for (n=0; n <= lcl_n; n++)
           {
           for (m=0; m <= lcl_m; m++)
             {
             k = FTN2C(i+m,j+n,ni);
             ufld[k] = local_min;
-//          k++;
             }
-//         k = k + ni - lcl_m + 1 ;
           }
         break;
         
@@ -885,7 +898,7 @@ void unpackTokensMinimum(unsigned short ufld[], unsigned int z[], int ni, int nj
           for (m=0; m <= lcl_m; m++)
             {
             k = FTN2C(i+m,j+n,ni);
-            extract(ufld[k], cur, 32, 16, curword, bitPackInWord);
+            extract32(ufld[k], cur, 32, 16, curword, bitPackInWord);
             }
           }
         break;
@@ -897,7 +910,7 @@ void unpackTokensMinimum(unsigned short ufld[], unsigned int z[], int ni, int nj
           for (m=0; m <= lcl_m; m++)
             {
             k = FTN2C(i+m,j+n,ni);
-            extract(ufld[k], cur, 32, nbits_needed, curword, bitPackInWord); 
+            extract32(ufld[k], cur, 32, nbits_needed, curword, bitPackInWord); 
             ufld[k] += local_min;
             }
           }
@@ -915,31 +928,34 @@ void unpackTokensMinimumNEW(unsigned short ufld[], unsigned int z[], int ni, int
 
   unsigned int *cur, local_min;
   unsigned int  nbits_needed, token, rowbump, ntok;
-  unsigned long long curword;
+  unsigned int curword;
   int lcl_m, lcl_n;
-  unsigned int tokens[25];
-  unsigned int *ptok;
 
-  bitPackInWord = 64;
+  bitPackInWord = 32;
   
 /*   memset(ufld, NULL, ni*nj*sizeof(short)); */
   cur = z;
   junk = memcpy(header, cur, sizeof(unsigned int));
   cur++;
-  curword = *cur++; curword = (curword<<32) | *cur ;
+  curword = *cur ;
   for (j=1; j <= nj; j+=istep)
     {
-    lcl_n = ((j + istep - 1) >= nj ? nj - j : istep - 1);
+    lcl_n = ((j + istep) > nj ? nj - j : istep - 1);
     for (i=1; i <= ni; i+=istep)
       {
-      lcl_m = ((i + istep - 1) >= ni ? ni - i : istep - 1);
+      extract32(nbits_needed, cur,32, 4, curword, bitPackInWord); 
+      lcl_m = ((i + istep) > ni ? ni - i : istep - 1);
       k = FTN2C(i,j,ni) ;
       rowbump = ni - lcl_m - 1;  /* + ni for row up, -(lcl_m +1) to undo the lcl_m +1 bumps along row in m loop */
-      extract64(nbits_needed, cur, 4, curword, bitPackInWord); 
-      switch (nbits_needed)
-        {
-        case 0:
-        extract64(local_min, cur, nbits, curword, bitPackInWord);
+      if(nbits_needed >= 15) 
+          { 
+          local_min = 0 ;
+          nbits_needed = 16; 
+          }
+      else{
+          extract32(local_min, cur,32, nbits, curword, bitPackInWord);
+          }
+      if (nbits_needed == 0) {
         for (n=0; n <= lcl_n; n++)
           {
           for (m=0; m <= lcl_m; m++)
@@ -949,35 +965,17 @@ void unpackTokensMinimumNEW(unsigned short ufld[], unsigned int z[], int ni, int
             }
           k = k + rowbump ;    /* bump along column */
           }
-        break;
-        
-        default:
-        if(nbits_needed >= 15) 
-          {    /*  case 15/16 can now processed by default case */
-          nbits_needed = 16; 
-          local_min = 0 ;
-          }
-        else{
-          extract64(local_min, cur,nbits, curword, bitPackInWord);
-          }
-        ptok = &tokens[0] ; ntok = (lcl_n+1) * (lcl_m+1) ;
-        extract64n(ptok,ntok, cur, nbits_needed, curword, bitPackInWord);
-        ptok = &tokens[0] ;
+      }else{
         for (n=0; n <= lcl_n; n++)
           {
-//          ntok = lcl_n + 1;
-//          ptok = &ufld[k] ;
-//          extract64n(ptok,ntok, cur, nbits_needed, curword, bitPackInWord);
           for (m=0; m <= lcl_m; m++)
             {
-//            extract64(token, cur, nbits_needed, curword, bitPackInWord); 
-//            ufld[k] = token + local_min;
-            ufld[k] =  *ptok++ + local_min;
+            extract32(token, cur,32, nbits_needed, curword, bitPackInWord); 
+            ufld[k] = token + local_min;
             k++;               /* bump along row */
             }
           k = k + rowbump ;    /* bump along column */
           }
-        break;
         }
       }
     }   
@@ -1237,7 +1235,6 @@ void unpackTokensParallelogram(unsigned short ufld[], unsigned int z[], int ni, 
       {
       lcl_m = ((i + istep - 1) >= ni ? ni - i : istep - 1);
       extract(nbits_needed, cur, 32, nbits_req_container, curword, bitPackInWord); 
-//  printf("DEBUG: lcl_m=%d, lcl_n=%d, nbits_needed=%d\n",lcl_m,lcl_n,nbits_needed);
       switch (nbits_needed)
         {
         case 0:
@@ -1261,7 +1258,6 @@ void unpackTokensParallelogram(unsigned short ufld[], unsigned int z[], int ni, 
               extract(token, cur, 32, 17, curword, bitPackInWord);
               ufld_tmp[k] = token;
               ufld_tmp[k] = (ufld_tmp[k] << 15) >> 15;
-// printf("DEBUG: i=%d, j=%d, token=%d | %d | %d\n",i+m,j+n,token,nbits2,ufld_tmp[k]);
             }  
           }
         break;
@@ -1276,7 +1272,6 @@ void unpackTokensParallelogram(unsigned short ufld[], unsigned int z[], int ni, 
             extract(token, cur, 32, nbits2, curword, bitPackInWord);
             ufld_tmp[k] = token; 
             ufld_tmp[k] = (ufld_tmp[k] << (32-nbits2)) >> (32-nbits2);
-// printf("DEBUG: i=%d, j=%d, token=%d | %d | %d\n",i+m,j+n,token,nbits2,ufld_tmp[k]);
             }  
           }
          } 
@@ -1299,7 +1294,6 @@ void unpackTokensParallelogram(unsigned short ufld[], unsigned int z[], int ni, 
       free(ufld_tmp);
     }   
 
-
 void unpackTokensParallelogramNEW(unsigned short ufld[], unsigned int z[], int ni, int nj, int nbits, int istep, word *header)
 {
   int i, j, k, m, n;
@@ -1308,32 +1302,26 @@ void unpackTokensParallelogramNEW(unsigned short ufld[], unsigned int z[], int n
   unsigned int *cur, local_min;
   unsigned int  nbits_needed, curword;
   int lcl_m, lcl_n, rowbump;
-  int k11, k12, k21, k22;
-  unsigned int nbits_req_container, gt16, nbits2;
+  unsigned int nbits_req_container, nbits2;
   int token, token2 ;
 
   bitPackInWord = 32;
-// printf("DEBUG: unpackTokensParallelogramNEW, step=%d, nbits=%d\n",istep,nbits);
   cur = z;
   junk = memcpy(header, cur, sizeof(unsigned int));
   cur++;
   curword = *cur;
   
-  extract(nbits_req_container, cur, 32, 3, curword, bitPackInWord); 
-  k=0 ;
-  for (i=1; i <= ni; i++)  /* get first row */
+  extract32(nbits_req_container, cur, 32, 3, curword, bitPackInWord); 
+  for (k=0; k < ni; k++)  /* get first row */
    {
    extract(token, cur, 32, nbits, curword, bitPackInWord); 
    ufld[k] = token;
-// printf("DEBUG: i=%d, j=%d, token=%d\n",i,1,token);
-   k++ ;
    }
   k=ni ;
   for (j=2; j <= nj; j++) /* get first column (elements 2->nj) */
    {
-   extract(token, cur, 32, nbits, curword, bitPackInWord); 
+   extract32(token, cur, 32, nbits, curword, bitPackInWord); 
    ufld[k] = token;
-// printf("DEBUG: i=%d, j=%d, token=%d\n",1,j,token);
    k += ni ;
    }
 
@@ -1345,9 +1333,7 @@ void unpackTokensParallelogramNEW(unsigned short ufld[], unsigned int z[], int n
       lcl_m = ((i + istep - 1) >= ni ? ni - i : istep - 1);
       k = FTN2C(i,j,ni);
       rowbump = ni - lcl_m - 1 ;
-      extract(nbits_needed, cur, 32, nbits_req_container, curword, bitPackInWord); 
-//  printf("DEBUG: lcl_m=%d, lcl_n=%d, nbits_needed=%d\n",lcl_m,lcl_n,nbits_needed);
-//      bit_tab[nbits_needed]++;
+      extract32(nbits_needed, cur, 32, nbits_req_container, curword, bitPackInWord); 
       switch (nbits_needed)
         {
         case 0:
@@ -1371,10 +1357,9 @@ void unpackTokensParallelogramNEW(unsigned short ufld[], unsigned int z[], int n
           {
           for (m=0; m <= lcl_m; m++)
             {
-            extract(token, cur, 32, nbits2, curword, bitPackInWord);
+            extract32(token, cur, 32, nbits2, curword, bitPackInWord);
             token2 = (token << (32-nbits2)) >> (32-nbits2);
             ufld[k] = token2 + ufld[k-1] + ufld[k-ni] - ufld[k-ni-1] ;  /* apply parallelogram rule */
-// printf("DEBUG: i=%d, j=%d, token=%d | %d | %d %d %d %d\n",i+m,j+n,token,nbits2,ufld[k-1],token2,ufld[k-ni-1],ufld[k-ni]);
             k++ ;                   /* bump along row */
             }  
           k = k + rowbump ;  /* bump along column, going back to proper point on row */
@@ -2029,7 +2014,10 @@ int c_armn_compress_getswap()
 #include <sys/time.h>
 main()
 {
-  int buffer[NI*NJ];
+  int buffer[NI*NJ*17/16];
+//  float fbuf[NI*NJ];
+  int *pbuf;
+  int token, curword, bitPackInWord;
   short zo[NI*NJ];
   short zi[NI*NJ];
   int i,j ;
@@ -2040,7 +2028,7 @@ main()
   long long T1, T2;
   int duree;
   float rlog2;
-
+ 
   printf("INFO: second stage compression test \n");
   rlog2 = 1.0/log(2.0);  /* initialize log tables for MINIMUM */
   for (i=0; i < 256; i++)
@@ -2118,6 +2106,21 @@ main()
   printf("PARALLELOGRAM unpacking new time = %d usec\n",duree);
   for (i=0 ; i<NI*NJ ; i++) { if(zi[i] != zo[i]) { errors++; } }
   printf("INFO: decompression errors = %d\n",errors);
-  for (i=0 ; i<16 ; i++) { printf("%d:%d ",i,bit_tab[i]);} printf("\n");
+//  for (i=0 ; i<=16 ; i++) { printf("%d:%d ",i,bit_tab[i]);} printf("\n");
+  for (i=2 ; i<=17 ; i+=5) {
+    pbuf=buffer;
+    curword=*pbuf;
+    bitPackInWord = 29;
+    gettimeofday(&t1,NULL);
+    for (j=0;j<NI*NJ;j++){
+      extract32(token, pbuf,32, i, curword, bitPackInWord);
+      zo[j]=token;
+    }    
+    gettimeofday(&t2,NULL);
+    T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
+    T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
+    duree = T2-T1;
+    printf("extracting %d bit slices time = %d usec\n",i,duree);
+  }
 }
 #endif
