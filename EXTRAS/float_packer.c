@@ -418,10 +418,6 @@ void f77name(float_packer_params)(INT_32 *header_size, INT_32 *stream_size, INT_
 #define NPTS (3+2000*1400)
 int main()
 {
-//  struct timeval {
-//    time_t      tv_sec;     /* seconds */
-//    suseconds_t tv_usec;    /* microseconds */
-//  }t1,t2;
   struct timeval t1,t2;
   long long T1, T2;
   int duree;
