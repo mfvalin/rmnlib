@@ -1376,9 +1376,7 @@ void unpackTokensParallelogram(unsigned short ufld[], unsigned int z[], int ni, 
         break;
         
         default:
-        if(nbits_needed >= 15 ){
-          nbits_needed = 16;
-          }
+        if(nbits_needed == 15 ) nbits_needed = 16;
         nbits2 = nbits_needed + 1;
         for (n=0; n <= lcl_n; n++)
           {
@@ -2054,7 +2052,7 @@ int c_armn_compress_getswap()
 #define NI 2000
 #define NJ 1400
 #include <sys/time.h>
-main()
+int main()
 {
   int buffer[NI*NJ*17/16];
 //  float fbuf[NI*NJ];
@@ -2080,9 +2078,9 @@ main()
   for (i = 1 ; i <= NI ; i++)
     for (j = 1 ; j <= NJ ; j++ )
     { zi[FTN2C(i,j,NI)] = i*7.567 + j*7.234 ; }
-  for (i = 2 ; i <= NI ; i+=9)
-    for (j = 2 ; j <= NJ ; j+=6 )
-    { zi[FTN2C(i,j,NI)] = 32000 ; }
+  for (i = 3 ; i <= NI ; i+=9)
+    for (j = 3 ; j <= NJ ; j+=6 )
+    { zi[FTN2C(i,j,NI)] = 60000 ; zi[FTN2C(i-1,j-1,NI)] = 60000 ;}
 //  c_armn_compress_setlevel(FAST);
   c_fstzip(buffer, &zlng, (int *)zi, NI, NJ, MINIMUM, 0, 5, nbits, 0);
   printf("INFO: MINIMUM compressed length = %d buffer : %8.8x %8.8x %8.8x\n",zlng,buffer[0],buffer[1],buffer[2]);
@@ -2164,5 +2162,6 @@ main()
     duree = T2-T1;
     printf("extracting %d bit slices time = %d usec\n",i,duree);
   }
+  return (0) ;
 }
 #endif
