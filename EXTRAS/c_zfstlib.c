@@ -153,7 +153,7 @@ static int USE_NEW=1;
 
 static int fstcompression_level = -1;
 static int swapStream           =  1;
-static unsigned char fastlog[256];
+static unsigned char fastlog[257];
 static int once = 0;
 int zfst_msglevel = 2;
 
@@ -1012,7 +1012,7 @@ void unpackTokensMinimum(unsigned short ufld[], unsigned int z[], int ni, int nj
 /**********************************************************************************************************************************/
 /* See the documentation of "packTokensMinimum" for the structure of the compressed stream */
 
-void packTokensParallelogram(unsigned int z[], int *zlng, unsigned short ufld[], int ni, int nj, int nbits, int istep, word *header)
+void packTokensParallelogramOLD(unsigned int z[], int *zlng, unsigned short ufld[], int ni, int nj, int nbits, int istep, word *header)
 {
   unsigned int i, j, k, m, n;
   unsigned int lastWordShifted, spaceInLastWord, lastSlot;
@@ -1215,6 +1215,117 @@ if (debug)
     }
   printf("---- npts : %d\n", lsum);
   }
+}
+
+void packTokensParallelogram(unsigned int z[], int *zlng, unsigned short ufld[], int ni, int nj, int nbits, int istep, word *header)
+{
+  unsigned int i, j, k, m, n;
+  unsigned int lastWordShifted, spaceInLastWord, lastSlot;
+  int lcl_m, lcl_n;
+
+  float entropie, rlog2;
+  unsigned int *cur;
+  int local_min, local_max, local_var;
+  unsigned int local_bins[24];
+  unsigned int lcl, nbits_needed, lsum;
+  unsigned char debug;
+  int k11, k12, k21, k22, nbits2, rowbump ;
+  unsigned int nbits_req_container, token;
+  int ufld_dst[9];  /* must be at least istep*istep */
+  
+  debug = 0;
+  lastSlot = 0;
+  cur = z;
+  
+  if (once == 0)
+  {
+    i=0 ; n = 0 ; k = 1;
+    while( k < 257 ) 
+      {
+      printf("from %d to %d, fastlog = %d\n",i,k-1,n);
+      while(i < k) fastlog[i++] = n;
+      k <<= 1;
+      n++;
+      }
+    once = 1;
+  }
+     
+  nbits_req_container = 5;  /* assume worst case */
+  lastWordShifted = 0;
+  spaceInLastWord = 32;
+  junk = memcpy(cur, header, sizeof(unsigned int));
+  cur++;
+  *cur = 0;
+  
+  stuff(nbits_req_container, cur, 32, 3, lastWordShifted, spaceInLastWord);
+  
+  for (i=0; i < ni; i++)   /* row one */
+   {
+   stuff(ufld[i], cur, 32, nbits, lastWordShifted, spaceInLastWord);
+   }
+   
+  k = ni;
+  for (j=2; j <= nj; j++)  /* column one */
+   {
+   stuff(ufld[k], cur, 32, nbits, lastWordShifted, spaceInLastWord);
+   k += ni;
+   }
+   
+  for (j=2; j <= nj; j+=istep)
+    {
+    lcl_n = ((j + istep - 1) >= nj ? nj - j : istep - 1);
+    for (i=2; i <= ni; i+=istep)
+      {
+      k = FTN2C(i,j,ni);
+      lcl_m = ((i + istep - 1) >= ni ? ni - i : istep - 1);
+      rowbump = ni - lcl_m - 1 ;
+      local_max = 0;
+      k11 = 0;
+      for (n=0; n <= lcl_n; n++)
+        {
+        for (m=0; m <= lcl_m; m++)
+          {
+          ufld_dst[k11] = ufld[k] + ufld[k-1-ni] - ufld[k-ni] - ufld[k-1];
+          local_var = abs(ufld_dst[k11++]);
+          if (local_max < local_var) local_max = local_var ;
+          k++;
+          }
+         k += rowbump;
+        }
+
+      nbits_needed = 0;
+      while(local_max > 256) { nbits_needed += 8 ; local_max >>= 8; }
+      nbits_needed += fastlog[local_max] ; 
+
+      if (nbits_needed == 16) nbits_needed = 15;
+/*      local_bins[nbits_needed]++;  */
+      stuff(nbits_needed, cur, 32, nbits_req_container, lastWordShifted, spaceInLastWord);
+      nbits2 = nbits_needed + 1;
+      if (nbits_needed == 15) nbits2 = 17;
+      if (nbits_needed > 0)
+        {
+        k11 = 0;
+        for (n=0; n <= lcl_n; n++)
+          {
+          for (m=0; m <= lcl_m; m++)
+            {
+            token = (unsigned int) ufld_dst[k11] & ~((-1)<<nbits2);
+            stuff(token, cur, 32, nbits2, lastWordShifted, spaceInLastWord);
+            k11 ++;
+            }
+          }
+        } 
+       
+       }
+    }
+
+  
+    lcl = 0;  /* fianl padding put in 32 zero bits to force token alignment and ejection */
+    stuff(lcl, cur, 32, 16, lastWordShifted, spaceInLastWord);
+    stuff(lcl, cur, 32, 16, lastWordShifted, spaceInLastWord); 
+
+   *zlng = 1 + (int) (cur-z) * 4;
+
 }
 
 
@@ -2077,10 +2188,11 @@ int main()
      }
   for (i = 1 ; i <= NI ; i++)
     for (j = 1 ; j <= NJ ; j++ )
+//    { zi[FTN2C(i,j,NI)] = i + j ; }
     { zi[FTN2C(i,j,NI)] = i*7.567 + j*7.234 ; }
-  for (i = 3 ; i <= NI ; i+=9)
-    for (j = 3 ; j <= NJ ; j+=6 )
-    { zi[FTN2C(i,j,NI)] = 60000 ; zi[FTN2C(i-1,j-1,NI)] = 60000 ;}
+//  for (i = 3 ; i <= NI ; i+=9)
+//    for (j = 3 ; j <= NJ ; j+=6 )
+//    { zi[FTN2C(i,j,NI)] = 60000 ; zi[FTN2C(i-1,j-1,NI)] = 60000 ;}
 //  c_armn_compress_setlevel(FAST);
   c_fstzip(buffer, &zlng, (int *)zi, NI, NJ, MINIMUM, 0, 5, nbits, 0);
   printf("INFO: MINIMUM compressed length = %d buffer : %8.8x %8.8x %8.8x\n",zlng,buffer[0],buffer[1],buffer[2]);
@@ -2129,7 +2241,7 @@ int main()
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
   printf("PARALLELOGRAM unpacking old time = %d usec\n",duree);
-  for (i=0 ; i<NI*NJ ; i++) { if(zi[i] != zo[i]) { errors++; printf(" expected %d, got %d\n",zi[i],zo[i]); break ;} }
+  for (i=0 ; i<NI*NJ ; i++) { if(zi[i] != zo[i]) { errors++; printf(" expected %d, got %d at %d \n",zi[i],zo[i],i); break ; } }
   printf("INFO: decompression errors = %d\n",errors);
 
   c_fstzip(buffer, &zlng, (int *)zi, NI, NJ, PARALLELOGRAM, 1, 3, nbits, 0);
