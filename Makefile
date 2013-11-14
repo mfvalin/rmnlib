@@ -1,10 +1,10 @@
 SHELL = /bin/sh
 
-LIBNAME = librmnbeta
+LIBNAME = librmnbeta_14.819u
 
 WORKDIR = ./WorkDir
 
-LIBDIR = `pwd`
+LIBDIR = `pwd`/lib/
 
 DEBUG = No
 
@@ -23,3 +23,7 @@ genlib:
 	./make_locallib_packages ; \
 	./merge_rmnlib_packages $(WORKDIR) $(LIBDIR) $(LIBNAME) ; \
 	fi
+#export CC=gcc ; \
+
+clean:
+	cd template_utils/gmm ; make veryclean
