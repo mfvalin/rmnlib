@@ -1,5 +1,6 @@
 EXTRAS = fstd98.o DlInterface.o convert_ip123.o fst_missing.o
 EXTRAS2 = float_packer.o  c_zfstlib.o dlfcn.o register_dl_routines.o
+TESTS = test_z test_p test_f test_d
 
 RMNLIB = librmnbeta_14.819u.a
 all:	obj
@@ -39,13 +40,13 @@ dist: $(EXTRAS)
 	mv include/$(EC_ARCH)/convert_ip.h_new include/$(EC_ARCH)/convert_ip.h
 	rm -f *.o *.mod
 
-tests:	test_z test_p test_f test_d
-
-test_d: DlInterface.o  dlfcn.o register_dl_routines.o libshared.so test_dlfcn.f90
-	s.f90 -o $@ test_dlfcn.f90 DlInterface.o  dlfcn.o register_dl_routines.o -ldl
+tests:	$(TESTS)
 
 libshared.so: shared.f90
 	s.f90 -shared -o $@ $<
+
+test_d: DlInterface.o  dlfcn.o register_dl_routines.o libshared.so test_dlfcn.f90
+	s.f90 -o $@ test_dlfcn.f90 DlInterface.o  dlfcn.o register_dl_routines.o -ldl
 
 test_f:	fstd98.c  if_fstd98.c fst_missing.c test_missing.f90
 	s.cc -c -O 2 -DSELFTEST fstd98.c fst_missing.c
@@ -61,5 +62,5 @@ obj: $(EXTRAS) $(EXTRAS2)
 #	rm -f *.o *.mod
 
 clean:
-	rm -f *.o *.so *.mod test_z test_p test_f test_d a.out
+	rm -f *.o *.so *.mod $(TESTS) a.out
 
