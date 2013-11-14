@@ -24,3 +24,6 @@ genlib:
 	./merge_rmnlib_packages $(WORKDIR) $(LIBDIR) $(LIBNAME) ; \
 	fi
 #export CC=gcc ; \
+
+clean:
+	cd template_utils/gmm ; make veryclean
