@@ -4,7 +4,7 @@ LIBNAME = librmnbeta_14.819u
 
 WORKDIR = ./WorkDir
 
-LIBDIR = `pwd`
+LIBDIR = `pwd`/lib/
 
 DEBUG = No
 
