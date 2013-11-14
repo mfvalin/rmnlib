@@ -5,8 +5,8 @@ EXTRAS = fstd98.o DlInterface.o convert_ip123.o fst_missing.o register_dl_routin
 EXTRAS2 = float_packer.o  c_zfstlib.o
 TESTS = test_z test_p test_f test_d test_c
 
-RMNLIB = librmnbeta_14.819u.a
-#RMNLIB = librmnbeta_14.821u.a
+#RMNLIB = librmnbeta_14.819u.a
+RMNLIB = librmnbeta_14.821u.a
 all:	obj
 
 # dynamic loader interface
