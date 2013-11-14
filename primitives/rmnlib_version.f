@@ -15,7 +15,7 @@
         version = 
      %  "  RMNLIB  -  Release:"//
      %  "  (Rev 821)"//
-     %  " EC_ARCH_VAR Date_of_Build"
+     %  " Linux 64 bit 2013/11/14 16:28:36"
 	if (prnt) print *,version
 	return
 	end
