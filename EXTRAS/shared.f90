@@ -1,8 +1,8 @@
 ! File shared.f90
-SUBROUTINE MySub(x) BIND(C,NAME="MySub")
+SUBROUTINE MySub(x) BIND(C,NAME="MySub1")
    USE ISO_C_BINDING
    REAL(C_DOUBLE), VALUE :: x
-   WRITE(*,*) "MySub: x=",x
+   WRITE(*,*) "MySub1: x=",x
 END SUBROUTINE   
 SUBROUTINE MySub2(x) BIND(C,NAME="MySub2")
    USE ISO_C_BINDING
