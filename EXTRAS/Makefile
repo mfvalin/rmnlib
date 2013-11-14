@@ -1,6 +1,6 @@
 EXTRAS = fstd98.o DlInterface.o convert_ip123.o fst_missing.o
 EXTRAS2 = float_packer.o  c_zfstlib.o dlfcn.o register_dl_routines.o
-TESTS = test_z test_p test_f test_d
+TESTS = test_z test_p test_f test_d test_c
 
 RMNLIB = librmnbeta_14.819u.a
 all:	obj
@@ -57,6 +57,10 @@ test_p:	float_packer.c
 
 test_z:	c_zfstlib.c
 	s.cc -o $@ -O 3 -DTEST_TURBO c_zfstlib.c -lm
+
+test_c:	convert_ip123.o test_c_convip.c test_f_convip.f90
+	s.cc -c test_c_convip.c
+	s.f90 -o $@ test_f_convip.f90 test_c_convip.o convert_ip123.o
 
 obj: $(EXTRAS) $(EXTRAS2)
 #	rm -f *.o *.mod
