@@ -14,8 +14,8 @@
 *
         version = 
      %  "  RMNLIB  -  Release:"//
-     %  " 014_rc1 (Rev 819)"//
-     %  " Linux_x86-64/pgi1301 Fri 26 Jul 2013 11:33:29 AM EDT"
+     %  "  (Rev 821)"//
+     %  " EC_ARCH_VAR Date_of_Build"
 	if (prnt) print *,version
 	return
 	end
