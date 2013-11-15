@@ -59,8 +59,9 @@ typedef long int pid_t;
 #     define SORTIR(X) /**/
 #     define fd_err fdout
 #else
-#     define fd_err stderr
+#     define fd_err stderr 
 #     define SORTIR(X) f77name(tracebck)(); exit(X);
+void f77name(tracebck)();
 #endif
 
 #if defined (NEC)
@@ -287,7 +288,24 @@ static int first_free_bloc = 0;
 static int tableau_eject[MAXBLOCKS]; /* tableau ordonne des blocs du segment a
                                         utiliser pour un load */
 static char cd_repertoire[128]= "./";       /* repertoire de travail pour les fichiers de controle */
-      
+
+void f77name(wawrit)(void *,void *,void *,void *);
+void f77name(waread)(void *,void *,void *,void *);
+void f77name(afix)(void *,void *,void *);
+void f77name(afix8)(void *,void *,void *);
+int f77name(fnom)(void *,void *,void *,void *,F2Cl,F2Cl);
+
+static int once = 0;
+static int vmm_wrote_to_file()
+{
+  int status=-1;
+  int fd;
+  if(once) return 0;
+  fd = open("VMM_file_written",O_CREAT+O_RDWR,0777);
+  if(fd > 0) status = close(fd);
+  once = 1;
+  return status;
+}
 
 
 /***s/p calc_checksum
@@ -399,6 +417,7 @@ ecrit_bloc(int bkno,int classe,wordint *memadresse,
 
       wordint iun, lfileadresse, lnmots, ier;
 
+      ier = vmm_wrote_to_file();
       ier = verbar(bkno);
       if( ! fichiers_ouverts) ouvre_ou_ferme_controle(1,0,"ecrit_bloc");
 
@@ -538,7 +557,7 @@ eject_block(int bkno,int save,int fait_checksum)
 {
    void imprime();
    void ecrit_bloc(), reserve_disk_space();
-   int verbar(), calc_checksum();
+   int verbar(), calc_checksum(), vmmerr();
    int ind,ier,cks,indx;
 
     if ( ! BLOCKS[bkno].info.flags.in_used)
@@ -896,7 +915,7 @@ lit_bloc(int bkno,unsigned int classe,wordint *memadresse,
 /*
       void  ouvre_ou_ferme_controle();
 */
-      int calc_checksum();
+      int calc_checksum(), vmmerr();
       wordint iun, lfileadresse, lnmots;
 
       int cks;
@@ -1085,11 +1104,11 @@ PRIVATE int obtient_environ()
 {
 
       char repertoire[NCARMAX], rslt_fic[NCARMAX];
-      char spid[NCARMAX];      /* the pid under char* form */
+//      char spid[NCARMAX];      /* the pid under char* form */
       char *ptenv;
       int i, longueur ,dbg_cks=0;
       int il_err;
-      pid_t pid;
+//      pid_t pid;
 
       static char *noms[] = {"Vmm_01","Vmm_02","Vmm_03","Vmm_04","Vmm_05",
                         "Vmm_06","Vmm_07","Vmm_08","Vmm_09","Vmm_controle"} ;
@@ -1301,21 +1320,23 @@ pack_blocks(int *biggest_free_block_index)
    int i=0, big=0, ind = -1;
    
    while ((i < nbblocks-1) && (! BLOCKS[i].info.flags.hpa_alloc)) {
-     if (BLOCKS[i].info.flags.in_used)
+     if (BLOCKS[i].info.flags.in_used){
 	i++;
-     else {
+     }else{
         while ((i<nbblocks-1) && (! BLOCKS[i+1].info.flags.in_used))
 	   collapse_blocks(i,i+1);
-	if (i < nbblocks)
-	   if ((BLOCKS[i].info.flags.locked) || (BLOCKS[i+1].info.flags.locked))
+	if (i < nbblocks){
+	   if ((BLOCKS[i].info.flags.locked) || (BLOCKS[i+1].info.flags.locked)) {
 	      i++;
-	   else
+	   }else{
 	      while ((i<nbblocks-1) && (BLOCKS[i+1].info.flags.in_used) &&
 		     (! BLOCKS[i+1].info.flags.locked)) {
 	         swap_blocks(i,i+1);
 		 i++;
 		 }
-	} /* end else */
+	   }
+	}
+      } /* end else */
      } /* end while */
    for (i=0; i < nbblocks; i++)
       if (! BLOCKS[i].info.flags.in_used)
@@ -1807,6 +1828,7 @@ reserve_disk_space(int bkno)
 /*
  *  on reserve l'espace pour toutes les tranches de la variable
  */
+   i = vmm_wrote_to_file();
    for( i = 0; i < NAMES[ind].nslice; i++)
    {
        f77name(wawrit)(&liun,bidon, &lpos,&nmots);
@@ -2194,9 +2216,9 @@ trouve_best_segment(int size, int *tableau_eject_index)
 			 BLOCKS[i].info.flags.weight :
 			 BLOCKS[i].info.flags.weight + 9);
 
-                 tableau_eject[index] = (nseg & SEGMENT_MASK)<< SEGMENT_SHIFT |
-                                (l_poid & WEIGHT_MASK)<< WEIGHT_SHIFT |
-                                 i & BKNO_MASK;
+                 tableau_eject[index] = ((nseg & SEGMENT_MASK)<< SEGMENT_SHIFT) |
+                                ((l_poid & WEIGHT_MASK)<< WEIGHT_SHIFT) |
+                                 (i & BKNO_MASK);
                  index++;
             }
             i++;
@@ -2691,7 +2713,7 @@ f77name(vmmcks)(complete_key *inkey, wordint *mode)
      extern wordint f77name(qvmcks)();
      int qvmindex_from_key(), vmmerr();
 
-     int slice_ind, i ;
+     int slice_ind ;
      wordint check_sum, *adresse_du_bloc;
      wordint nbelem;
 
@@ -3085,7 +3107,7 @@ f77name(vmmdbg)(char command[],complete_key inlkey[], wordint *nkey,F2Cl l1)
 {
 
   char cmd[NCARATTR], junk[20], diag_file[80], msg[80];
-  int pos, ind, i, nvar, iii;
+  int pos, ind, i, nvar;
 
 
 #if defined CALL_SEQ
@@ -3383,10 +3405,10 @@ vmmerr(char *fonction,wordint valeur)
 *     in   nkey        nombre de clefs dans inlkey
 *
 **/
-f77name(vmmfgt)(complete_key inlkey[], wordint *nkey)
+int f77name(vmmfgt)(complete_key inlkey[], wordint *nkey)
 {
        int qvmindex_from_key(), vmmerr();
-       int indice, i, iii, bloc_indice;
+       int indice, i, bloc_indice;
 
 
        if(callc("VMMFGT"))   ;
@@ -3464,7 +3486,7 @@ f77name(vmmget)(complete_key  *inkey, void **pointeur,wordint *tablo)
           int qvmindex_from_key(), vmmerr(), verbar(),calc_checksum();
 
           int indice,ier,cks2;
-          memint intptr;
+//          memint intptr;
 
           if(callc("VMMGET"))  ;
        
@@ -3561,7 +3583,9 @@ f77name(vmmhpa)(void **ptr,wordint *memry,wordint *mode)
 
    int vmmerr();
    int nbytes;
+#if defined (_FLOAT1)
    memint lptr;
+#endif
    wordint *pointeur;
 
    if( callc("VMMHPA")) ; 
@@ -3619,7 +3643,9 @@ f77name(vmmhpd)(void **ptr)
 #endif
 {
 
+#if defined (_FLOAT1)
    memint lptr;
+#endif
    wordint *pointeur;
 
    int vmmerr();
@@ -3750,7 +3776,7 @@ wordint
 f77name(vmmlck)(complete_key inlkey[], wordint *nkey)
 {
        int qvmindex_from_key(), vmmerr(), verbar(),calc_checksum();
-       int indice, i,iii,ier;
+       int indice, i,ier;
 
        if (callc("VMMLCK"))   ;
        
@@ -3828,7 +3854,7 @@ f77name(vmmlod)(complete_key inlkey[], wordint *nkey)
 {
         wordint qvmlod();
 	int qvm_index_frim_key();
-        wordint ier, i,iii, un = 1;
+        wordint ier, i, un = 1;
 	int clef;
 
          
@@ -3847,7 +3873,7 @@ f77name(vmmlod)(complete_key inlkey[], wordint *nkey)
          fprintf(fdout," adresse de inlkey = %x\n",&inlkey[0]);
      }
 #endif
-
+        ier = 0;
         if(champs_bloques)
         {
              nb_appels_lock++;
@@ -4024,10 +4050,10 @@ f77name(vmmpwd)(wordint *mot_passe, wordint *mode)
 *     in   nkey        nombre de clefs dans inlkey
 *
 **/
-f77name(vmmrls)(complete_key inlkey[], wordint *nkey)
+int f77name(vmmrls)(complete_key inlkey[], wordint *nkey)
 {
        int qvmindex_from_key(), vmmerr(),eject_block();
-       int indice, i,iii, bloc_indice, ier;
+       int indice, i, bloc_indice, ier;
 
 
        if(callc("VMMRLS"))   ;
@@ -4151,7 +4177,7 @@ f77name(vmmsav)(complete_key inlkey[], wordint *nkey)
 {
          void ecrit_bloc(),reserve_disk_space();
          int qvmindex_from_key(), vmmerr();
-         int indice,  i,iii;
+         int indice,  i;
 
          if(callc("VMMSAV"))  ;
        
@@ -4241,7 +4267,7 @@ f77name(vmmuld)(complete_key inlkey[], wordint *nkey)
 {
        int qvmindex_from_key(), vmmerr(), eject_block(), verbar();
        int calc_checksum();
-       int indice, i,iii, bloc_indice,ier;
+       int indice, i, bloc_indice,ier;
 
 
        if(callc("VMMULD"))   ;
@@ -4363,7 +4389,7 @@ wordint
 f77name(vmmulk)(complete_key inlkey[], wordint *nkey)
 {
        int qvmindex_from_key(), vmmerr(),verbar(),calc_checksum();
-       int indice, i,iii,ier;
+       int indice, i,ier;
 
 
        if(callc("VMMULK"))   ;
@@ -4462,11 +4488,11 @@ f77name(vmmulk)(complete_key inlkey[], wordint *nkey)
 *     in   nkey        nombre de clefs dans inlkey
 *
 **/
-f77name(vmmuln)(complete_key inlkey[], wordint *nkey)
+int f77name(vmmuln)(complete_key inlkey[], wordint *nkey)
 {
        int qvmindex_from_key(), vmmerr(), eject_block(),verbar();
        int calc_checksum();
-       int indice, i,iii, bloc_indice,ier;
+       int indice, i, bloc_indice,ier;
 
 
        if(callc("VMMULN"))   ;
@@ -4695,7 +4721,7 @@ wordint f77name(vmmckmx)()
    void reserve_disk_space();
    int vmmerr(), strfind(); 
    
-   int i,pos;
+   int i;
    
    if(callc("VMMCKMX"))  ;
    
