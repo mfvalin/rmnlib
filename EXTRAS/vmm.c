@@ -3486,7 +3486,9 @@ f77name(vmmget)(complete_key  *inkey, void **pointeur,wordint *tablo)
           int qvmindex_from_key(), vmmerr(), verbar(),calc_checksum();
 
           int indice,ier,cks2;
-//          memint intptr;
+#if defined (_FLOAT1)
+          memint intptr;
+#endif
 
           if(callc("VMMGET"))  ;
        
