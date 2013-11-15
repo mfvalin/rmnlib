@@ -975,6 +975,7 @@ lit_vmm_controle()
    int i,j,k,ier,nmots, erreur;
    off_t ofset;
    wordint lpos,liun,lun;
+   ssize_t nw;
 
    ofset = 0;
    erreur = 0;
@@ -988,20 +989,20 @@ lit_vmm_controle()
    else
    {
        ofset = lseek(fcontrole, ofset, SEEK_SET);
-       read(fcontrole,&nbvar,4);
+       nw = read(fcontrole,&nbvar,4);
 
 
        if((nbvar > 0) && (nbvar <= MAXNAMES))
        {
             nmots = sizeof(struct name_table)*nbvar;
-            read(fcontrole,&NAMES[0],nmots);
+            nw = read(fcontrole,&NAMES[0],nmots);
        }
         
-       read(fcontrole,&nbslices,4);
+       nw = read(fcontrole,&nbslices,4);
        if((nbslices > 0) && (nbslices <= MAXSLICES))
        {
             nmots = sizeof(struct slice_table)*nbslices;
-            read(fcontrole,&SLICES[0],nmots);
+            nw = read(fcontrole,&SLICES[0],nmots);
        }
 
    }

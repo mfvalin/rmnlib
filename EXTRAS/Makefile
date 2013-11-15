@@ -2,7 +2,7 @@
 # EXTRAS  : load in local library
 EXTRAS = fstd98.o DlInterface.o convert_ip123.o fst_missing.o register_dl_routines.o dlfcn.o
 # EXTRAS2 : do not load yet
-EXTRAS2 = float_packer.o  c_zfstlib.o
+EXTRAS2 = float_packer.o  c_zfstlib.o vmm.o
 TESTS = test_z test_p test_f test_d test_c
 
 #RMNLIB = librmnbeta_14.819u.a
@@ -18,6 +18,10 @@ register_dl_routines.o: register_dl_routines.c
 
 dlfcn.o: dlfcn.f90
 	s.f90 -c $<
+
+# "virtual" memory manager
+vmm.o: vmm.c
+	s.cc -c -O 2 $<
 
 # level 2 "turbo" compressor
 c_zfstlib.o: c_zfstlib.c
