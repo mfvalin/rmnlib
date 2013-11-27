@@ -42,7 +42,7 @@ default: obj
 .DEFAULT:
 	co $@
 
-include $(ARMNLIB)/include/makefile_new_suffix_rules.inc
+include $(ARMNLIB)/include/makefile_suffix_rules.inc
 
 OBJET = f_ezscint.o c_ezscint.o
 
