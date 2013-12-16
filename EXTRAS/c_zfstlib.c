@@ -877,23 +877,6 @@ void packTokensMinimum(unsigned int z[], int *zlng, unsigned short ufld[], int n
       rowbump = ni - lcl_m - 1;  /* + ni for row up, -(lcl_m +1) to undo the lcl_m +1 bumps along row in m loop */
       for (n=0; n <= lcl_n; n++)
         {
-        if(lcl_m == 4){
-          local_var = ufld[k++] ;
-          local_min = (local_min > local_var) ? local_var : local_min ;
-          local_max = (local_max < local_var) ? local_var : local_max ;
-          local_var = ufld[k++] ;
-          local_min = (local_min > local_var) ? local_var : local_min ;
-          local_max = (local_max < local_var) ? local_var : local_max ;
-          local_var = ufld[k++] ;
-          local_min = (local_min > local_var) ? local_var : local_min ;
-          local_max = (local_max < local_var) ? local_var : local_max ;
-          local_var = ufld[k++] ;
-          local_min = (local_min > local_var) ? local_var : local_min ;
-          local_max = (local_max < local_var) ? local_var : local_max ;
-          local_var = ufld[k++] ;
-          local_min = (local_min > local_var) ? local_var : local_min ;
-          local_max = (local_max < local_var) ? local_var : local_max ;
-        }else{
           for (m=0; m <= lcl_m; m++)
             {
             local_var = ufld[k] ;
@@ -901,7 +884,6 @@ void packTokensMinimum(unsigned int z[], int *zlng, unsigned short ufld[], int n
             if (local_max < local_var) local_max = local_var;
             k++ ;
             }
-        }
         k += rowbump ;
         }
       local_var = local_max - local_min;
@@ -919,25 +901,12 @@ void packTokensMinimum(unsigned int z[], int *zlng, unsigned short ufld[], int n
         {
         for (n=0; n <= lcl_n; n++)
           {
-          if(lcl_m == 4){
-            lcl = ufld[k++] - local_min;
-            stuff(lcl, cur, 32, nbits_needed, lastWordShifted, spaceInLastWord);
-            lcl = ufld[k++] - local_min;
-            stuff(lcl, cur, 32, nbits_needed, lastWordShifted, spaceInLastWord);
-            lcl = ufld[k++] - local_min;
-            stuff(lcl, cur, 32, nbits_needed, lastWordShifted, spaceInLastWord);
-            lcl = ufld[k++] - local_min;
-            stuff(lcl, cur, 32, nbits_needed, lastWordShifted, spaceInLastWord);
-            lcl = ufld[k++] - local_min;
-            stuff(lcl, cur, 32, nbits_needed, lastWordShifted, spaceInLastWord);
-          }else{
             for (m=0; m <= lcl_m; m++)
               {
               lcl = ufld[k] - local_min;
               stuff(lcl, cur, 32, nbits_needed, lastWordShifted, spaceInLastWord);
               k++ ;
               }
-          }
           k += rowbump ;
           }
         }        
@@ -1370,14 +1339,14 @@ void packTokensParallelogram(unsigned int z[], int *zlng, unsigned short ufld[],
       k11 = 0;
       for (n=0; n <= lcl_n; n++)
         {
-        for (m=0; m <= lcl_m; m++)
-          {
-          ufld_dst[k11] = ufld[k] + ufld[k-1-ni] - ufld[k-ni] - ufld[k-1];
-          local_var = abs(ufld_dst[k11++]);
-          if (local_max < local_var) local_max = local_var ;
-          k++;
-          }
-         k += rowbump;
+          for (m=0; m <= lcl_m; m++)
+            {
+            ufld_dst[k11] = ufld[k] + ufld[k-1-ni] - ufld[k-ni] - ufld[k-1];
+            local_var = abs(ufld_dst[k11++]);
+            if (local_max < local_var) local_max = local_var ;
+            k++;
+            }
+        k += rowbump;
         }
 
       nbits_needed = 0;
@@ -1394,12 +1363,12 @@ void packTokensParallelogram(unsigned int z[], int *zlng, unsigned short ufld[],
         k11 = 0;
         for (n=0; n <= lcl_n; n++)
           {
-          for (m=0; m <= lcl_m; m++)
-            {
-            token = (unsigned int) ufld_dst[k11] & ~((-1)<<nbits2);
-            stuff(token, cur, 32, nbits2, lastWordShifted, spaceInLastWord);
-            k11 ++;
-            }
+            for (m=0; m <= lcl_m; m++)
+              {
+              token = (unsigned int) ufld_dst[k11] & ~((-1)<<nbits2);
+              stuff(token, cur, 32, nbits2, lastWordShifted, spaceInLastWord);
+              k11 ++;
+              }
           }
         } 
        
@@ -2282,13 +2251,24 @@ int main()
     { zi[FTN2C(i,j,NI)] = 60000 ; zi[FTN2C(i-1,j-1,NI)] = 60000 ;}
 //  c_armn_compress_setlevel(FAST);
   gettimeofday(&t1,NULL);
+  USE_NEW=0 ;
   c_fstzip(buffer, &zlng, (int *)zi, NI, NJ, MINIMUM, 0, 5, nbits, 0);
   gettimeofday(&t2,NULL);
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
   printf("MINIMUM packing time = %d usec\n",duree);
-  printf("INFO: MINIMUM compressed length = %d buffer : %8.8x %8.8x %8.8x\n",zlng,buffer[0],buffer[1],buffer[2]);
+  printf("INFO: MINIMUM compressed length = %d buffer : %8.8x %8.8x %8.8x, new=%d\n",zlng,buffer[0],buffer[1],buffer[2],USE_NEW);
+
+  gettimeofday(&t1,NULL);
+  USE_NEW=1 ;
+  c_fstzip(buffer, &zlng, (int *)zi, NI, NJ, MINIMUM, 0, 5, nbits, 0);
+  gettimeofday(&t2,NULL);
+  T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
+  T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
+  duree = T2-T1;
+  printf("MINIMUM packing time = %d usec\n",duree);
+  printf("INFO: MINIMUM compressed length = %d buffer : %8.8x %8.8x %8.8x, new=%d\n",zlng,buffer[0],buffer[1],buffer[2],USE_NEW);
 
   errors = 0; USE_NEW=0 ;
   for (i = 1 ; i <= NI ; i++)
@@ -2320,6 +2300,7 @@ int main()
 
   printf("------------------------------------------------------------\n");
 
+  USE_NEW=0 ;
   gettimeofday(&t1,NULL);
   c_fstzip(buffer, &zlng, (int *)zi, NI, NJ, PARALLELOGRAM, 1, 3, nbits, 0);
   gettimeofday(&t2,NULL);
@@ -2327,7 +2308,17 @@ int main()
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
   printf("PARALLELOGRAM packing time = %d usec\n",duree);
-  printf("INFO: PARALLELOGRAM compressed length = %d buffer : %8.8x %8.8x %8.8x\n",zlng,buffer[0],buffer[1],buffer[2]);
+  printf("INFO: PARALLELOGRAM compressed length = %d buffer : %8.8x %8.8x %8.8x, new=%d\n",zlng,buffer[0],buffer[1],buffer[2],USE_NEW);
+
+  USE_NEW=1 ;
+  gettimeofday(&t1,NULL);
+  c_fstzip(buffer, &zlng, (int *)zi, NI, NJ, PARALLELOGRAM, 1, 3, nbits, 0);
+  gettimeofday(&t2,NULL);
+  T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
+  T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
+  duree = T2-T1;
+  printf("PARALLELOGRAM packing time = %d usec\n",duree);
+  printf("INFO: PARALLELOGRAM compressed length = %d buffer : %8.8x %8.8x %8.8x, new=%d\n",zlng,buffer[0],buffer[1],buffer[2],USE_NEW);
 
   errors = 0; USE_NEW=0 ;
   for (i = 1 ; i <= NI ; i++)
