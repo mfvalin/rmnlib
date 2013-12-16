@@ -67,9 +67,15 @@ test_d: DlInanterface.o  dlfcn.o register_dl_routines.o libshared.so test_dlfcn.
 	s.f90 -o $@ test_dlfcn.f90 DlInterface.o  dlfcn.o register_dl_routines.o -ldl
 
 # missing data feaure for standard files test
-test_f:	fstd98.c  if_fstd98.c fst_missing.c test_missing.f90
+test_f:	fstd98.c  if_fstd98.c fst_missing.c
 	s.cc -c -O 2 -DSELFTEST fstd98.c fst_missing.c
 	s.f90 -o $@ test_missing.f90 fstd98.o fst_missing.o -lrmnbeta_014
+
+test_ff: fstd98.c  if_fstd98.c fst_missing.c test_missing.f90
+	s.cc -c -O 2 fstd98.c fst_missing.c
+	echo "call test_missing_values ; stop ; end" >test_missing_main.f90
+	s.f90 -o $@ test_missing_main.f90 test_missing.f90 fstd98.o fst_missing.o -lrmnbeta_014
+	rm test_missing_main.f90
 
 # F type floating point packer test
 test_p:	float_packer.c
