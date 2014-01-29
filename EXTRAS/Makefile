@@ -6,7 +6,7 @@ EXTRAS2 = float_packer.o  c_zfstlib.o vmm.o
 TESTS = test_z test_p test_f test_d test_c
 
 #RMNLIB = librmnbeta_14.819u.a
-RMNLIB = librmnbeta_14.821u.a
+RMNLIB = librmn_014.826u.a
 all:	obj
 
 # dynamic loader interface
@@ -51,7 +51,9 @@ localdist: $(EXTRAS) $(EXTRAS2)
 	rm -f *.o *.mod
 
 dist: $(EXTRAS)
+	mkdir -p ../lib/$(EC_ARCH)
 	ar rcv ../lib/$(EC_ARCH)/$(RMNLIB) $(EXTRAS)
+	mkdir -p ../include/$(EC_ARCH)
 	mv *.mod ../include/$(EC_ARCH)/
 	cp convert_ip.h ../include/convert_ip.h_new
 	mv ../include/convert_ip.h_new ../include/convert_ip.h
