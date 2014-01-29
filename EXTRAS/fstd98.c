@@ -58,9 +58,21 @@ static void crack_std_parms(stdf_dir_keys *stdf_entry,
 static void print_std_parms(stdf_dir_keys *stdf_entry,
                             char *pre, char *option,int header);
 
+static char *kinds[] = 
+{ 
+  "m ", "sg", "mb", "##", "M ", "hy", "th", "??",
+  "??", "??", "H ", "??", "??", "??", "??", "  ",
+  "??", "[]", "??", "??", "??", "mp", "??", "??",
+  "??", "??", "??", "??", "??", "??", "??", "  "
+} ;
+  
 int EncodeMissingValue(void *field,void *field2,int nvalues,int datatype,int nbits,int is_byte,int is_short,int is_double);
 void DecodeMissingValue(void *field,int nvalues,int datatype,int is_byte,int is_short,int is_double);
 
+static void convip_plus(int *ip_new,float *level, int *kind, int *mode,char *s, int *flag)
+{
+  ConvertIp(ip_new,level,kind,*mode);
+};
 /*splitpoint aaaa_comment */
 /*****************************************************************************
  *                                                                           * 
@@ -321,7 +333,7 @@ int c_fstecr(word *field_in, void * work, int npak,
   short *s_field;
   signed char *b_field;
   int ier,l1,l2,l3,l4;
-  int index, index_fnom, nbits, record, handle;
+  int index, index_fnom, nbits, handle;
   long long deltat;
   unsigned int datev;
   int p1out,p2out,header_size,stream_size;
@@ -520,7 +532,7 @@ int c_fstecr(word *field_in, void * work, int npak,
     
   nw = W64TOWD(nw);
   
-  keys_len = W64TOWD(f->primary_len + f->info_len);
+  keys_len = W64TOWD((f->primary_len + f->info_len));
   buffer = (buffer_interface_ptr) alloca((10+keys_len+nw+128)*sizeof(word));
   if (buffer) 
     memset(buffer,0,(10+keys_len+nw+128)*sizeof(word));
@@ -533,7 +545,7 @@ int c_fstecr(word *field_in, void * work, int npak,
   buffer->nbits = (keys_len + nw) * bitmot;
   buffer->record_index = RECADDR;
   buffer->data_index = buffer->record_index + 
-                       W64TOWD(f->primary_len + f->info_len);
+                       W64TOWD((f->primary_len + f->info_len));
   buffer->iun = iun;
   buffer->aux_index = buffer->record_index + W64TOWD(f->primary_len);
   buffer->data[buffer->aux_index] = 0;
@@ -686,7 +698,7 @@ int c_fstecr(word *field_in, void * work, int npak,
     case 2: case 130:              /* integer, short integer or byte stream */
       {
       int offset;
-      short *p16;
+//      short *p16;
       offset = (datyp > 128) ? 1 :0;
       if (datyp > 128) {
         if (xdf_short) {
@@ -1851,7 +1863,7 @@ int c_fstluk(word *field, int handle, int *ni, int *nj, int *nk)
           s_field_out=(short *)field;
           b_field_out=(signed char *)field;
         }else{
-          field_out=field;
+          field_out=(int *)field;
         }
         ier = compact_integer(field_out,(void *) NULL,buf->data,nelm,
                               stdf_entry->nbits,0,xdf_stride,mode);
@@ -1986,12 +1998,12 @@ int c_fstmsq(int iun, int *mip1, int *mip2, int *mip3, char *metiket,
     *mip2 = ~(search_mask->ip2) & 0xfffffff;
     *mip3 = ~(search_mask->ip3) & 0xfffffff;
     for (i=0; i <= 4; i++)
-      metiket[i] = inv_isignore((search_mask->etik15 >> ((4-i)*6)) & 0x3f);
+      metiket[i] = inv_isignore( ((search_mask->etik15 >> ((4-i)*6)) & 0x3f) );
 
     for (i=5; i <=9; i++)
-      metiket[i] = inv_isignore((search_mask->etik6a >> ((9-i)*6)) & 0x3f);
+      metiket[i] = inv_isignore( ((search_mask->etik6a >> ((9-i)*6)) & 0x3f) );
 
-    metiket[10] = inv_isignore((search_mask->etikbc >> 6) & 0x3f);
+    metiket[10] = inv_isignore( ((search_mask->etikbc >> 6) & 0x3f) );
     metiket[11] = inv_isignore((search_mask->etikbc  & 0x3f));
     metiket[12] = '\0';
   }
@@ -2240,7 +2252,7 @@ int c_fstopi(char *option, int value, int getmode)
  *****************************************************************************/
 int c_fstopl(char *option, int value, int getmode)
 {
-  int i;
+//  int i;
 
   if (strcmp(option,"FASTIO") == 0) {
     if (getmode) 
@@ -2308,7 +2320,7 @@ int c_fstouv(int iun, char *options)
 {
   int ier,nrec,i,iwko;
   static int premiere_fois=1;
-  char *turbo_compression;
+//  char *turbo_compression;
   char appl[5];
 
   if (premiere_fois) {
@@ -2570,15 +2582,15 @@ int c_fstskp(int iun, int nrec)
           c_waread(iun,&postfix,(f->cur_addr - W64TOWD(2)),W64TOWD(2));
           if ((postfix.idtyp == 0) && (postfix.lng == 2) && 
               (postfix.addr == -1))
-            f->cur_addr = W64TOWD(postfix.prev_addr-1)+1;
+            f->cur_addr = W64TOWD( (postfix.prev_addr-1) )+1;
           else {
             sprintf(errmsg,"file (unit=%d) has no record postfix",iun);
             return(error_msg("c_fstskp",ERR_NO_POSTFIX,ERRFATAL));
           }
           c_waread(iun,&header64,f->cur_addr,W64TOWD(1));
-          if (header64.addr != (WDTO64(f->cur_addr -1)+1)) {
+          if (header64.addr != (WDTO64( (f->cur_addr -1) )+1)) {
             sprintf(errmsg,
-                    "file (unit=%d), postfix address (%d) not equal to record address (%d) ",iun,(WDTO64(f->cur_addr -1)+1),header64.addr);
+                    "file (unit=%d), postfix address (%d) not equal to record address (%d) ",iun,(WDTO64( (f->cur_addr -1) )+1),header64.addr);
             return(error_msg("c_fstskp",ERR_NO_POSTFIX,ERRFATAL));
           }
         }
@@ -2595,7 +2607,7 @@ int c_fstskp(int iun, int nrec)
             fprintf(stderr,"c_fstskp: (unit %d) skip to end of file\n",iun);
           break;
         }
-        f->cur_addr += W64TOWD(((seq_entry.lng + 3) >> 2) + 15);
+        f->cur_addr += W64TOWD( (((seq_entry.lng + 3) >> 2) + 15) );
       }
     }
     else {             /* skip backward */
@@ -2700,8 +2712,8 @@ int c_fstvoi(int iun,char *options)
    stdf_special_parms cracked;
    xdf_record_header *header;
    char string[20];
-   char etiket[13], nomvar[5], typvar[3];
-   char cdt[6]={'X','R','I','C','S','E'};
+//   char nomvar[5], typvar[3];
+//   char cdt[6]={'X','R','I','C','S','E'};
    ftnword f_datev;
    double nhours;
    int deet,npas,run;
@@ -2764,7 +2776,7 @@ int c_fstvoi(int iun,char *options)
          }
          seq_entry = (seq_dir_keys *) f->head_keys;
          if (seq_entry->dltf) {
-           f->cur_addr += W64TOWD(((seq_entry->lng + 3) >> 2)+15);
+           f->cur_addr += W64TOWD( (((seq_entry->lng + 3) >> 2)+15) );
            continue;
          }
          if (seq_entry->eof > 0) {
@@ -2845,7 +2857,7 @@ int c_fstvoi(int iun,char *options)
          sprintf(string,"%5d-",nrec);
          print_std_parms(stdf_entry,string,options,((nrec % 70) == 0));
          nrec++;
-         f->cur_addr += W64TOWD(((seq_entry->lng + 3) >> 2)+15);
+         f->cur_addr += W64TOWD( (((seq_entry->lng + 3) >> 2)+15) );
          free(stdf_entry);
        } /* end if fstd_vintage_89 */
        else {
@@ -2903,7 +2915,7 @@ int c_fstvoi(int iun,char *options)
 
 int c_fstweo(int iun, int level)
 {
-  int index_fnom, index, width, nw, end_of_file;
+  int index_fnom, index;
   file_table_entry *f;
   xdf_record_header header64;
 
@@ -2960,7 +2972,7 @@ int c_fstweo(int iun, int level)
 
 void c_fst_env_var(char *cle, int index, char *content)
 {
-  int i;
+//  int i;
   char *carac;
   
 /*
@@ -3027,7 +3039,7 @@ int c_ip1_all(float level, int kind)
   flag = 0;
   
   mode = 2;
-  f77name(convip)(&ip_new,&level,&kind,&mode,s,&flag);
+  convip_plus(&ip_new,&level,&kind,&mode,s,&flag);
   ips_tab[0][ip_nb[0]] = ip_new;
   ip_nb[0]++;
   if (ip_nb[0] >= Max_Ipvals) {
@@ -3037,7 +3049,7 @@ int c_ip1_all(float level, int kind)
 
   mode = 3;
   if (kind < 4) 
-    f77name(convip)(&ip_old,&level,&kind,&mode,s,&flag);
+    convip_plus(&ip_old,&level,&kind,&mode,s,&flag);
   else
     ip_old = -9999;     /* no valid value for oldtype */
   ips_tab[0][ip_nb[0]] = ip_old;
@@ -3075,7 +3087,7 @@ int c_ip2_all(float level, int kind)
   flag = 0;
   
   mode = 2;
-  f77name(convip)(&ip_new,&level,&kind,&mode,s,&flag);
+  convip_plus(&ip_new,&level,&kind,&mode,s,&flag);
   ips_tab[1][ip_nb[1]] = ip_new;
   ip_nb[1]++;
   if (ip_nb[1] >= Max_Ipvals) {
@@ -3085,7 +3097,7 @@ int c_ip2_all(float level, int kind)
 
   mode = 3;
   if (kind < 4) 
-    f77name(convip)(&ip_old,&level,&kind,&mode,s,&flag);
+    convip_plus(&ip_old,&level,&kind,&mode,s,&flag);
   else
     ip_old = -9999;     /* no valid value for oldtype */
   ips_tab[1][ip_nb[1]] = ip_old;
@@ -3122,7 +3134,7 @@ int c_ip3_all(float level, int kind)
   flag = 0;
   
   mode = 2;
-  f77name(convip)(&ip_new,&level,&kind,&mode,s,&flag);
+  convip_plus(&ip_new,&level,&kind,&mode,s,&flag);
   ips_tab[2][ip_nb[2]] = ip_new;
   ip_nb[2]++;
   if (ip_nb[2] >= Max_Ipvals) {
@@ -3132,7 +3144,7 @@ int c_ip3_all(float level, int kind)
 
   mode = 3;
   if (kind < 4) 
-    f77name(convip)(&ip_old,&level,&kind,&mode,s,&flag);
+    convip_plus(&ip_old,&level,&kind,&mode,s,&flag);
   else
     ip_old = -9999;     /* no valid value for oldtype */
   ips_tab[2][ip_nb[2]] = ip_old;
@@ -3168,7 +3180,7 @@ int c_ip1_val(float level, int kind)
   flag = 0;
   
   mode = 2;
-  f77name(convip)(&ip_new,&level,&kind,&mode,s,&flag);
+  convip_plus(&ip_new,&level,&kind,&mode,s,&flag);
   ips_tab[0][ip_nb[0]] = ip_new;
   ip_nb[0]++;
   if (ip_nb[0] >= Max_Ipvals) {
@@ -3201,7 +3213,7 @@ int c_ip2_val(float level, int kind)
   flag = 0;
   
   mode = 2;
-  f77name(convip)(&ip_new,&level,&kind,&mode,s,&flag);
+  convip_plus(&ip_new,&level,&kind,&mode,s,&flag);
   ips_tab[1][ip_nb[1]] = ip_new;
   ip_nb[1]++;
   if (ip_nb[1] >= Max_Ipvals) {
@@ -3234,7 +3246,7 @@ int c_ip3_val(float level, int kind)
   flag = 0;
   
   mode = 2;
-  f77name(convip)(&ip_new,&level,&kind,&mode,s,&flag);
+  convip_plus(&ip_new,&level,&kind,&mode,s,&flag);
   ips_tab[2][ip_nb[2]] = ip_new;
   ip_nb[2]++;
   if (ip_nb[2] >= Max_Ipvals) {
@@ -3360,12 +3372,13 @@ int ip_is_equal(int target, int ip, int ind)
 {
   int kind1, kind2, exp1, exp2, nb, j;
   long long mantis1, mantis2;
-  double level, target_level;
-  double tolr = .0000001;
+//  double level, target_level;
+//  double tolr = .0000001;
+/*
   double exptab[] = {0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0,
                      1000.0, 10000.0, 100000.0, 1000000.0, 10000000.0,
                      100000000.0, 1000000000.0, 10000000000.0, 100000000000.0};
-
+*/
   /* ipold_0_9: table of old ip1 0-9 (mb) values encoded oldstyle with convip */            
   int ipold_0_9[10] = {0,1820,1840,1860,1880,1900,1920,1940,1960,1980};                   
 
