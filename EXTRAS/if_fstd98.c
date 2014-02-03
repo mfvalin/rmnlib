@@ -1665,6 +1665,27 @@ ftnword f77name(ip3_val)(ftnfloat *f_level, ftnword *f_kind)
 }
 
 
+/*splitpoint fst_can_translate_name */
+static char exception_vars[256]="^^  >>  !!  ";
+static int read_done=0;
+
+int FstCanTranslateName(char *varname)
+{
+  FILE *fileref;
+  static char filename[256];
+
+  if (! read_done) {
+    ARMNLIB=getenv("ARMNLIB");
+    snprintf(filename,sizeof(filename),"%s/data/exception_vars",ARMNLIB);
+    if ((fileref = fopen(filename,"r")) != NULL) {
+      if(NULL == fgets(exception_vars,sizeof(exception_vars),fileref) ) exception_vars[0]='\0' ;
+      fprintf(stderr,"OPENED exception file: %s\n",filename);
+      fclose(fileref) ;
+    }
+    read_done=1;
+  }
+  return (strstr(exception_vars,varname)==NULL);
+}
 /*splitpoint print_std_parms */
 /***************************************************************************** 
  *                      P R I N T _ S T D _ P A R M S                        *
@@ -1698,14 +1719,12 @@ static void print_std_parms(stdf_dir_keys *stdf_entry, char *pre, char *option,
   char c_level[16], pg1[7], pg2[7], pg3[8], pg4[8];
   char h_dims[18], h_dateo[16], h_stampo[10], h_datev[26], h_level[16], h_ip1[10], h_grid[32];
   char v_dims[20], v_dateo[16], v_stampo[10], v_datev[26], v_level[16], v_ip1[10], v_grid[32];
-  char h_decoded[33], v_decoded[33];
+  char h_decoded[39], v_decoded[39];
   char h_nomv[5], h_typv[3], h_etiq[13], h_ip23[14], h_deet[9], h_npas[9], h_dty[5]; 
   char v_nomv[5], v_typv[3], v_etiq[13], v_ip23[14], v_deet[9], v_npas[9], v_dty[5]; 
   int posc, posv;
   static char *ARMNLIB=NULL;                        /* ARMNLIB environment variable */
-  static int read_done=0;
   static char filename[256];
-  static char exception_vars[256]="^^  >>  !!  ";
   FILE *fileref;
   
   /* printf("Debug+ print_std_parms option=%s\n",option); */
@@ -1756,7 +1775,7 @@ static void print_std_parms(stdf_dir_keys *stdf_entry, char *pre, char *option,
       h_level[0]='\0';
 
     if (strstr(option,"IPALL"))
-      snprintf(h_decoded,sizeof(h_decoded),"%s","       DECODED IP1/IP2/IP3      ");
+      snprintf(h_decoded,sizeof(h_decoded),"%s","          DECODED IP1/IP2/IP3         ");
     else
       h_decoded[0]='\0';
     
@@ -1843,6 +1862,7 @@ static void print_std_parms(stdf_dir_keys *stdf_entry, char *pre, char *option,
   v_decoded[0]='\0';
   if ( strstr(option,"LEVEL") || strstr(option,"IPALL") )
     {
+/*
       if (! read_done) {
         ARMNLIB=getenv("ARMNLIB");
         sprintf(filename,"%s/data/exception_vars",ARMNLIB);
@@ -1852,9 +1872,13 @@ static void print_std_parms(stdf_dir_keys *stdf_entry, char *pre, char *option,
         }
         read_done=1;
       }
+*/
       iip1 = stdf_entry->ip1;
-      if (strstr(exception_vars,cracked.nomvar)) {     /* special variable, no decoding */
+//      if (strstr(exception_vars,cracked.nomvar)) {     /* special variable, no decoding */
+      if(! FstCanTranslateName(cracked.nomvar)) {
         sprintf(c_level,"%12d   ",iip1);
+        if (strstr(option,"LEVEL")) snprintf(v_level,sizeof(v_level),"%15s","     -----     ");
+        if (strstr(option,"IPALL")) snprintf(v_decoded,sizeof(v_decoded),"%16s------%16s","","");
       }
       else     /* not a special variable  */
       {
@@ -1880,11 +1904,9 @@ static void print_std_parms(stdf_dir_keys *stdf_entry, char *pre, char *option,
           float p1,p2,p3;
           int kind1,kind2,kind3, StatusIP;
           StatusIP=ConvertIPtoPK(&p1,&kind1,&p2,&kind2,&p3,&kind3,stdf_entry->ip1,stdf_entry->ip2,stdf_entry->ip3);
-          snprintf(v_decoded,sizeof(v_decoded),"%8g%s %8g%s %8g%s",p1,kinds[kind1],p2,kinds[kind2],p3,kinds[kind3]);
-//          f77name(convip_plus)(&iip1,&level,&kind,&mode,c_level,&flag,15);
+          snprintf(v_decoded,sizeof(v_decoded),"%10g%s %10g%s %10g%s",p1,kinds[kind1],p2,kinds[kind2],p3,kinds[kind3]);
         }
       }     /* special variable, no decoding */
-      /*      sprintf(v_level,"%#15s",c_level); */
     }
 
   if (strstr(option,"IP1"))
