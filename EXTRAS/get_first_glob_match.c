@@ -84,8 +84,8 @@ int get_first_glob_match(const char *pattern, char *filename, int lpat, int maxn
   return(i);    /* return length of first match */
 }
 
-#pragma cstring_to_fstring_=cstring_to_fstring
-#pragma cstring_to_fstring__=cstring_to_fstring
+#pragma weak cstring_to_fstring_=cstring_to_fstring
+#pragma weak cstring_to_fstring__=cstring_to_fstring
 int cstring_to_fstring_(char *cstring, int cstringlen);
 int cstring_to_fstring__(char *cstring, int cstringlen);
 /*
