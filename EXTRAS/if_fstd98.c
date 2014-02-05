@@ -1933,6 +1933,11 @@ static void print_std_parms(stdf_dir_keys *stdf_entry, char *pre, char *option,
           float p1,p2,p3;
           int kind1,kind2,kind3, StatusIP;
           StatusIP=ConvertIPtoPK(&p1,&kind1,&p2,&kind2,&p3,&kind3,stdf_entry->ip1,stdf_entry->ip2,stdf_entry->ip3);
+          if(kind1==-1 || kind2==-1 || kind3==-1) { /* decode error somewhere */
+            kind1 = 15; kind2 = 15 ; kind3 = 15;  /* integer code P=IP */
+            p1 = stdf_entry->ip1 ; p2 = stdf_entry->ip2 ; p3 = stdf_entry->ip3;
+          }
+          kind1 &= 0x3F ; kind2 &= 0x3F ; kind3 &= 0x3F ;   /* force modulo 31 */
           snprintf(v_decoded,sizeof(v_decoded),"%10g%s %10g%s %10g%s",p1,kinds[kind1],p2,kinds[kind2],p3,kinds[kind3]);
         }
       }     /* special variable, no decoding */
