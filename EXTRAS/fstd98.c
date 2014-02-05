@@ -28,6 +28,7 @@
 #endif
 #include <stdlib.h>
 #include "qstdir.h"
+#include "convert_ip.h"
 #include "proto.h"
 #include <rmnlib.h>
 #include <string.h>
