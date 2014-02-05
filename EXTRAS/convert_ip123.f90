@@ -66,7 +66,7 @@ use ISO_C_BINDING
 public  :: encode_ip_0, encode_ip_1, decode_ip_0, decode_ip_1
 public  :: encode_ip_2, encode_ip_3, decode_ip_2, decode_ip_3
 public  :: convip_plus, test_convip_plus, test_value_to_string
-public  :: value_to_string
+public  :: value_to_string, kind_to_string
 private :: conv_kind_15
 
 !****T* rmnlib/FLOAT_IP
@@ -162,6 +162,13 @@ integer, private, save, dimension(0:Max_Kind) :: islevel = &
 
 private :: swap, swapi, is_invalid_kind, is_level, ascending, descending
 
+character(len=2), private, save, dimension(0:Max_Kind) :: kinds = &
+  (/    'm ', 'sg', 'mb', '##', 'M ', 'hy', 'th', '??',                       &
+        '??', '??', 'H ', '??', '??', '??', '??', 'I0',                       &
+        '??', '[]', '??', '??', '??', 'mp', '??', '??',                       &
+        '??', '??', '??', '??', '??', '??', '??', 'I1' /)
+
+
 contains
 !=========================== start of private functions ========================================
 !===============================================================================================
@@ -208,6 +215,30 @@ subroutine swap(a,b)  ! swap a pair of real values
   return
 end subroutine swap
 !============================= end of private functions ========================================
+!===============================================================================================
+FUNCTION kind_to_string(code) RESULT(string)  ! translate ip kind into a 2 character string code
+  integer, intent(IN) :: code
+  character(len=2) :: string
+
+  string = '!!'    ! precondition to fail
+
+  if(code<0) return   ! invalid type code
+  
+  if(code<=Max_Kind) then
+    string = kinds(code)  ! straight table lookup
+    return
+  endif
+  
+  if(mod(code,16)/=15) return  ! not a subkind of kind 15
+  
+  if(code/16>9)  return  ! not a potentially valid subkind of kind 15
+  
+  write(1,string)'I',code/16   ! 'In' code where n=code/16 (n=0,1..,9)
+1 format(A,I1)
+
+  return
+end
+
 !===============================================================================================
 !****f* rmnlib/encode_ip_0
 ! SUMMARY
@@ -742,7 +773,6 @@ SUBROUTINE CONVIP_plus( ip, p, kind, mode, string, flagv )
   integer maxkind
   logical NEWSTYLE, NEWENCODING
   real *8 exptab(0:15)
-  character *2 kinds(0:Max_Kind)
   character (len=12) :: string2
   integer :: status
 
@@ -772,19 +802,13 @@ SUBROUTINE CONVIP_plus( ip, p, kind, mode, string, flagv )
   &  (/ 1., 1., 1., 1., 1., 1., 1., (1.0,i=7,16),                             &
   &    -1.0, (1.0,i=18,20), 1.0e+4, (1.0,i=22,31) /)
 
-  save NEWSTYLE, exptab, kinds, maxkind
+  save NEWSTYLE, exptab, maxkind
 
   data NEWSTYLE /.false./
 
   data exptab /0.0001D0, 0.001D0, 0.01D0, 0.1D0, 1.0, 10.0, 100.0,            &
   &  1000.0, 10000.0, 100000.0, 1000000.0, 10000000.0,                        &
   &  100000000.0, 1000000000.0, 10000000000.0, 100000000000.0 /
-
-  data kinds                                                                  &
-  &   / 'm ', 'sg', 'mb', '##', 'M ', 'hy', 'th', '??',                       &
-  &     '??', '??', 'H ', '??', '??', '??', '??', '  ',                       &
-  &     '??', '[]', '??', '??', '??', 'mp', '??', '??',                       &
-  &     '??', '??', '??', '??', '??', '??', '??', '  '/
 
   if (mode .eq.0) then
       NEWSTYLE = .true.
@@ -1079,6 +1103,7 @@ integer function value_to_string(val,string,maxlen)
 !  ex: if F8.3 is used, the result will be 803, if I6 is used, the result will be 6
 !******
   character (len=32) :: fstring
+  character (len=128) :: tempstring
   real *4 :: value
   integer :: after, before
   integer :: grosint, maxc, intdig
@@ -1091,7 +1116,9 @@ integer function value_to_string(val,string,maxlen)
   value_to_string=-(100*before+after*10)
   write(fstring,11)maxc,after    ! default G format
 
-  if(value >= 1000000000000.0 .or. value < .0001) goto 666   ! use G format
+  if(value /= 0.0) then
+    if(value >= 1000000000000.0 .or. value < .0001) goto 666   ! use G format
+  endif
 
   if(nint(value)==value) then ! exact integral value
     grosint=1
@@ -1142,17 +1169,29 @@ integer function value_to_string(val,string,maxlen)
     string(i:i)=' '
     i=i-1
   enddo
+  if(string(1:1)==' ') then
+    tempstring=string(2:len(string))
+    string=tempstring
+  endif
   return
 
   666 continue
   if(maxc-6<=0) goto 888
   !print *,'=',trim(fstring)
   write(string,fstring)val            ! G format
+  if(string(1:1)==' ') then
+    tempstring=string(2:len(string))
+    string=tempstring
+  endif
   return
 
   777 continue
   !print *,'=',trim(fstring)
   write(string,fstring)nint(val)      ! I format
+  if(string(1:1)==' ') then
+    tempstring=string(2:len(string))
+    string=tempstring
+  endif
   return
 
   888 continue

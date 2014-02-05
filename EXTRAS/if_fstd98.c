@@ -1666,25 +1666,54 @@ ftnword f77name(ip3_val)(ftnfloat *f_level, ftnword *f_kind)
 
 
 /*splitpoint fst_can_translate_name */
-static char exception_vars[256]="^^  >>  !!  ";
+static char exception_vars[256]="~^[>!^]";  /* by default ignore names starting with >!^ */
 static int read_done=0;
+static regex_t pattern;
 
-int FstCanTranslateName(char *varname)
+int FstCanTranslateName(char *varname)  /* is this name NOT FOUND in do no translate table */
 {
   FILE *fileref;
   static char filename[256];
+  char *FST_NOIP_NAME, *BASENAME;
+  int result, i;
+  regmatch_t match_table;
 
-  if (! read_done) {
-    ARMNLIB=getenv("ARMNLIB");
-    snprintf(filename,sizeof(filename),"%s/data/exception_vars",ARMNLIB);
-    if ((fileref = fopen(filename,"r")) != NULL) {
-      if(NULL == fgets(exception_vars,sizeof(exception_vars),fileref) ) exception_vars[0]='\0' ;
-      fprintf(stderr,"OPENED exception file: %s\n",filename);
-      fclose(fileref) ;
-    }
+  if (! read_done) {  /* first call, get do not translate table */
     read_done=1;
+    FST_NOIP_NAME=getenv("FST_NOIP_NAME");
+    ARMNLIB=getenv("ARMNLIB");
+    BASENAME=ARMNLIB;
+    if(FST_NOIP_NAME)  /* environment variable contains the table */
+    {
+      strncpy( exception_vars , FST_NOIP_NAME , sizeof(exception_vars) );
+      BASENAME=NULL;
+      if(exception_vars[0]=='|') BASENAME=exception_vars+1; /* FST_NOIP_NAME contains a file name */
+    }
+    if(BASENAME){ /* get table from $ARMNLIB/data/exception_vars file if it exists */
+      if(BASENAME==ARMNLIB)
+        snprintf(filename,sizeof(filename),"%s/data/exception_vars",ARMNLIB);
+      else
+        snprintf(filename,sizeof(filename),"%s",BASENAME);
+      if ((fileref = fopen(filename,"r")) != NULL) {
+        if(NULL == fgets(exception_vars,sizeof(exception_vars),fileref) ) exception_vars[0]='\0' ;
+        fprintf(stderr,"OPENING exception file: %s\n",filename);
+        fclose(fileref) ;
+      }
+    }
+    if(exception_vars[0]=='~') 
+    {
+      for (i=0 ; exception_vars[i]!='\0' && exception_vars[i]!='\n' ; i++) ; exception_vars[i]='\0';
+      result = regcomp(&pattern,exception_vars+1,REG_EXTENDED|REG_NOSUB);
+      fprintf(stderr,"exception pattern: '%s'\n",exception_vars+1);
+    }
   }
-  return (strstr(exception_vars,varname)==NULL);
+  if(exception_vars[0]=='~')  /* this is a regex pattern */
+  {
+    result = regexec(&pattern,varname,(size_t) 0,NULL,0)!=0;  /* name not in pattern, it can be translated */
+  }else{  /* this is a straight list of 4 char tokens */
+    result = strstr(exception_vars,varname)==NULL ; /* name not in list, it can be translated */
+  }
+  return result;
 }
 /*splitpoint print_std_parms */
 /***************************************************************************** 
