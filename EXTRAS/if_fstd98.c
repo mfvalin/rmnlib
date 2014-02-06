@@ -1666,7 +1666,7 @@ ftnword f77name(ip3_val)(ftnfloat *f_level, ftnword *f_kind)
 
 
 /*splitpoint fst_can_translate_name */
-static char exception_vars[256]="~^[>!^]";  /* by default ignore names starting with >!^ */
+static char exception_vars[256]="~^[<>!^]";  /* by default ignore names starting with >!^ */
 static int read_done=0;
 static regex_t pattern;
 
