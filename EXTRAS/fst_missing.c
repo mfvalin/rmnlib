@@ -80,11 +80,11 @@
  *                               signed char *b, unsigned char *ub)
  * FORTRAN interface:
  *   integer function get_missing_value_flags(f,i,ui,d,s,us,b,ub)
- *   real, intent(IN) :: f
- *   integer, intent(IN) :: i, ui
- *   real *8, intent(IN) :: d
- *   integer *2, intent(IN) :: s, us
- *   integer *1, intent(IN) :: b, ub
+ *   real, intent(OUT) :: f
+ *   integer, intent(OUT) :: i, ui
+ *   real *8, intent(OUT) :: d
+ *   integer *2, intent(OUT) :: s, us
+ *   integer *1, intent(OUT) :: b, ub
  *   NOTE: us, ui, us are unsigned numbers, which can be confusing in FORTRAN
  * 
  * =================================================================================
@@ -100,11 +100,11 @@
  *                               signed char *b, unsigned char *ub)
  * FORTRAN interface:
  *   subroutine set_missing_value_flags(f,i,ui,d,s,us,b,ub)
- *   real, intent(OUT) :: f
- *   integer, intent(OUT) :: i, ui
- *   real *8, intent(OUT) :: d
- *   integer *2, intent(OUT) :: s, us
- *   integer *1, intent(OUT) :: b, ub
+ *   real, intent(IN) :: f
+ *   integer, intent(IN) :: i, ui
+ *   real *8, intent(IN) :: d
+ *   integer *2, intent(IN) :: s, us
+ *   integer *1, intent(IN) :: b, ub
  *   NOTE: us, ui, us are unsigned numbers, which can be confusing in FORTRAN
  * 
  * =================================================================================
