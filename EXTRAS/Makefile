@@ -1,3 +1,5 @@
+#distribution directory, .. should be safe, live dist is often ../..
+DISTDIR=..
 # extras with respect to RPN's version of rmnlib (14)
 # EXTRAS  : load in local library
 EXTRAS = fstd98.o DlInterface.o convert_ip123.o fst_missing.o register_dl_routines.o dlfcn.o
@@ -51,12 +53,12 @@ localdist: $(EXTRAS) $(EXTRAS2)
 	rm -f *.o *.mod
 
 dist: $(EXTRAS)
-	mkdir -p ../lib/$(EC_ARCH)
-	ar rcv ../lib/$(EC_ARCH)/$(RMNLIB) $(EXTRAS)
-	mkdir -p ../include/$(EC_ARCH)
-	mv *.mod ../include/$(EC_ARCH)/
-	cp convert_ip.h ../include/convert_ip.h_new
-	mv ../include/convert_ip.h_new ../include/convert_ip.h
+	mkdir -p $(DISTDIR)/lib/$(EC_ARCH)
+	ar rcv $(DISTDIR)/lib/$(EC_ARCH)/$(RMNLIB) $(EXTRAS)
+	mkdir -p $(DISTDIR)/include/$(EC_ARCH)
+	mv *.mod $(DISTDIR)/include/$(EC_ARCH)/
+	cp convert_ip.h $(DISTDIR)/include/convert_ip.h_new
+	mv $(DISTDIR)/include/convert_ip.h_new $(DISTDIR)/include/convert_ip.h
 	rm -f $(EXTRAS)
 
 tests:	$(TESTS)
