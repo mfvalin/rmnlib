@@ -382,7 +382,7 @@ static int fld_float_anal(float *z, int n , float *zmax, float *zmin)  /* float 
     if(*z < zmi) zmi = *z ;
     if(*z > zma) zma = *z ;
   }
-  if(zma == 0 && zmi == 0 ) zma = 1 ;
+//  if(zma == 0 && zmi == 0 ) zma = 1 ;
   *zmax = zma ;
   *zmin = zmi ;
   return(missing);
@@ -406,7 +406,7 @@ static int fld_double_anal(double *z, int n , double *zmax, double *zmin)  /* do
     if(*z < zmi) zmi = *z ;
     if(*z > zma) zma = *z ;
   }
-  if(zma == 0 && zmi == 0 ) zma = 1 ;
+//  if(zma == 0 && zmi == 0 ) zma = 1 ;
   *zmax = zma ;
   *zmin = zmi ;
   return(missing);
@@ -430,7 +430,7 @@ static int fld_int_anal(int *z, int n , int *zmax, int *zmin) /* integer values 
     if(*z < zmi) zmi = *z ;
     if(*z > zma) zma = *z ;
   }
-  if(zma == 0 && zmi == 0 ) zma = 1 ;
+//  if(zma == 0 && zmi == 0 ) zma = 1 ;
   *zmax = zma ;
   *zmin = zmi ;
   return(missing);
@@ -454,7 +454,7 @@ static int fld_short_anal(short *z, int n , short *zmax, short *zmin) /* short s
     if(*z < zmi) zmi = *z ;
     if(*z > zma) zma = *z ;
   }
-  if(zma == 0 && zmi == 0 ) zma = 1 ;
+//  if(zma == 0 && zmi == 0 ) zma = 1 ;
   *zmax = zma ;
   *zmin = zmi ;
   return(missing);
@@ -478,7 +478,7 @@ static int fld_byte_anal(signed char *z, int n , signed char *zmax, signed char 
     if(*z < zmi) zmi = *z ;
     if(*z > zma) zma = *z ;
   }
-  if(zma == 0 && zmi == 0 ) zma = 1 ;
+//  if(zma == 0 && zmi == 0 ) zma = 1 ;
   *zmax = zma ;
   *zmin = zmi ;
   return(missing);
@@ -502,7 +502,7 @@ static int fld_uint_anal(unsigned int *z, int n , unsigned int *zmax, unsigned i
     if(*z < zmi) zmi = *z ;
     if(*z > zma) zma = *z ;
   }
-  if(zma == 0 && zmi == 0 ) zma = 1 ;
+//  if(zma == 0 && zmi == 0 ) zma = 1 ;
   *zmax = zma ;
   *zmin = zmi ;
   return(missing);
@@ -526,7 +526,7 @@ static int fld_ushort_anal(unsigned short *z, int n , unsigned short *zmax, unsi
     if(*z < zmi) zmi = *z ;
     if(*z > zma) zma = *z ;
   }
-  if(zma == 0 && zmi == 0 ) zma = 1 ;
+//  if(zma == 0 && zmi == 0 ) zma = 1 ;
   *zmax = zma ;
   *zmin = zmi ;
   return(missing);
@@ -550,7 +550,7 @@ static int fld_ubyte_anal(unsigned char *z, int n , unsigned char *zmax, unsigne
     if(*z < zmi) zmi = *z ;
     if(*z > zma) zma = *z ;
   }
-  if(zma == 0 && zmi == 0 ) zma = 1 ;
+//  if(zma == 0 && zmi == 0 ) zma = 1 ;
   *zmax = zma ;
   *zmin = zmi ;
   return(missing);
@@ -572,6 +572,10 @@ static int fst_double_encode_missing(double *z, double *z2, int n, int nbits)  /
     plug = zma + (zma-zmi)*.01;
   else         /* <=8 bits, add appropriate fraction of max-min to max */
     plug = zma + (zma-zmi)*factor[nbits] ;
+
+  if(plug == zma){   /* field is constant, zma == zmi */
+    plug = (zma == 0.0) ? 1.0 : zma*2.0 ;
+  }
   while(n--) { if(*z2==double_missing_val) *z=plug ; else *z=*z2 ; z++ ; z2++ ; }
   return(missing);
 }
@@ -591,6 +595,10 @@ static int fst_float_encode_missing(float *z, float *z2, int n, int nbits)  /* f
     plug = zma + (zma-zmi)*.01;
   else         /* <=8 bits, add appropriate fraction of max-min to max */
     plug = zma + (zma-zmi)*factor[nbits] ;
+
+  if(plug == zma){   /* field is constant, zma == zmi */
+    plug = (zma == 0.0) ? 1.0 : zma*2.0 ;
+  }
   while(n--) { if(*z2==float_missing_val) *z=plug ; else *z=*z2 ; z++ ; z2++ ; }
   return(missing);
 }
