@@ -163,8 +163,8 @@ integer, private, save, dimension(0:Max_Kind) :: islevel = &
 private :: swap, swapi, is_invalid_kind, is_level, ascending, descending
 
 character(len=2), private, save, dimension(0:Max_Kind) :: kinds = &
-  (/    'm ', 'sg', 'mb', '##', 'M ', 'hy', 'th', '??',                       &
-        '??', '??', 'H ', '??', '??', '??', '??', 'I0',                       &
+  (/    ' m', 'sg', 'mb', '##', ' M', 'hy', 'th', '??',                       &
+        '??', '??', ' H', '??', '??', '??', '??', 'I0',                       &
         '??', '[]', '??', '??', '??', 'mp', '??', '??',                       &
         '??', '??', '??', '??', '??', '??', '??', 'I1' /)
 

@@ -1907,7 +1907,8 @@ static void print_std_parms(stdf_dir_keys *stdf_entry, char *pre, char *option,
       if(! FstCanTranslateName(cracked.nomvar)) {
         snprintf(c_level,sizeof(c_level),"%12d   ",iip1);
         if (strstr(option,"LEVEL")) snprintf(v_level,sizeof(v_level),"%15s","     -----     ");
-        if (strstr(option,"IPALL")) snprintf(v_decoded,sizeof(v_decoded),"%16s------%16s","","");
+//        if (strstr(option,"IPALL")) snprintf(v_decoded,sizeof(v_decoded),"%16s------%16s","","");
+        if (strstr(option,"IPALL")) snprintf(v_decoded,sizeof(v_decoded),"[%10d] [%10d] [%10d]",stdf_entry->ip1,stdf_entry->ip2,stdf_entry->ip3);
       }
       else     /* not a special variable  */
       {
