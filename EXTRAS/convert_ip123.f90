@@ -1029,12 +1029,12 @@ SUBROUTINE CONVIP_plus( ip, p, kind, mode, string, flagv )
   kind = -1
   return
 
-  6001 format(' Error in convip: sigma value =',e10.5,' returned ip is -999999')
-  6002 format(' Error in convip: pressure value =',e10.5,' returned ip is -999999')
-  6003 format(' Error in convip: arbitrary value=',e10.5,' returned ip is -999999')
+  6001 format(' Error in convip: sigma value =',e12.5,' returned ip is -999999')
+  6002 format(' Error in convip: pressure value =',e12.5,' returned ip is -999999')
+  6003 format(' Error in convip: arbitrary value=',e12.5,' returned ip is -999999')
   6004 format(' Error in convip: invalid kind =',I10)
-  6005 format(' Error in convip: kind=10 (oldstyle) value out of range=',e10.5,' returned ip is -999999')
-  6006 format(' Error in convip: p is out of bounds =',e10.5,' min=',e10.5,' max=',e10.5,' returned ip is -999999')
+  6005 format(' Error in convip: kind=10 (oldstyle) value out of range=',e12.5,' returned ip is -999999')
+  6006 format(' Error in convip: p is out of bounds =',e12.5,' min=',e12.5,' max=',e12.5,' returned ip is -999999')
 ! 6007 format(' Warning in convip: undetermined kind used =',I10)
 
 end SUBROUTINE CONVIP_plus
