@@ -66,7 +66,7 @@ use ISO_C_BINDING
 public  :: encode_ip_0, encode_ip_1, decode_ip_0, decode_ip_1
 public  :: encode_ip_2, encode_ip_3, decode_ip_2, decode_ip_3
 public  :: convip_plus, test_convip_plus, test_value_to_string
-public  :: value_to_string, kind_to_string, kind_to_string, string_from_kind
+public  :: value_to_string, kind_to_string, string_from_kind
 private :: conv_kind_15
 
 !****T* rmnlib/FLOAT_IP
@@ -216,16 +216,17 @@ subroutine swap(a,b)  ! swap a pair of real values
 end subroutine swap
 !============================= end of private functions ========================================
 !===============================================================================================
-subroutine string_from_kind(code,string) BIND(C,name='KindToString')  ! interface for C routines
+subroutine string_from_kind(code,s1,s2) BIND(C,name='KindToString')  ! interface for C routines
 ! translate kind integer code to 2 character string, gateway to Fortran kind_to_string
   use ISO_C_BINDING
   integer(C_INT), intent(IN), value :: code
-  character(len=1), dimension(2), intent(OUT) :: string
+  integer(C_CHAR), intent(OUT) :: s1, s2
 
   character(len=2) :: temp
   temp = kind_to_string(code)
-  string(1) = temp(1:1)
-  string(2) = temp(2:2)
+  s1 = transfer(temp(1:1),s1)
+  s2 = transfer(temp(2:2),s2)
+  return
 end subroutine string_from_kind
 !
 FUNCTION kind_to_string(code) RESULT(string)  ! translate ip kind into a 2 character string code
@@ -249,7 +250,7 @@ FUNCTION kind_to_string(code) RESULT(string)  ! translate ip kind into a 2 chara
 1 format(A,I1)
 
   return
-end
+end FUNCTION kind_to_string
 
 !===============================================================================================
 !****f* rmnlib/encode_ip_0

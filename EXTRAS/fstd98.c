@@ -63,6 +63,7 @@ static void print_std_parms(stdf_dir_keys *stdf_entry,
 
 static int kinds_table_init = 1;
 static char kind_chars[96];
+
 static char *kinds_table[] = 
 { 
   "??", "??", "??", "??", "??", "??", "??", "??",
@@ -71,7 +72,8 @@ static char *kinds_table[] =
   "??", "??", "??", "??", "??", "??", "??", "??"
 } ;
 
-void KindToString(int kind, char *str);  /* fortran routine from comvertip_123 */
+
+void KindToString(int kind, char *s1, char *s2);  /* fortran routine from comvertip_123 */
 int EncodeMissingValue(void *field,void *field2,int nvalues,int datatype,int nbits,int is_byte,int is_short,int is_double);
 void DecodeMissingValue(void *field,int nvalues,int datatype,int is_byte,int is_short,int is_double);
 
@@ -123,12 +125,16 @@ static void convip_plus(int *ip_new,float *level, int *kind, int *mode,char *s, 
  *****************************************************************************/
 
 static char *kinds(int kind){
+static char *dummy="??";
   int i;
   if(kinds_table_init){       /* initialize table if first call */
-    for(i==0 ; i<=31 ; i++) { KindToString(i,&kind_chars[3*i]); kind_chars[3*i+2] = '\0' ; kinds_table[i] = &kind_chars[3*i] ; }
+    for(i=0 ; i<=31 ; i++) {
+      KindToString(i,&kind_chars[3*i],&kind_chars[3*i+1]);
+      kind_chars[3*i+2] = '\0' ;
+    }
     kinds_table_init=0;
   }
-  return kinds_table[kind];
+  return &kind_chars[3*kind];
 }
 
 
