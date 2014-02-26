@@ -220,7 +220,7 @@ subroutine string_from_kind(code,s1,s2) BIND(C,name='KindToString')  ! interface
 ! translate kind integer code to 2 character string, gateway to Fortran kind_to_string
   use ISO_C_BINDING
   integer(C_INT), intent(IN), value :: code
-  integer(C_CHAR), intent(OUT) :: s1, s2
+  character(C_CHAR), intent(OUT) :: s1, s2
 
   character(len=2) :: temp
   temp = kind_to_string(code)
