@@ -61,21 +61,20 @@ static void crack_std_parms(stdf_dir_keys *stdf_entry,
 static void print_std_parms(stdf_dir_keys *stdf_entry,
                             char *pre, char *option,int header);
 
-static char *kinds[] = 
+static int kinds_table_init = 1;
+static char kind_chars[96];
+static char *kinds_table[] = 
 { 
-  " m", "sg", "mb", "##", " M", "hy", "th", "??",
-  "??", "??", " H", "??", "??", "??", "??", "  ",
-  "??", "[]", "??", "??", "??", "mp", "??", "??",
-  "??", "??", "??", "??", "??", "??", "??", "  "
+  "??", "??", "??", "??", "??", "??", "??", "??",
+  "??", "??", "??", "??", "??", "??", "??", "??",
+  "??", "??", "??", "??", "??", "??", "??", "??",
+  "??", "??", "??", "??", "??", "??", "??", "??"
 } ;
-  
+
+void KindToString(int kind, char *str);  /* fortran routine from comvertip_123 */
 int EncodeMissingValue(void *field,void *field2,int nvalues,int datatype,int nbits,int is_byte,int is_short,int is_double);
 void DecodeMissingValue(void *field,int nvalues,int datatype,int is_byte,int is_short,int is_double);
 
-static void convip_plus(int *ip_new,float *level, int *kind, int *mode,char *s, int *flag)
-{
-  ConvertIp(ip_new,level,kind,*mode);
-};
 /*splitpoint aaaa_comment */
 /*****************************************************************************
  *                                                                           * 
@@ -86,9 +85,52 @@ static void convip_plus(int *ip_new,float *level, int *kind, int *mode,char *s, 
  *Authors                                                                    *
  *  M. Lepine - M. Valin                                                     *
  *  Revised version based on XDF internal file structure.                    *
+ *  Revised feb 2014, revisited ip translation and IP printing.              *
+ *        print_std_parms, convip_plus, kinds                                *
  *                                                                           *
  *                                                                           *
  *****************************************************************************/
+
+/*****************************************************************************
+ *                        C O N V I P _ P L U S                              *
+ *                                                                           *
+ *Object                                                                     *
+ *   Interface to IP conversion package                   .                  *
+ *   ignore s and flag from old convip                    .                  *
+ *                                                                           *
+ *Arguments                                                                  *
+ *                                                                           *
+ *  IN/OUT ip_new, kind, level, mode   (see ConvertIp)                       *
+ *                                                                           *
+ *****************************************************************************/
+
+static void convip_plus(int *ip_new,float *level, int *kind, int *mode,char *s, int *flag)
+{
+  ConvertIp(ip_new,level,kind,*mode);  /* ignore s and flag that are not used anyway */
+}
+
+/*****************************************************************************
+ *                            K I N D S                                      *
+ *                                                                           *
+ *Object                                                                     *
+ *   translate kind code to 2 char string                   .                *
+ *   private function                                       .                *
+ *                                                                           *
+ *Arguments                                                                  *
+ *                                                                           *
+ *  IN  kind                                                                 *
+ *                                                                           *
+ *****************************************************************************/
+
+static char *kinds(int kind){
+  int i;
+  if(kinds_table_init){       /* initialize table if first call */
+    for(i==0 ; i<=31 ; i++) { KindToString(i,&kind_chars[3*i]); kind_chars[3*i+2] = '\0' ; kinds_table[i] = &kind_chars[3*i] ; }
+    kinds_table_init=0;
+  }
+  return kinds_table[kind];
+}
+
 
 
 /*splitpoint c_fstapp */

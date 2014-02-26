@@ -1939,7 +1939,7 @@ static void print_std_parms(stdf_dir_keys *stdf_entry, char *pre, char *option,
             p1 = stdf_entry->ip1 ; p2 = stdf_entry->ip2 ; p3 = stdf_entry->ip3;
           }
           kind1 &= 0x1F ; kind2 &= 0x1F ; kind3 &= 0x1F ;   /* force modulo 32 */
-          snprintf(v_decoded,sizeof(v_decoded),"%10g%s %10g%s %10g%s",p1,kinds[kind1],p2,kinds[kind2],p3,kinds[kind3]);
+          snprintf(v_decoded,sizeof(v_decoded),"%10g%s %10g%s %10g%s",p1,kinds(kind1),p2,kinds(kind2),p3,kinds(kind3));
         }
       }     /* special variable, no decoding */
     }

@@ -33,7 +33,7 @@ use ISO_C_BINDING
 !  encode_ip_0, encode_ip_1, encode_ip_2, encode_ip_3
 !  decode_ip_0, decode_ip_1, decode_ip_2, decode_ip_3
 ! AUTHOR
-!  M.Valin 2013
+!  M.Valin 2013, 2014
 ! EXAMPLES
 !   use convert_ip123
 !   implicit none
@@ -66,7 +66,7 @@ use ISO_C_BINDING
 public  :: encode_ip_0, encode_ip_1, decode_ip_0, decode_ip_1
 public  :: encode_ip_2, encode_ip_3, decode_ip_2, decode_ip_3
 public  :: convip_plus, test_convip_plus, test_value_to_string
-public  :: value_to_string, kind_to_string
+public  :: value_to_string, kind_to_string, kind_to_string, string_from_kind
 private :: conv_kind_15
 
 !****T* rmnlib/FLOAT_IP
@@ -164,9 +164,9 @@ private :: swap, swapi, is_invalid_kind, is_level, ascending, descending
 
 character(len=2), private, save, dimension(0:Max_Kind) :: kinds = &
   (/    ' m', 'sg', 'mb', '##', ' M', 'hy', 'th', '??',                       &
-        '??', '??', ' H', '??', '??', '??', '??', 'I0',                       &
+        '??', '??', ' H', '??', '??', '??', '??', '_0',                       &
         '??', '[]', '??', '??', '??', 'mp', '??', '??',                       &
-        '??', '??', '??', '??', '??', '??', '??', 'I1' /)
+        '??', '??', '??', '??', '??', '??', '??', '_1' /)
 
 
 contains
@@ -216,6 +216,18 @@ subroutine swap(a,b)  ! swap a pair of real values
 end subroutine swap
 !============================= end of private functions ========================================
 !===============================================================================================
+subroutine string_from_kind(code,string) BIND(C,name='KindToString')  ! interface for C routines
+! translate kind integer code to 2 character string, gateway to Fortran kind_to_string
+  use ISO_C_BINDING
+  integer(C_INT), intent(IN), value :: code
+  character(len=1), dimension(2), intent(OUT) :: string
+
+  character(len=2) :: temp
+  temp = kind_to_string(code)
+  string(1) = temp(1:1)
+  string(2) = temp(2:2)
+end subroutine string_from_kind
+!
 FUNCTION kind_to_string(code) RESULT(string)  ! translate ip kind into a 2 character string code
   integer, intent(IN) :: code
   character(len=2) :: string
