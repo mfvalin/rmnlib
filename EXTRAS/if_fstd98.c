@@ -1746,8 +1746,8 @@ static void print_std_parms(stdf_dir_keys *stdf_entry, char *pre, char *option,
   int ig1, ig2, ig3, ig4;
   float level;
   char c_level[16], pg1[7], pg2[7], pg3[8], pg4[8];
-  char h_dims[18], h_dateo[16], h_stampo[10], h_datev[26], h_level[16], h_ip1[10], h_grid[32];
-  char v_dims[20], v_dateo[16], v_stampo[10], v_datev[26], v_level[16], v_ip1[10], v_grid[32];
+  char h_dims[23], h_dateo[16], h_stampo[10], h_datev[26], h_level[16], h_ip1[10], h_grid[32];
+  char v_dims[23], v_dateo[16], v_stampo[10], v_datev[26], v_level[16], v_ip1[10], v_grid[32];
   char h_decoded[39], v_decoded[39];
   char h_nomv[5], h_typv[3], h_etiq[13], h_ip23[20], h_deet[9], h_npas[9], h_dty[5]; 
   char v_nomv[5], v_typv[3], v_etiq[13], v_ip23[20], v_deet[9], v_npas[9], v_dty[5]; 
@@ -1774,10 +1774,10 @@ static void print_std_parms(stdf_dir_keys *stdf_entry, char *pre, char *option,
     if (strstr(option,"NOETIQ"))
       h_etiq[0]='\0';
     else
-      snprintf(h_etiq,sizeof(h_etiq),"%s","ETIQUETTE   ");
+      snprintf(h_etiq,sizeof(h_etiq),"%s","  ETIQUETTE ");
 
     if (strstr(option,"NINJNK"))
-      snprintf(h_dims,sizeof(h_dims),"%s","   NI    NJ    NK");
+      snprintf(h_dims,sizeof(h_dims),"%s","      NI      NJ    NK");
     else
       h_dims[0]='\0';
 
@@ -1861,7 +1861,7 @@ static void print_std_parms(stdf_dir_keys *stdf_entry, char *pre, char *option,
     snprintf(v_etiq,sizeof(v_etiq),"%12s",cracked.etiket);
 
   if (strstr(option,"NINJNK"))
-    snprintf(v_dims,sizeof(v_dims),"%5d %5d %5d",stdf_entry->ni,stdf_entry->nj,stdf_entry->nk);
+    snprintf(v_dims,sizeof(v_dims)," %7d %7d %5d",stdf_entry->ni,stdf_entry->nj,stdf_entry->nk);
   else
     v_dims[0]='\0';
 
