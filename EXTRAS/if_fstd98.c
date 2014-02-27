@@ -1691,7 +1691,7 @@ int FstCanTranslateName(char *varname)  /* is this name NOT FOUND in do no trans
     }
     if(BASENAME){ /* get table from $ARMNLIB/data/exception_vars file if it exists */
       if(BASENAME==ARMNLIB)
-        snprintf(filename,sizeof(filename),"%s/data/exception_vars",ARMNLIB);
+        snprintf(filename,sizeof(filename),"%s/data/exception_regex_var",ARMNLIB);
       else
         snprintf(filename,sizeof(filename),"%s",BASENAME);
       if ((fileref = fopen(filename,"r")) != NULL) {
