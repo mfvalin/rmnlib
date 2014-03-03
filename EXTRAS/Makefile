@@ -8,7 +8,8 @@ EXTRAS2 = float_packer.o  c_zfstlib.o vmm.o
 TESTS = test_z test_p test_f test_d test_c
 
 #RMNLIB = librmnbeta_14.819u.a
-RMNLIB = librmn_014.826u.a
+#RMNLIB = librmn_014.826u.a
+RMNLIB = librmnbeta_015
 all:	obj
 
 # dynamic loader interface
