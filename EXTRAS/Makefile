@@ -9,7 +9,7 @@ TESTS = test_z test_p test_f test_d test_c
 
 #RMNLIB = librmnbeta_14.819u.a
 #RMNLIB = librmn_014.826u.a
-RMNLIB = librmnbeta_015
+RMNLIB = librmnbeta_015.a
 all:	obj
 
 # dynamic loader interface
