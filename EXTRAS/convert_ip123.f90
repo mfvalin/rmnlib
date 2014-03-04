@@ -17,6 +17,53 @@
 ! * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ! * Boston, MA 02111-1307, USA.
 ! */
+module format_ip123_kind  ! translate kind integer value into a 2 character string
+integer, parameter, private :: Max_Kind=31
+character(len=2), private, save, dimension(0:Max_Kind) :: kinds = &
+  (/    ' m', 'sg', 'mb', '##', ' M', 'hy', 'th', '??',                       &
+        '??', '??', ' H', '??', '??', '??', '??', '_0',                       &
+        '??', '[]', '??', '??', '??', 'mp', '??', '??',                       &
+        '??', '??', '??', '??', '??', '??', '??', '_1' /)
+
+contains
+!===============================================================================================
+subroutine c_kind_to_string(code,s1,s2) BIND(C,name='KindToString')  ! interface for C routines
+! translate kind integer code to 2 character string, gateway to Fortran kind_to_string
+  use ISO_C_BINDING
+  integer(C_INT), intent(IN), value :: code
+  character(C_CHAR), intent(OUT) :: s1, s2
+
+  character(len=2) :: temp
+  temp = kind_to_string(code)
+  s1 = transfer(temp(1:1),s1)
+  s2 = transfer(temp(2:2),s2)
+  return
+end subroutine c_kind_to_string
+!
+FUNCTION kind_to_string(code) RESULT(string)  ! translate ip kind into a 2 character string code
+  integer, intent(IN) :: code
+  character(len=2) :: string
+
+  string = '!!'    ! precondition to fail
+
+  if(code<0) return   ! invalid type code
+
+  if(code<=Max_Kind) then
+    string = kinds(code)  ! straight table lookup
+    return
+  endif
+
+  if(mod(code,16)/=15) return  ! not a subkind of kind 15
+
+  if(code/16>9)  return  ! not a potentially valid subkind of kind 15
+
+  write(1,string)'I',code/16   ! 'In' code where n=code/16 (n=0,1..,9)
+1 format(A,I1)
+
+  return
+end FUNCTION kind_to_string
+
+end module format_ip123_kind
 !****P* rmnlib/convert_ip123
 ! SYNOPSIS
 module convert_ip123
@@ -161,14 +208,6 @@ integer, private, save, dimension(0:Max_Kind) :: islevel = &
       0,  0,  0,  0,  0,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0  /)
 
 private :: swap, swapi, is_invalid_kind, is_level, ascending, descending
-
-character(len=2), private, save, dimension(0:Max_Kind) :: kinds = &
-  (/    ' m', 'sg', 'mb', '##', ' M', 'hy', 'th', '??',                       &
-        '??', '??', ' H', '??', '??', '??', '??', '_0',                       &
-        '??', '[]', '??', '??', '??', 'mp', '??', '??',                       &
-        '??', '??', '??', '??', '??', '??', '??', '_1' /)
-
-
 contains
 !=========================== start of private functions ========================================
 !===============================================================================================
@@ -215,43 +254,6 @@ subroutine swap(a,b)  ! swap a pair of real values
   return
 end subroutine swap
 !============================= end of private functions ========================================
-!===============================================================================================
-subroutine string_from_kind(code,s1,s2) BIND(C,name='KindToString')  ! interface for C routines
-! translate kind integer code to 2 character string, gateway to Fortran kind_to_string
-  use ISO_C_BINDING
-  integer(C_INT), intent(IN), value :: code
-  character(C_CHAR), intent(OUT) :: s1, s2
-
-  character(len=2) :: temp
-  temp = kind_to_string(code)
-  s1 = transfer(temp(1:1),s1)
-  s2 = transfer(temp(2:2),s2)
-  return
-end subroutine string_from_kind
-!
-FUNCTION kind_to_string(code) RESULT(string)  ! translate ip kind into a 2 character string code
-  integer, intent(IN) :: code
-  character(len=2) :: string
-
-  string = '!!'    ! precondition to fail
-
-  if(code<0) return   ! invalid type code
-  
-  if(code<=Max_Kind) then
-    string = kinds(code)  ! straight table lookup
-    return
-  endif
-  
-  if(mod(code,16)/=15) return  ! not a subkind of kind 15
-  
-  if(code/16>9)  return  ! not a potentially valid subkind of kind 15
-  
-  write(1,string)'I',code/16   ! 'In' code where n=code/16 (n=0,1..,9)
-1 format(A,I1)
-
-  return
-end FUNCTION kind_to_string
-
 !===============================================================================================
 !****f* rmnlib/encode_ip_0
 ! SUMMARY
@@ -711,6 +713,7 @@ end subroutine C_CONV_IP
 !  necessaire avant de lire/ecrire un enregistrement sur un fichier standard.
 ! SYNOPSIS
 SUBROUTINE CONVIP_plus( ip, p, kind, mode, string, flagv )
+  use format_ip123_kind
   implicit none
 ! ARGUMENTS
   integer, intent(INOUT) :: ip, kind
@@ -984,7 +987,7 @@ SUBROUTINE CONVIP_plus( ip, p, kind, mode, string, flagv )
           if (flag) then  ! convert P into a formatted string with appropriate units for kind
              string2=""
              status=value_to_string(p , string2 , min(len(string2),len(string)-3) )
-             string=trim(string2)//' '//kinds(kind)
+             string=trim(string2)//' '//kind_to_string(kind)
           endif
       elseif (  12000 .lt. ip .and. ip .le. 32000) then  !  ...  hauteur old style ...
           kind = 0
