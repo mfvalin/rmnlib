@@ -2,7 +2,8 @@
  *                        E X C D E S . C                                    *
  *                                                                           *
  *Auteur                                                                     *
- *   Mario Lépine  -  Mai 2004                                               *
+ *   Mario Lépine  -  Mai  2004                                              *
+ *   Michel Valin  -  Mars 2014                                              *
  *                                                                           *
  *Objet                                                                      *
  *   Definir pour le logiciel des fichiers standards des criteres            * 
@@ -89,14 +90,23 @@ typedef struct {
 
 typedef struct {
   int in_use;
+  int in_use_supp;
   int exdes;
   DE_char etiquettes;
   DE_char nomvars;
   DE_char typvars;
+  DE_char grdtyps;    /* "supplementary" criterion */
   DE_int dates;
   DE_int ip1s;
   DE_int ip2s;
   DE_int ip3s;
+  DE_int nis;    /* the next 7 items are "supplementary" criteria */
+  DE_int njs;
+  DE_int nks;
+  DE_int ig1s;
+  DE_int ig2s;
+  DE_int ig3s;
+  DE_int ig4s;
 } DesireExclure;
 
 Desire_Exclure Requetes[MAX_requetes];
@@ -496,6 +506,10 @@ return 0; /*CHC/NRC*/
  *  IN  handle     handle de l'enregistrement courant                        *
  *                                                                           *
  *****************************************************************************/
+int c_fst_match_req(int handle)
+{
+  return(1);
+}
 int C_fst_match_req(int handle)
 {
   int ier, i, j, set_nb, last_in_use;
@@ -1040,74 +1054,45 @@ int C_requetes_reset(int set_nb, int nomvars, int typvars, int etikets, int date
   }
 
   Requests[set_nb].in_use = UNUSED;
+  Requests[set_nb].in_use_supp = UNUSED;
   Requests[set_nb].exdes = -1;
-  Requetes[set_nb].in_use = 0;
-  Requetes[set_nb].exdes = -1;
   if (nomvars != -1) {
     Requests[set_nb].nomvars.in_use = UNUSED;
     Requests[set_nb].nomvars.nelm = 0;
     for (j=0; j < MAX_Nlist; j++)
       strcpy(Requests[set_nb].nomvars.sdata[j],"    ");
-    Requetes[set_nb].nomvars.in_use = 0;
-    Requetes[set_nb].nomvars.nelm = 0;
-    for (j=0; j < MAX_Nlist; j++)
-      strcpy(Requetes[set_nb].nomvars.sdata[j],"    ");
   }
   if (typvars != -1) {
     Requests[set_nb].typvars.in_use = UNUSED;
     Requests[set_nb].typvars.nelm = 0;
     for (j=0; j < MAX_Nlist; j++)
       strcpy(Requests[set_nb].typvars.sdata[j],"  ");
-    Requetes[set_nb].typvars.in_use = 0;
-    Requetes[set_nb].typvars.nelm = 0;
-    for (j=0; j < MAX_Nlist; j++)
-      strcpy(Requetes[set_nb].typvars.sdata[j],"  ");
   }
   if (etikets != -1) {
     Requests[set_nb].etiquettes.in_use = UNUSED;
     Requests[set_nb].etiquettes.nelm = 0;
     for (j=0; j < MAX_Nlist; j++)
       strcpy(Requests[set_nb].etiquettes.sdata[j],"            ");
-    Requetes[set_nb].etiquettes.in_use = 0;
-    Requetes[set_nb].etiquettes.nelm = 0;
-    for (j=0; j < MAX_Nlist; j++)
-      strcpy(Requetes[set_nb].etiquettes.sdata[j],"            ");
   }
   if (dates != -1) {
     Requests[set_nb].dates.in_use = UNUSED;
     Requests[set_nb].dates.nelm = 0;
     for (j=0; j < MAX_Nlist; j++)
       Requests[set_nb].dates.data[j]=0;
-    Requetes[set_nb].dates.in_use = 0;
-    Requetes[set_nb].dates.nelm = 0;
-    for (j=0; j < MAX_Nlist; j++)
-      Requetes[set_nb].dates.data.tab_elem[j]=0;
   }
   if (ip1s != -1) {
-    Requetes[set_nb].ip1s.in_use = UNUSED;
-    Requetes[set_nb].ip1s.nelm = 0;
-    for (j=0; j < MAX_Nlist; j++)
-       Requetes[set_nb].ip1s.data.tab_elem[j]=0;
     Requests[set_nb].ip1s.in_use = UNUSED;
     Requests[set_nb].ip1s.nelm = 0;
     for (j=0; j < MAX_Nlist; j++)
        Requests[set_nb].ip1s.data[j]=0;
   }
   if (ip2s != -1) {
-    Requetes[set_nb].ip2s.in_use = UNUSED;
-    Requetes[set_nb].ip2s.nelm = 0;
-    for (j=0; j < MAX_Nlist; j++)
-      Requetes[set_nb].ip2s.data.tab_elem[j]=0;
     Requests[set_nb].ip2s.in_use = UNUSED;
     Requests[set_nb].ip2s.nelm = 0;
     for (j=0; j < MAX_Nlist; j++)
        Requests[set_nb].ip2s.data[j]=0;
   }
   if (ip3s != -1) {
-    Requetes[set_nb].ip3s.in_use = UNUSED;
-    Requetes[set_nb].ip3s.nelm = 0;
-    for (j=0; j < MAX_Nlist; j++)
-       Requetes[set_nb].ip3s.data.tab_elem[j]=0;
     Requests[set_nb].ip3s.in_use = UNUSED;
     Requests[set_nb].ip3s.nelm = 0;
     for (j=0; j < MAX_Nlist; j++)
@@ -1123,7 +1108,7 @@ int C_requetes_reset(int set_nb, int nomvars, int typvars, int etikets, int date
  *   Initialiser le package de requetes                                      *
  *                                                                           *
  *****************************************************************************/
-void C_requetes_init(char *requetes_filename, char *debug_filename)
+void c_requetes_init(char *requetes_filename, char *debug_filename)
 {
   int i,j,ier;
 
@@ -1135,25 +1120,18 @@ void C_requetes_init(char *requetes_filename, char *debug_filename)
 
   for (i=0; i<MAX_requetes; i++) {
     for (j=0; j<MAX_Nlist; j++) {
-      Requetes[i].etiquettes.sdata[j] = (char *) malloc(13);
-      Requetes[i].nomvars.sdata[j] = (char *) malloc(5);
-      Requetes[i].typvars.sdata[j] = (char *) malloc(3);
+      Requests[i].etiquettes.sdata[j] = (char *) malloc(13);
+      Requests[i].nomvars.sdata[j] = (char *) malloc(5);
+      Requests[i].typvars.sdata[j] = (char *) malloc(3);
+      Requests[i].grdtyps.sdata[j] = (char *) malloc(2);
     }
     C_requetes_reset(i,1,1,1,1,1,1,1);
   }
 
-  for (i=0; i<MAX_requetes; i++) {
-    for (j=0; j<MAX_Nlist; j++) {
-      Requests[i].etiquettes.sdata[j] = (char *) malloc(13);
-      Requests[i].nomvars.sdata[j] = (char *) malloc(5);
-      Requests[i].typvars.sdata[j] = (char *) malloc(3);
-    }
-    C_requetes_reset(i,1,1,1,1,1,1,1);
-  }
-  
   /* requetes_filename = getenv("FST_FILTER_FILE"); */
   if (requetes_filename != NULL)
     ier = C_requetes_read_file(requetes_filename);
+  fprintf(stderr,"request table initialized \n");
 }
 
 /*****************************************************************************
@@ -1163,7 +1141,7 @@ void C_requetes_init(char *requetes_filename, char *debug_filename)
  *   Traiter les directives desires pour ip1 ip2 et ip3                      *
  *                                                                           *
  *****************************************************************************/
-int Directive_ip123(int argc , char **argv,char cmd_strt,  int *func(), char *Private_Data_2)
+int Directive_ip123(int argc , char **argv,char cmd_strt,  void *func(), char *Private_Data_2)
 {
   int i, set_nb, des_exc, nelm, kind, offset, n, range;
   int list_entier[100];
@@ -1251,7 +1229,7 @@ int Directive_ip123(int argc , char **argv,char cmd_strt,  int *func(), char *Pr
  *   Traiter les directives desires pour la date (en format datestamp)       *
  *                                                                           *
  *****************************************************************************/
-int Directive_dates(int argc , char **argv,char cmd_strt,  int *func(int set_nb, int des_exc, int *date_list, int nelm, float delta), char *Private_Data_2)
+int Directive_dates(int argc , char **argv,char cmd_strt,  void *func(int set_nb, int des_exc, int *date_list, int nelm, float delta), char *Private_Data_2)
 {
   int i, set_nb, des_exc, nelm, offset, n, range;
   float delta;
@@ -1306,7 +1284,7 @@ int Directive_dates(int argc , char **argv,char cmd_strt,  int *func(int set_nb,
  *   Traiter les directives desires pour la date (en format visuel)          *
  *                                                                           *
  *****************************************************************************/
-int Directive_datev(int argc , char **argv,char cmd_strt,  int *func(), char *Private_Data_2)
+int Directive_datev(int argc , char **argv,char cmd_strt,  void *func(), char *Private_Data_2)
 {
   int i, j, set_nb, des_exc, nelm, offset;
   int yyyymmdd, hhmmss, stamp;
@@ -1375,7 +1353,7 @@ int Directive_datev(int argc , char **argv,char cmd_strt,  int *func(), char *Pr
  *   Traiter les directives desires pour nomvar, typvar et etiquette         *
  *                                                                           *
  *****************************************************************************/
-int Directive_charvar(int argc , char **argv,char cmd_strt,  int *func(), char *Private_Data_2)
+int Directive_charvar(int argc , char **argv,char cmd_strt,  void *func(), char *Private_Data_2)
 {
   int i, set_nb, des_exc, nelm, offset;
   char **string_array;
@@ -1421,7 +1399,7 @@ int Directive_charvar(int argc , char **argv,char cmd_strt,  int *func(), char *
  *   Change la variable globale pour le mode desire                          *
  *                                                                           *
  *****************************************************************************/
-int Directive_desire(int argc , char **argv,char cmd_strt,  int *func(), char *Private_Data_2)
+int Directive_desire(int argc , char **argv,char cmd_strt,  void *func(), char *Private_Data_2)
 {
 	func();
 /*CHC/NRC*/
@@ -1435,7 +1413,7 @@ int Directive_desire(int argc , char **argv,char cmd_strt,  int *func(), char *P
  *   Change la variable globale pour le mode exclure                         *
  *                                                                           *
  *****************************************************************************/
-int Directive_exclure(int argc , char **argv,char cmd_strt,  int *func(), char *Private_Data_2)
+int Directive_exclure(int argc , char **argv,char cmd_strt,  void *func(), char *Private_Data_2)
 {
 	func();
 /*CHC/NRC*/
@@ -1453,6 +1431,9 @@ int C_requetes_read_file(char *requetes_file)
 {
   FILE *fp;
   int *pv2 = 0;
+
+fprintf(stderr,"C _ R E Q U E T E S _ R E A D _ F I L E : FEATURE NOT ACTIVE\n");
+return 0;
 
   fp = fopen(requetes_file,"r");
   if (fp == (FILE *) NULL) {
