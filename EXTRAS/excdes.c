@@ -22,6 +22,7 @@
 #define MAX_Nlist 40
 #define MAX_requetes 20
 #define Abs(x) (((x) < 0) ? -(x) : x)
+#define Min(x,y) ((x < y) ? x : y)
 #if defined (DEBUG)
   #define dbprint fprintf
 #else
