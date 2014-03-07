@@ -32,9 +32,10 @@
 
 char **fill_string_array(char **string_array, char *farray, int nc, int ns, int rmblanks);
 char **allocate_string_array(int ns);
-
+#ifdef NOTUSED
 enum cquoica {unused,entier, reel, deb_fin_entier, deb_fin_reel, deb_fin_entier_delta,
               deb_fin_reel_delta} parametre;
+#endif
 // enum onveut {desire, exclure} call_mode;
 
 #define DESIRE 1
@@ -44,13 +45,14 @@ enum cquoica {unused,entier, reel, deb_fin_entier, deb_fin_reel, deb_fin_entier_
 #define USED 255
 #define VALUE 1
 #define RANGE 2
+#define DELTA 3
 
 static int first_R = 0;
 static int last_R = MAX_requetes;
 static FILE *stddebug;
 static int bundle_nb = -1;
 static int desire_exclure = 1;
-
+#ifdef NOTUSED
 typedef struct {
   int in_use;
   enum cquoica arg_type;
@@ -62,7 +64,7 @@ typedef struct {
     float tab_rval[MAX_Nlist];
   } data;
 } DE_int_float;
-
+#endif
 typedef struct {
   int in_use;
   int nelm;
@@ -75,7 +77,7 @@ typedef struct {
   int nelm;
   char *sdata[MAX_Nlist];
 } DE_char;
-
+#ifdef NOTUSED
 typedef struct {
   int in_use;
   int exdes;
@@ -87,7 +89,7 @@ typedef struct {
   DE_int_float ip2s;
   DE_int_float ip3s;
 } Desire_Exclure;
-
+#endif
 typedef struct {
   int in_use;
   int in_use_supp;
@@ -95,21 +97,21 @@ typedef struct {
   DE_char etiquettes;
   DE_char nomvars;
   DE_char typvars;
-  DE_char grdtyps;    /* "supplementary" criterion */
   DE_int dates;
   DE_int ip1s;
   DE_int ip2s;
   DE_int ip3s;
-  DE_int nis;    /* the next 7 items are "supplementary" criteria */
-  DE_int njs;
-  DE_int nks;
-  DE_int ig1s;
-  DE_int ig2s;
-  DE_int ig3s;
-  DE_int ig4s;
+  int nis;    /* the next 7 items are integer "supplementary" criteria */
+  int njs;    /* -1 means it is not to be used */
+  int nks;
+  int ig1s;
+  int ig2s;
+  int ig3s;
+  int ig4s;
+  char grdtyps;    /* "supplementary" criterion grid type, ' ' means do not use */
 } DesireExclure;
 
-Desire_Exclure Requetes[MAX_requetes];
+//Desire_Exclure Requetes[MAX_requetes];
 DesireExclure  Requests[MAX_requetes];
 
 static int ValidateRequestForSet(int set_nb, int des_exc, int nelm, int nelm_lt, char *msg)
@@ -131,7 +133,7 @@ static int ValidateRequestForSet(int set_nb, int des_exc, int nelm, int nelm_lt,
     }
   }
 
-  if ((Requetes[set_nb].in_use) && (((des_exc == 1) ? DESIRE : EXCLURE) != Requetes[set_nb].exdes)) {
+  if ((Requests[set_nb].in_use) && (((des_exc == 1) ? DESIRE : EXCLURE) != Requests[set_nb].exdes)) {
     fprintf(stderr,"C_select_ip1 error: des_exc value differs from previous call for set number=%d\n",set_nb);
     return(-4);
   }
@@ -306,22 +308,22 @@ int Xc_Select_date(int set_nb, int des_exc, int *date_list, int nelm, float delt
     nelm = 2;
   }
 
-  Requetes[set_nb].in_use = 1;
-  Requetes[set_nb].dates.in_use = 1;
-  Requetes[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
-  Requetes[set_nb].dates.nelm = nelm;
-  Requetes[set_nb].dates.delta= delta;
+  Requests[set_nb].in_use = 1;
+  Requests[set_nb].dates.in_use = 1;
+  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
+  Requests[set_nb].dates.nelm = nelm;
+  Requests[set_nb].dates.delta= delta;
   if (delta != 0.) {
-    Requetes[set_nb].dates.arg_type = deb_fin_entier_delta;
-    dbprint(stddebug,"Debug Requetes[%i].dates.arg_type=%d delta=%f\n",
-           set_nb,Requetes[set_nb].dates.arg_type,Requetes[set_nb].dates.delta);
+    Requests[set_nb].dates.in_use = DELTA;
+    dbprint(stddebug,"Debug Requests[%i].dates.arg_type=%d delta=%f\n",
+           set_nb,Requests[set_nb].dates.in_use,Requests[set_nb].dates.delta);
   }
   else
-    Requetes[set_nb].dates.arg_type = (range ==1) ? deb_fin_entier : entier;
+    Requests[set_nb].dates.in_use = (range ==1) ? RANGE : VALUE;
   for (i=0; i<nelm; i++) {
-    Requetes[set_nb].dates.data.tab_elem[i] = date_list[i];
-    dbprint(stddebug,"Debug Requetes[%d].dates.data.tab_elem[%d] = %d\n",set_nb,i,
-           Requetes[set_nb].dates.data.tab_elem[i]);
+    Requests[set_nb].dates.data[i] = date_list[i];
+    dbprint(stddebug,"Debug Requests[%d].dates.data[%d] = %d\n",set_nb,i,
+           Requests[set_nb].dates.data[i]);
   }
   return(0);
 }
@@ -348,14 +350,14 @@ int Xc_Select_etiquette(int set_nb, int des_exc, char *etiq_list[], int nelm)
   valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "etiquette");
   if(valid < 0) return(valid);
 
-  Requetes[set_nb].in_use = 1;
-  Requetes[set_nb].etiquettes.in_use = 1;
-  Requetes[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
-  Requetes[set_nb].etiquettes.nelm = nelm;
+  Requests[set_nb].in_use = 1;
+  Requests[set_nb].etiquettes.in_use = 1;
+  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
+  Requests[set_nb].etiquettes.nelm = nelm;
   for (i=0; i<nelm; i++) {
-    strncpy(Requetes[set_nb].etiquettes.sdata[i],etiq_list[i],13);
-    dbprint(stddebug,"Debug Requetes[%i].etiquettes.sdata[%i]=%s\n",
-           set_nb,i,Requetes[set_nb].etiquettes.sdata[i]);
+    strncpy(Requests[set_nb].etiquettes.sdata[i],etiq_list[i],13);
+    dbprint(stddebug,"Debug Requests[%i].etiquettes.sdata[%i]=%s\n",
+           set_nb,i,Requests[set_nb].etiquettes.sdata[i]);
   }
   return(0);
 }
@@ -382,15 +384,53 @@ int Xc_Select_nomvar(int set_nb, int des_exc, char *nomv_list[], int nelm)
   valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "nomvar");
   if(valid < 0) return(valid);
 
-  Requetes[set_nb].in_use = 1;
-  Requetes[set_nb].nomvars.in_use = 1;
-  Requetes[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
-  Requetes[set_nb].nomvars.nelm = nelm;
+  Requests[set_nb].in_use = 1;
+  Requests[set_nb].nomvars.in_use = 1;
+  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
+  Requests[set_nb].nomvars.nelm = nelm;
   for (i=0; i<nelm; i++) {
-    strncpy(Requetes[set_nb].nomvars.sdata[i],nomv_list[i],5);
-    dbprint(stddebug,"Debug Requetes[%i].nomvars.sdata[%i]=%s\n",
-           set_nb,i,Requetes[set_nb].nomvars.sdata[i]);
+    strncpy(Requests[set_nb].nomvars.sdata[i],nomv_list[i],5);
+    dbprint(stddebug,"Debug Requests[%i].nomvars.sdata[%i]=%s\n",
+           set_nb,i,Requests[set_nb].nomvars.sdata[i]);
   }
+  return(0);
+}
+
+/*****************************************************************************
+ *                    X C _ S E L E C T _ S U P P L                          *
+ *                                                                           *
+ *Objet                                                                      *
+ *   Definir la liste des criteres "supplementaires"                         *
+ *                                                                           *
+ *Arguments                                                                  *
+ *                                                                           *
+ *  IN  set_nb     numero associe a un groupe d'elements desire/exclure      *
+ *  IN  des_exc    0=exclure 1=desire                                        *
+ *  IN      ni,nj,nk,ig1,ig2,ig3,ig4,grtyp                                   *
+ *          dimension et grille horizontale                                  *
+ *          -1 : pas de selection   (ni,nj,nk,ig1,ig2,ig3,ig4)               *
+ *          ' ': pas de selection (grtyp)                                    *
+ *                                                                           *
+ *****************************************************************************/
+int Xc_Select_suppl(int set_nb, int des_exc, int ni, int nj, int nk, int ig1, int ig2, int ig3, int ig4, char gtyp)
+{
+  int i;
+  int valid;
+
+  valid = ValidateRequestForSet(set_nb, des_exc, 1, 1, "suppl");
+  if(valid < 0) return(valid);
+
+  Requests[set_nb].in_use = 1;
+  Requests[set_nb].nomvars.in_use = 1;
+  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
+  Requests[set_nb].nis     = ni;
+  Requests[set_nb].njs     = nj;
+  Requests[set_nb].nks     = nk;
+  Requests[set_nb].ig1s    = ig1;
+  Requests[set_nb].ig2s    = ig2;
+  Requests[set_nb].ig3s    = ig3;
+  Requests[set_nb].ig4s    = ig4;
+  Requests[set_nb].grdtyps = gtyp;
   return(0);
 }
 
@@ -416,14 +456,14 @@ int Xc_Select_typvar(int set_nb, int des_exc, char *typv_list[], int nelm)
   valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "typvar");
   if(valid < 0) return(valid);
 
-  Requetes[set_nb].in_use = 1;
-  Requetes[set_nb].typvars.in_use = 1;
-  Requetes[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
-  Requetes[set_nb].typvars.nelm = nelm;
+  Requests[set_nb].in_use = 1;
+  Requests[set_nb].typvars.in_use = 1;
+  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
+  Requests[set_nb].typvars.nelm = nelm;
   for (i=0; i<nelm; i++) {
-    strncpy(Requetes[set_nb].typvars.sdata[i],typv_list[i],3);
-    dbprint(stddebug,"Debug Requetes[%i].typvars.sdata[%i]=%s\n",
-           set_nb,i,Requetes[set_nb].typvars.sdata[i]);
+    strncpy(Requests[set_nb].typvars.sdata[i],typv_list[i],3);
+    dbprint(stddebug,"Debug Requests[%i].typvars.sdata[%i]=%s\n",
+           set_nb,i,Requests[set_nb].typvars.sdata[i]);
   }
   return(0);
 }
@@ -527,7 +567,7 @@ int C_fst_match_req(int handle)
   float p1,r_debut,r_fin;
   double diff_deb, diff_fin, delta8, date8, remainder;
 
-  if (! Requetes[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
+  if (! Requests[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
 
   ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,&nbits,&datyp,&ip1,
                      &ip2,&ip3,typvar,nomvar,etiket,grtyp,&ig1,&ig2,
@@ -541,16 +581,18 @@ int C_fst_match_req(int handle)
   stripblanks = strtok(typvar," ");
   stripblanks = strtok(etiket," ");
 */
-  for (set_nb=first_R; (set_nb <= last_R) && Requetes[set_nb].in_use; set_nb++) {
+  for (set_nb=first_R; (set_nb <= last_R) && Requests[set_nb].in_use; set_nb++) {
+
+    /* process supplementary parameters if any right here */
 
     amatch = 0;
 
     Etiquettes:
-      if (Requetes[set_nb].etiquettes.in_use) {
+      if (Requests[set_nb].etiquettes.in_use) {
         dbprint(stddebug,"Debug C_fst_match_req verifie etiquettes du fichier=%s set_nb=%d\n",etiket,set_nb);
-        if (Requetes[set_nb].exdes == DESIRE) {
-          for (i=0; i < Requetes[set_nb].etiquettes.nelm; i++)
-            if (strncmp(Requetes[set_nb].etiquettes.sdata[i],etiket,Min(12,strlen(Requetes[set_nb].etiquettes.sdata[i]))) == 0) {
+        if (Requests[set_nb].exdes == DESIRE) {
+          for (i=0; i < Requests[set_nb].etiquettes.nelm; i++)
+            if (strncmp(Requests[set_nb].etiquettes.sdata[i],etiket,Min(12,strlen(Requests[set_nb].etiquettes.sdata[i]))) == 0) {
               amatch = 1;
               dbprint(stddebug,"Debug C_fst_match_req match desire\n");
               goto Nomvars; /* satisfait la requete */
@@ -558,8 +600,8 @@ int C_fst_match_req(int handle)
           continue;  /* rien trouve qui satisfait la requete pour etiquettes */
         }
         else {
-          for (i=0; i < Requetes[set_nb].etiquettes.nelm; i++)
-            if (strncmp(Requetes[set_nb].etiquettes.sdata[i],etiket,Min(12,strlen(Requetes[set_nb].etiquettes.sdata[i])))== 0) {
+          for (i=0; i < Requests[set_nb].etiquettes.nelm; i++)
+            if (strncmp(Requests[set_nb].etiquettes.sdata[i],etiket,Min(12,strlen(Requests[set_nb].etiquettes.sdata[i])))== 0) {
               amatch = -1;  /* enregistrement a exclure */
               dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
               goto Nomvars;
@@ -569,11 +611,11 @@ int C_fst_match_req(int handle)
       }
 
     Nomvars:
-      if (Requetes[set_nb].nomvars.in_use) {
+      if (Requests[set_nb].nomvars.in_use) {
         dbprint(stddebug,"Debug C_fst_match_req verifie nomvars du fichier=%s set_nb=%d\n",nomvar,set_nb);
-        if (Requetes[set_nb].exdes == DESIRE) {
-          for (i=0; i < Requetes[set_nb].nomvars.nelm; i++)
-            if (strncmp(Requetes[set_nb].nomvars.sdata[i],nomvar,Min(4,strlen(Requetes[set_nb].nomvars.sdata[i]))) == 0) {
+        if (Requests[set_nb].exdes == DESIRE) {
+          for (i=0; i < Requests[set_nb].nomvars.nelm; i++)
+            if (strncmp(Requests[set_nb].nomvars.sdata[i],nomvar,Min(4,strlen(Requests[set_nb].nomvars.sdata[i]))) == 0) {
               amatch = 1;
               dbprint(stddebug,"Debug C_fst_match_req match desire\n");
               goto Typvars; /* satisfait la requete */
@@ -581,8 +623,8 @@ int C_fst_match_req(int handle)
           continue;  /* rien trouve qui satisfait la requete pour nomvars */
         }
         else {
-          for (i=0; i < Requetes[set_nb].nomvars.nelm; i++) {
-            if (strncmp(Requetes[set_nb].nomvars.sdata[i],nomvar,Min(4,strlen(Requetes[set_nb].nomvars.sdata[i]))) == 0) {
+          for (i=0; i < Requests[set_nb].nomvars.nelm; i++) {
+            if (strncmp(Requests[set_nb].nomvars.sdata[i],nomvar,Min(4,strlen(Requests[set_nb].nomvars.sdata[i]))) == 0) {
               amatch = -1; /* enregistrement a exclure */
               dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
               goto Typvars;
@@ -594,11 +636,11 @@ int C_fst_match_req(int handle)
       }
 
     Typvars:
-      if (Requetes[set_nb].typvars.in_use) {
+      if (Requests[set_nb].typvars.in_use) {
         dbprint(stddebug,"Debug C_fst_match_req verifie typvars set_nb=%d\n",set_nb);
-        if (Requetes[set_nb].exdes == DESIRE) {
-          for (i=0; i < Requetes[set_nb].typvars.nelm; i++)
-            if (strncmp(Requetes[set_nb].typvars.sdata[i],typvar,Min(2,strlen(Requetes[set_nb].typvars.sdata[i]))) == 0) {
+        if (Requests[set_nb].exdes == DESIRE) {
+          for (i=0; i < Requests[set_nb].typvars.nelm; i++)
+            if (strncmp(Requests[set_nb].typvars.sdata[i],typvar,Min(2,strlen(Requests[set_nb].typvars.sdata[i]))) == 0) {
               amatch = 1;
               dbprint(stddebug,"Debug C_fst_match_req match desire\n");
               goto Dates; /* satisfait la requete */
@@ -606,8 +648,8 @@ int C_fst_match_req(int handle)
           continue;  /* rien trouve qui satisfait la requete pour typvars */
         }
         else {
-          for (i=0; i < Requetes[set_nb].typvars.nelm; i++)
-            if (strncmp(Requetes[set_nb].typvars.sdata[i],typvar,Min(2,strlen(Requetes[set_nb].typvars.sdata[i])))== 0) {
+          for (i=0; i < Requests[set_nb].typvars.nelm; i++)
+            if (strncmp(Requests[set_nb].typvars.sdata[i],typvar,Min(2,strlen(Requests[set_nb].typvars.sdata[i])))== 0) {
               amatch = -1;  /* enregistrement a exclure */
               dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
               goto Dates;
@@ -618,14 +660,14 @@ int C_fst_match_req(int handle)
       }
 
     Dates:
-      if (Requetes[set_nb].dates.in_use) {
-          switch (Requetes[set_nb].dates.arg_type) {
+      if (Requests[set_nb].dates.in_use) {
+          switch (Requests[set_nb].dates.in_use) {
 
-          case entier:
+          case VALUE:
             dbprint(stddebug,"Debug C_fst_match_req verifie dates entier set_nb=%d\n",set_nb);
-            if (Requetes[set_nb].exdes == DESIRE) {
-              for (i=0; i < Requetes[set_nb].dates.nelm; i++)
-                if (Requetes[set_nb].dates.data.tab_elem[i] == date) {
+            if (Requests[set_nb].exdes == DESIRE) {
+              for (i=0; i < Requests[set_nb].dates.nelm; i++)
+                if (Requests[set_nb].dates.data[i] == date) {
                   amatch = 1;
                   dbprint(stddebug,"Debug C_fst_match_req match desire\n");
                   goto Ip1s; /* satisfait la requete */
@@ -633,8 +675,8 @@ int C_fst_match_req(int handle)
               continue;  /* rien trouve qui satisfait la requete pour dates */
             }
             else {
-              for (i=0; i < Requetes[set_nb].dates.nelm; i++)
-                if (Requetes[set_nb].dates.data.tab_elem[i] == date) {
+              for (i=0; i < Requests[set_nb].dates.nelm; i++)
+                if (Requests[set_nb].dates.data[i] == date) {
                   amatch = -1;  /* enregistrement a exclure */
                   dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
                   goto Ip1s;
@@ -644,22 +686,22 @@ int C_fst_match_req(int handle)
             }
             break;
 
-          case deb_fin_entier:
-            if (Requetes[set_nb].dates.data.tab_elem[0] == -1)
+          case RANGE:
+            if (Requests[set_nb].dates.data[0] == -1)
               debut = date;
             else {
-              debut = Requetes[set_nb].dates.data.tab_elem[0];
+              debut = Requests[set_nb].dates.data[0];
               }
-            if (Requetes[set_nb].dates.data.tab_elem[1] == -1)
+            if (Requests[set_nb].dates.data[1] == -1)
               fin = date;
             else
-              fin = Requetes[set_nb].dates.data.tab_elem[1];
+              fin = Requests[set_nb].dates.data[1];
             dbprint(stddebug,"Debug C_fst_match_req verifie dates debut=%d fin=%d set_nb=%d\n",debut,fin,set_nb);
             f77name(difdatr)(&date,&debut,&diff_deb);
             f77name(difdatr)(&date,&fin,&diff_fin);
             dbprint(stddebug,"Debug diff_deb=%f diff_fin=%f\n",diff_deb,diff_fin);
             if ((diff_deb >= 0.) && (diff_fin <= 0.))
-              if (Requetes[set_nb].exdes == DESIRE) {
+              if (Requests[set_nb].exdes == DESIRE) {
                 amatch = 1;
                 dbprint(stddebug,"Debug C_fst_match_req match desire\n");
                 goto Ip1s;  /* satisfait la requete */
@@ -673,25 +715,25 @@ int C_fst_match_req(int handle)
             continue;  /* rien trouve qui satisfait la requete desire/exclure */
             break;
 
-          case deb_fin_entier_delta:
+          case DELTA:
             dbprint(stddebug,"Debug C_fst_match_req verifie dates debut fin delta set_nb=%d\n",set_nb);
-            if (Requetes[set_nb].dates.data.tab_elem[0] == -1)
+            if (Requests[set_nb].dates.data[0] == -1)
               debut = date;
             else {
-              debut = Requetes[set_nb].dates.data.tab_elem[0];
+              debut = Requests[set_nb].dates.data[0];
               }
-            if (Requetes[set_nb].dates.data.tab_elem[1] == -1)
+            if (Requests[set_nb].dates.data[1] == -1)
               fin = date;
             else
-              fin = Requetes[set_nb].dates.data.tab_elem[1];
-            delta8 = Requetes[set_nb].dates.delta;
+              fin = Requests[set_nb].dates.data[1];
+            delta8 = Requests[set_nb].dates.delta;
             dbprint(stddebug,"Debug C_fst_match_req verifie dates debut=%d fin=%d delta=%f\n",debut,fin,delta8);
             f77name(difdatr)(&date,&debut,&diff_deb);
             f77name(difdatr)(&date,&fin,&diff_fin);
             remainder = fmod(diff_deb,delta8);
             dbprint(stddebug,"Debug diff_deb=%f diff_fin=%f modulo=%f\n",diff_deb,diff_fin,remainder);
             if ((diff_deb >= 0.) && (diff_fin <= 0.) && (remainder <= (5.0/3600.)))
-              if (Requetes[set_nb].exdes == DESIRE) {
+              if (Requests[set_nb].exdes == DESIRE) {
                 amatch = 1;
                 dbprint(stddebug,"Debug C_fst_match_req match desire\n");
                 goto Ip1s;  /* satisfait la requete */
@@ -706,8 +748,8 @@ int C_fst_match_req(int handle)
             break;
 
           default:
-            fprintf(stderr,"error: C_fst_match_req invalid Requetes[%d].dates.arg_type=%d\n",
-                  set_nb,Requetes[set_nb].dates.arg_type);
+            fprintf(stderr,"error: C_fst_match_req invalid Requests[%d].dates.in_use=%d\n",
+                  set_nb,Requests[set_nb].dates.in_use);
             return(0);
             break;
 
@@ -715,40 +757,37 @@ int C_fst_match_req(int handle)
       }
 
     Ip1s:
-      if (Requetes[set_nb].ip1s.in_use) {
-        switch (Requetes[set_nb].ip1s.arg_type) {
+      if (Requests[set_nb].ip1s.in_use) {
+        switch (Requests[set_nb].ip1s.in_use) {
 
-        case reel:
+        case VALUE:
           f77name(convip)(&ip1,&p1,&ip_kind,&mode,string,&flag);
           dbprint(stddebug,"Debug C_fst_match_req verifie ip1s du fichier=%d reel=%f set_nb=%d\n",ip1,p1,set_nb);
-          if (Requetes[set_nb].exdes == DESIRE) {
-            for (i=0; i < Requetes[set_nb].ip1s.nelm; i++)
-              if (p1 == 0.) {
-                if (Requetes[set_nb].ip1s.data.tab_rval[i] == 0.) {
-                  amatch = 1;
-                  dbprint(stddebug,"Debug C_fst_match_req match desire\n");
-                  goto Ip2s; /* satisfait la requete */
-                }
-              }    
-              else if ((Abs(1.0 - (Requetes[set_nb].ip1s.data.tab_rval[i]/p1)) < err_tolerance) &&
-                       (ip_kind == Requetes[set_nb].ip1s.ip_kind)) {
-                amatch = 1;
-                dbprint(stddebug,"Debug C_fst_match_req match desire\n");
+          for (i=0; i < Requests[set_nb].ip1s.nelm; i++)
+            if (p1 == 0.) {
+              if (Requests[set_nb].ip1s.data[i] == 0.) {
+                amatch = Requests[set_nb].exdes;
+                dbprint(stddebug,"Debug C_fst_match_req match %s\n",(Requests[set_nb].exdes == DESIRE) ? "desire" : "exclure");
                 goto Ip2s; /* satisfait la requete */
               }
-            continue;  /* rien trouve qui satisfait la requete pour ip1s */
-          }
+            }
+            else if ((Abs(1.0 - (Requests[set_nb].ip1s.data[i]/p1)) < err_tolerance) ) {
+              amatch = Requests[set_nb].exdes;
+              dbprint(stddebug,"Debug C_fst_match_req match %s\n",(Requests[set_nb].exdes == DESIRE) ? "desire" : "exclure");
+              goto Ip2s; /* satisfait la requete */
+            }
+          continue;  /* rien trouve qui satisfait la requete pour ip1s */
+#ifdef NOTUSED
           else {
-            for (i=0; i < Requetes[set_nb].ip1s.nelm; i++)
+            for (i=0; i < Requests[set_nb].ip1s.nelm; i++)
               if (p1 == 0.) {
-                if (Requetes[set_nb].ip1s.data.tab_rval[i] == 0.) {  
+                if (Requests[set_nb].ip1s.data[i] == 0.) {
                   amatch = -1;  /* enregistrement a exclure */
                   dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
                   goto Ip2s;
                 }
               }  
-              else if ((Abs(1.0 - (Requetes[set_nb].ip1s.data.tab_rval[i]/p1)) < err_tolerance) &&
-                       (ip_kind == Requetes[set_nb].ip1s.ip_kind)) {
+              else if ((Abs(1.0 - (Requests[set_nb].ip1s.data[i]/p1)) < err_tolerance)) {
                 amatch = -1;  /* enregistrement a exclure */
                 dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
                 goto Ip2s;
@@ -756,23 +795,23 @@ int C_fst_match_req(int handle)
             if (amatch == -1) amatch = 0;   /* exclusion additive non satisfaite */  
             continue;   /* rien trouve a exclure */
           }
+#endif
           break;
 
-        case deb_fin_reel:
+        case RANGE:
           f77name(convip)(&ip1,&p1,&ip_kind,&mode,string,&flag);
-          if (Requetes[set_nb].ip1s.data.tab_rval[0] == -1.0)
+          if (Requests[set_nb].ip1s.data[0] == -1.0)
             r_debut = p1;
           else
-            r_debut = Requetes[set_nb].ip1s.data.tab_rval[0];
-          if (Requetes[set_nb].ip1s.data.tab_rval[1] == -1.0)
+            r_debut = Requests[set_nb].ip1s.data[0];
+          if (Requests[set_nb].ip1s.data[1] == -1.0)
             r_fin = p1;
           else
-            r_fin = Requetes[set_nb].ip1s.data.tab_rval[1];
+            r_fin = Requests[set_nb].ip1s.data[1];
           dbprint(stddebug,"Debug C_fst_match_req verifie ip1s r_debut=%f r_fin=%f\n",r_debut,r_fin);
           dbprint(stddebug,"Debug+ C_fst_match_req p1=%f err_tolerance=%f\n",p1,err_tolerance);
-          if ((p1 >= (r_debut-err_tolerance)) && (p1 <= (r_fin+err_tolerance)) &&
-              (ip_kind == Requetes[set_nb].ip1s.ip_kind)) {
-            if (Requetes[set_nb].exdes == DESIRE) {
+          if ((p1 >= (r_debut-err_tolerance)) && (p1 <= (r_fin+err_tolerance))) {
+            if (Requests[set_nb].exdes == DESIRE) {
               amatch = 1;
               dbprint(stddebug,"Debug C_fst_match_req match desire\n");
               goto Ip2s;  /* satisfait la requete */
@@ -790,8 +829,8 @@ int C_fst_match_req(int handle)
           break;
 
         default:
-          fprintf(stderr,"error: C_fst_match_req invalid Requetes[%d].ip1s.arg_type=%d\n",
-                set_nb,Requetes[set_nb].ip1s.arg_type);
+          fprintf(stderr,"error: C_fst_match_req invalid Requests[%d].ip1s.arg_type=%d\n",
+                set_nb,Requests[set_nb].ip1s.in_use);
           return(0);
           break;
 
@@ -800,35 +839,24 @@ int C_fst_match_req(int handle)
       }
 
     Ip2s:
-      if (Requetes[set_nb].ip2s.in_use) {
+      if (Requests[set_nb].ip2s.in_use) {
         dbprint(stddebug,"Debug C_fst_match_req verifie ip2s set_nb=%d\n",set_nb);
-        switch (Requetes[set_nb].ip2s.arg_type) {
+        switch (Requests[set_nb].ip2s.in_use) {
 
-        case entier:
-          if (Requetes[set_nb].exdes == DESIRE) {
-            for (i=0; i < Requetes[set_nb].ip2s.nelm; i++)
-              if (Requetes[set_nb].ip2s.data.tab_elem[i] == ip2) {
-                amatch = 1;
-                dbprint(stddebug,"Debug C_fst_match_req match desire\n");
-                goto Ip3s; /* satisfait la requete */
-              }
-            continue;  /* rien trouve qui satisfait la requete pour ip2s */
-          }
-          else {
-            for (i=0; i < Requetes[set_nb].ip2s.nelm; i++)
-              if (Requetes[set_nb].ip2s.data.tab_elem[i] == ip2) {
-                amatch = -1;  /* enregistrement a exclure */
-                dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
-                goto Ip3s;
-              }
-            if (amatch == -1) amatch = 0;   /* exclusion additive non satisfaite */  
-            continue;   /* rien trouve a exclure */
-          }
-          break;
+        case VALUE:
+          for (i=0; i < Requests[set_nb].ip2s.nelm; i++)
+            if (Requests[set_nb].ip2s.data[i] == ip2) {
+              amatch = Requests[set_nb].exdes;
+              dbprint(stddebug,"Debug C_fst_match_req match %s\n",(Requests[set_nb].exdes == DESIRE) ? "desire" : "exclure");
+              goto Ip3s; /* satisfait la requete */
+            }
+          continue;  /* rien trouve qui satisfait la requete pour ip2s */
+
+        case RANGE:
 
         default:
-          fprintf(stderr,"error: C_fst_match_req invalid Requetes[%d].ip2s.arg_type=%d\n",
-                set_nb,Requetes[set_nb].ip2s.arg_type);
+          fprintf(stderr,"error: C_fst_match_req invalid Requests[%d].ip2s.arg_type=%d\n",
+                set_nb,Requests[set_nb].ip2s.in_use);
           return(0);
           break;
 
@@ -836,35 +864,25 @@ int C_fst_match_req(int handle)
       }
 
     Ip3s:
-      if (Requetes[set_nb].ip3s.in_use) {
+      if (Requests[set_nb].ip3s.in_use) {
         dbprint(stddebug,"Debug C_fst_match_req verifie ip3s set_nb=%d\n",set_nb);
-        switch (Requetes[set_nb].ip3s.arg_type) {
 
-        case entier:
-          if (Requetes[set_nb].exdes == DESIRE) {
-            for (i=0; i < Requetes[set_nb].ip3s.nelm; i++)
-              if (Requetes[set_nb].ip3s.data.tab_elem[i] == ip3) {
-                amatch = 1;
-                dbprint(stddebug,"Debug C_fst_match_req match desire\n");
-                goto Fin; /* satisfait la requete */
-              }
-            continue;  /* rien trouve qui satisfait la requete pour ip3s */
-          }
-          else {
-            for (i=0; i < Requetes[set_nb].ip3s.nelm; i++)
-              if (Requetes[set_nb].ip3s.data.tab_elem[i] == ip3) {
-                amatch = -1;  /* enregistrement a exclure */
-                dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
-                goto Fin;
-              }
-            if (amatch == -1) amatch = 0;   /* exclusion additive non satisfaite */  
-            continue;   /* rien trouve a exclure */
-          }
-          break;
+        switch (Requests[set_nb].ip3s.in_use) {
+
+        case VALUE:
+          for (i=0; i < Requests[set_nb].ip3s.nelm; i++)
+            if (Requests[set_nb].ip3s.data[i] == ip3) {
+              amatch = Requests[set_nb].exdes;
+              dbprint(stddebug,"Debug C_fst_match_req match %s\n",(Requests[set_nb].exdes == DESIRE) ? "desire" : "exclure");
+              goto Fin; /* satisfait la requete */
+            }
+          continue;  /* rien trouve qui satisfait la requete pour ip3s */
+
+        case RANGE:
 
         default:
-          fprintf(stderr,"error: C_fst_match_req invalid Requetes[%d].ip3s.arg_type=%d\n",
-                set_nb,Requetes[set_nb].ip3s.arg_type);
+          fprintf(stderr,"error: C_fst_match_req invalid Requests[%d].ip3s.arg_type=%d\n",
+                set_nb,Requests[set_nb].ip3s.in_use);
           return(0);
           break;
 
@@ -886,11 +904,11 @@ int C_fst_match_req(int handle)
   } /* end for */
 
   last_in_use = last_R;
-  while ((last_in_use > first_R) && (! Requetes[last_in_use].in_use))
+  while ((last_in_use > first_R) && (! Requests[last_in_use].in_use))
     last_in_use--;
 /*  fprintf(stderr,"Debug+ last_in_use=%d\n",last_in_use); */
 /* rien trouve qui satisfait les requetes */
-  if ((Requetes[last_in_use].exdes == DESIRE) && (Requetes[last_in_use].in_use))
+  if ((Requests[last_in_use].exdes == DESIRE) && (Requests[last_in_use].in_use))
     return(0);  /* ne satisfait pas la requete desire */
   else
     return(1);  /* rien a exclure */
@@ -1123,7 +1141,7 @@ void c_requetes_init(char *requetes_filename, char *debug_filename)
       Requests[i].etiquettes.sdata[j] = (char *) malloc(13);
       Requests[i].nomvars.sdata[j] = (char *) malloc(5);
       Requests[i].typvars.sdata[j] = (char *) malloc(3);
-      Requests[i].grdtyps.sdata[j] = (char *) malloc(2);
+      Requests[i].grdtyps = ' ';
     }
     C_requetes_reset(i,1,1,1,1,1,1,1);
   }
