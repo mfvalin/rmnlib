@@ -42,11 +42,12 @@ enum cquoica {unused,entier, reel, deb_fin_entier, deb_fin_reel, deb_fin_entier_
 #define EXCLURE -1
 
 #define UNUSED 0
-#define USED 255
 #define VALUE 1
 #define RANGE 2
 #define DELTA 3
+#define USED 255
 
+static char *in_use[] = { "unused","value ","range ","delta " };
 static int first_R = 0;
 static int last_R = MAX_requetes;
 static FILE *stddebug;
@@ -114,6 +115,57 @@ typedef struct {
 //Desire_Exclure Requetes[MAX_requetes];
 DesireExclure  Requests[MAX_requetes];
 
+void DumpRequestTable()
+{
+  int i, j;
+  for (i==0 ; i<MAX_requetes ; i++) {
+    if(Requests[i].in_use) {
+      fprintf(stdout,"=================== Request no %d ===================\n",i);
+      if(Requests[i].ip1s.in_use){
+        fprintf(stdout,"IP1       (%6s):", in_use[Requests[i].ip1s.in_use]);
+        for(j = 0 ; j < Requests[i].ip1s.nelm ; j++) fprintf(stdout," %d",Requests[i].ip1s.data[j]);
+        fprintf(stdout,"\n");
+      }
+      if(Requests[i].ip2s.in_use){
+        fprintf(stdout,"IP2       (%6s):", in_use[Requests[i].ip2s.in_use]);
+        for(j = 0 ; j < Requests[i].ip2s.nelm ; j++) fprintf(stdout," %d",Requests[i].ip2s.data[j]);
+        fprintf(stdout,"\n");
+      }
+      if(Requests[i].ip3s.in_use){
+        fprintf(stdout,"IP3       (%6s):", in_use[Requests[i].ip3s.in_use]);
+        for(j = 0 ; j < Requests[i].ip3s.nelm ; j++) fprintf(stdout," %d",Requests[i].ip3s.data[j]);
+        fprintf(stdout,"\n");
+      }
+      if(Requests[i].dates.in_use){
+        fprintf(stdout,"dates     (%6s):", in_use[Requests[i].dates.in_use]);
+        for(j = 0 ; j < Requests[i].dates.nelm ; j++) fprintf(stdout," %d",Requests[i].dates.data[j]);
+        if(Requests[i].dates.delta) fprintf(stdout," %d",Requests[i].dates.delta);
+        fprintf(stdout,"\n");
+      }
+      if(Requests[i].nomvars.in_use){
+        fprintf(stdout,"Nomvar    (%6s):", in_use[Requests[i].nomvars.in_use]);
+        for(j = 0 ; j < Requests[i].nomvars.nelm ; j++) fprintf(stdout," %s",Requests[i].nomvars.sdata[j]);
+        fprintf(stdout,"\n");
+      }
+      if(Requests[i].typvars.in_use){
+        fprintf(stdout,"Typvar    (%6s):", in_use[Requests[i].typvars.in_use]);
+        for(j = 0 ; j < Requests[i].typvars.nelm ; j++) fprintf(stdout," %s",Requests[i].typvars.sdata[j]);
+        fprintf(stdout,"\n");
+      }
+      if(Requests[i].etiquettes.in_use){
+        fprintf(stdout,"Etiket    (%6s):", in_use[Requests[i].etiquettes.in_use]);
+        for(j = 0 ; j < Requests[i].etiquettes.nelm ; j++) fprintf(stdout," %s",Requests[i].etiquettes.sdata[j]);
+        fprintf(stdout,"\n");
+      }
+      if(Requests[i].in_use_supp){
+        fprintf(stdout,"Extra criteria: ni=%d, nj=%d, nk=%d, ig1=%d, ig2=%d, 1g3=%d, ig4=%d, gtyp=%c\n", 
+                Requests[i].nis,Requests[i].njs,Requests[i].nks,
+                Requests[i].ig1s,Requests[i].ig2s,Requests[i].ig3s,Requests[i].ig4s,Requests[i].grdtyps);
+      }
+    }
+  }
+}
+
 static int ValidateRequestForSet(int set_nb, int des_exc, int nelm, int nelm_lt, char *msg)
 {
   if (set_nb > MAX_requetes) {
@@ -150,39 +202,41 @@ static int ValidateRequestForSet(int set_nb, int des_exc, int nelm, int nelm_lt,
  *Arguments                                                                  *
  *                                                                           *
  *  IN  set_nb  numero associe a un groupe d'elements desire/exclure         *
- *  IN  des_exc 0=exclure 1=desire                                           *
+ *  IN  des_exc ==0 : exclure,  !=0 : desire                                 *
  *  IN  iplist  liste de 1 ou plusieurs IP1 a rechercher ou exclure          *
+ *      iplist(1) = -1                                     toute valeur de x *
+ *      iplist(1) = -2 , iplist(2) = v2  (nelm = 2)              x <= v2     *
+ *      iplist(1) = v1 , iplist(2) = -2  (nelm = 2)        v1 <= x           *
+ *      iplist(1) = v1 , iplist(2) = -2 , iplist(3) = v2   v1 <= x <= v2     *
  *  IN  nelm    nombre d'elements de la liste                                *
- *              -2=interval [debut, fin]                                     *
- *                           debut=-1, indique valeur min du fichier         *
- *                           fin=-1, indique valeur max du fichier           *
- *  IN  kind    code kind de convip,                                         *
- *              -1=IP1 entier deja encode                                    *
- *              -2=IP1 entier a garder tel quel (pas de convip)              *
  *                                                                           *
  *****************************************************************************/
-int Xc_Select_ip1(int set_nb, int des_exc, void *iplist, int nelm, int kind)
+int Xc_Select_ip1(int set_nb, int des_exc, void *iplist, int nelm)
 {
   int i;
   int *ip_entier=(int *)iplist;
   int valid;
 
-  valid = ValidateRequestForSet(set_nb, des_exc, nelm, -2, "ip1");
+  valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "ip1");
   if(valid < 0) return(valid);
-  if (nelm == -2) {
-    Requests[set_nb].ip1s.in_use = RANGE;
-    nelm = 2;
-  }else{
-    Requests[set_nb].ip1s.in_use = VALUE;
-  }
-  Requests[set_nb].in_use = USED;
-  Requests[set_nb].ip1s.delta = 0;
-  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
-  Requests[set_nb].ip1s.nelm = nelm;
 
-  for (i=0; i<nelm; i++) {
+  if (ip_entier[0] == -1) nelm = 1;        /* universal value, rest of values if any is irrelevant */
+  Requests[set_nb].in_use = USED;          /* set is in use */
+  Requests[set_nb].ip1s.in_use = VALUE;    /* item in set is in use */
+  Requests[set_nb].ip1s.delta = 0;         /* delta not supported */
+  Requests[set_nb].exdes = (des_exc) ? DESIRE : EXCLURE;
+  Requests[set_nb].ip1s.nelm = nelm;     /* if range, the value of nelm does not matter, the first 2 values are used */
+  Requests[set_nb].ip1s.data[0] = ip_entier[0];  /* first value from list */
+
+  if (nelm == 1 ) return(0);               /* one value, cannot be a range */
+
+  Requests[set_nb].ip1s.data[2] = 0x7FFFFFFF ;   /* open interval by default for case value @*/
+  for (i=1; i<nelm; i++) {                       /* rest of values */
     Requests[set_nb].ip1s.data[i] = ip_entier[i];
   }
+
+  if (ip_entier[0] == -2 || ip_entier[1] == -2) Requests[set_nb].ip1s.in_use = RANGE;
+  if (ip_entier[1] == -2) Requests[set_nb].ip1s.data[1] = Requests[set_nb].ip1s.data[2];   /* value @ value  or value @  or @ @ */
   return(0);
 }
 
@@ -197,36 +251,39 @@ int Xc_Select_ip1(int set_nb, int des_exc, void *iplist, int nelm, int kind)
  *  IN  set_nb  numero associe a un groupe d'elements desire/exclure         *
  *  IN  des_exc 0=exclure 1=desire                                           *
  *  IN  iplist  liste de 1 ou plusieurs IP2 a rechercher ou exclure          *
+ *      iplist(1) = -1                                     toute valeur de x *
+ *      iplist(1) = -2 , iplist(2) = v2  (nelm = 2)              x <= v2     *
+ *      iplist(1) = v1 , iplist(2) = -2  (nelm = 2)        v1 <= x           *
+ *      iplist(1) = v1 , iplist(2) = -2 , iplist(3) = v2   v1 <= x <= v2     *
  *  IN  nelm    nombre d'elements de la liste                                *
- *              -2=interval [debut, fin]                                     *
- *                           debut=-1, indique valeur min du fichier         *
- *                           fin=-1, indique valeur max du fichier           *
- *  IN  kind    code kind de convip, (ex: kind=10, temp en heure)            *
- *              -1=IP2 entier deja encode (valeur classique standard)        *
  *                                                                           *
  *****************************************************************************/
-int Xc_Select_ip2(int set_nb, int des_exc, void *iplist, int nelm, int kind)
+int Xc_Select_ip2(int set_nb, int des_exc, void *iplist, int nelm)
 {
   int i;
   int *ip_entier=(int *)iplist;
   int valid;
 
-  valid = ValidateRequestForSet(set_nb, des_exc, nelm, -2, "ip2");
+  valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "ip2");
   if(valid < 0) return(valid);
-  if (nelm == -2) {
-    Requests[set_nb].ip2s.in_use = RANGE;
-    nelm = 2;
-  }else{
-    Requests[set_nb].ip2s.in_use = VALUE;
-  }
-  Requests[set_nb].in_use = USED;
-  Requests[set_nb].ip2s.delta = 0;
-  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
-  Requests[set_nb].ip2s.nelm = nelm;
 
-  for (i=0; i<nelm; i++) {
+  if (ip_entier[0] == -1) nelm = 1;        /* universal value, rest of values if any is irrelevant */
+  Requests[set_nb].in_use = USED;          /* set is in use */
+  Requests[set_nb].ip2s.in_use = VALUE;    /* item in set is in use */
+  Requests[set_nb].ip2s.delta = 0;         /* delta not supported */
+  Requests[set_nb].exdes = (des_exc) ? DESIRE : EXCLURE;
+  Requests[set_nb].ip2s.nelm = nelm;     /* if range, the value of nelm does not matter, the first 2 values are used */
+  Requests[set_nb].ip2s.data[0] = ip_entier[0];  /* first value from list */
+
+  if (nelm == 1 ) return(0);               /* one value, cannot be a range */
+
+  Requests[set_nb].ip2s.data[2] = 0x7FFFFFFF ;   /* open interval by default for case value @*/
+  for (i=1; i<nelm; i++) {                       /* rest of values */
     Requests[set_nb].ip2s.data[i] = ip_entier[i];
   }
+
+  if (ip_entier[0] == -2 || ip_entier[1] == -2) Requests[set_nb].ip2s.in_use = RANGE;
+  if (ip_entier[1] == -2) Requests[set_nb].ip2s.data[1] = Requests[set_nb].ip2s.data[2];   /* value @ value  or value @  or @ @ */
   return(0);
 }
 
@@ -241,36 +298,39 @@ int Xc_Select_ip2(int set_nb, int des_exc, void *iplist, int nelm, int kind)
  *  IN  set_nb  numero associe a un groupe d'elements desire/exclure         *
  *  IN  des_exc 0=exclure 1=desire                                           *
  *  IN  iplist  liste de 1 ou plusieurs IP3 a rechercher ou exclure          *
+ *      iplist(1) = -1                                     toute valeur de x *
+ *      iplist(1) = -2 , iplist(2) = v2  (nelm = 2)              x <= v2     *
+ *      iplist(1) = v1 , iplist(2) = -2  (nelm = 2)        v1 <= x           *
+ *      iplist(1) = v1 , iplist(2) = -2 , iplist(3) = v2   v1 <= x <= v2     *
  *  IN  nelm    nombre d'elements de la liste                                *
- *              -2=interval [debut, fin] (pour expansion future)             *
- *                           debut=-1, indique valeur min du fichier         *
- *                           fin=-1, indique valeur max du fichier           *
- *  IN  kind    code kind de convip, (pour expansion future, ignore)         *
- *              -1=IP3 entier (valeur classique standard)                    *
  *                                                                           *
  *****************************************************************************/
-int Xc_Select_ip3(int set_nb, int des_exc, void *iplist, int nelm, int kind)
+int Xc_Select_ip3(int set_nb, int des_exc, void *iplist, int nelm)
 {
   int i;
   int *ip_entier=(int *)iplist;
   int valid;
 
-  valid = ValidateRequestForSet(set_nb, des_exc, nelm, -2, "ip3");
+  valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "ip3");
   if(valid < 0) return(valid);
-  if (nelm == -2) {
-    Requests[set_nb].ip3s.in_use = RANGE;
-    nelm = 2;
-  }else{
-    Requests[set_nb].ip3s.in_use = VALUE;
-  }
-  Requests[set_nb].in_use = USED;
-  Requests[set_nb].ip3s.delta = 0;
-  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
-  Requests[set_nb].ip3s.nelm = nelm;
 
-  for (i=0; i<nelm; i++) {
+  if (ip_entier[0] == -1) nelm = 1;        /* universal value, rest of values if any is irrelevant */
+  Requests[set_nb].in_use = USED;          /* set is in use */
+  Requests[set_nb].ip3s.in_use = VALUE;    /* item in set is in use */
+  Requests[set_nb].ip3s.delta = 0;         /* delta not supported */
+  Requests[set_nb].exdes = (des_exc) ? DESIRE : EXCLURE;
+  Requests[set_nb].ip3s.nelm = nelm;     /* if range, the value of nelm does not matter, the first 2 values are used */
+  Requests[set_nb].ip3s.data[0] = ip_entier[0];  /* first value from list */
+
+  if (nelm == 1 ) return(0);               /* one value, cannot be a range */
+
+  Requests[set_nb].ip3s.data[2] = 0x7FFFFFFF ;   /* open interval by default for case value @*/
+  for (i=1; i<nelm; i++) {                       /* rest of values */
     Requests[set_nb].ip3s.data[i] = ip_entier[i];
   }
+
+  if (ip_entier[0] == -2 || ip_entier[1] == -2) Requests[set_nb].ip3s.in_use = RANGE;
+  if (ip_entier[1] == -2) Requests[set_nb].ip3s.data[1] = Requests[set_nb].ip3s.data[2];   /* value @ value  or value @  or @ @ */
   return(0);
 }
 
@@ -293,39 +353,49 @@ int Xc_Select_ip3(int set_nb, int des_exc, void *iplist, int nelm, int kind)
  *                 0=aucun delta desire                                      *
  *                                                                           *
  *****************************************************************************/
-int Xc_Select_date(int set_nb, int des_exc, int *date_list, int nelm, float delta)
+int Xc_Select_date(int set_nb, int des_exc, int *date_list, int nelm)
 {
   int i, range=0;
-  int *pt_delta = (int *) &delta;
-  float zero = 0.0;
-  int *pt_zero = (int *) &zero;
-  int valid;
+  int valid, delta=0;
 
   valid = ValidateRequestForSet(set_nb, des_exc, nelm, -2, "date");
   if(valid < 0) return(valid);
-  if (nelm == -2) {
-    range = 1;
-    nelm = 2;
-  }
 
-  Requests[set_nb].in_use = 1;
-  Requests[set_nb].dates.in_use = 1;
-  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
-  Requests[set_nb].dates.nelm = nelm;
-  Requests[set_nb].dates.delta= delta;
-  if (delta != 0.) {
-    Requests[set_nb].dates.in_use = DELTA;
-    dbprint(stddebug,"Debug Requests[%i].dates.arg_type=%d delta=%f\n",
-           set_nb,Requests[set_nb].dates.in_use,Requests[set_nb].dates.delta);
-  }
-  else
-    Requests[set_nb].dates.in_use = (range ==1) ? RANGE : VALUE;
+  if (date_list[0] == -1) nelm = 1;        /* universal value, rest of values if any is irrelevant */
+  Requests[set_nb].in_use = USED;          /* set is in use */
+  Requests[set_nb].dates.in_use = VALUE;    /* item in set is in use */
+  Requests[set_nb].dates.delta = 0;         /* delta not supported */
+  Requests[set_nb].exdes = (des_exc) ? DESIRE : EXCLURE;
+  Requests[set_nb].dates.nelm = nelm;     /* if range, the value of nelm does not matter, the first 2 values are used */
+  Requests[set_nb].dates.data[0] = date_list[0];  /* first value from list */
+
+  if (nelm == 1 ) return(0);               /* one value, cannot be a range */
+
+  Requests[set_nb].dates.nelm = nelm;      /* irrelevant if we have a range of dates */
   for (i=0; i<nelm; i++) {
     Requests[set_nb].dates.data[i] = date_list[i];
+    if(date_list[i]==-3) {                 /* DELTA keyword */
+      delta++;
+      if(delta > 1 || range == 0 ) goto error ;           /* more than one delta keyword or delta encountered before @  */
+      Requests[set_nb].dates.in_use = DELTA;
+      if(i<nelm-1) Requests[set_nb].dates.delta = date_list[i+1];
+    }
+    if(date_list[i]==-2) {   /* @  keyword   */
+      range++;
+      if(range>1 || i>1) goto error ;           /* more than one @ keyword or @ keyword too far in line */
+      Requests[set_nb].dates.in_use = RANGE ;
+      if(i==0) Requests[set_nb].dates.data[0] = 0;              /* @ date .... */
+      if(i==1) {                                            /* date @ date  or date @ delta */
+        Requests[set_nb].dates.data[1] = date_list[2] != -3  ? date_list[2] : 0x7FFFFFFF ; 
+      }
+    }
     dbprint(stddebug,"Debug Requests[%d].dates.data[%d] = %d\n",set_nb,i,
            Requests[set_nb].dates.data[i]);
   }
   return(0);
+error:
+  Requests[set_nb].dates.in_use = UNUSED;
+  return(-1);
 }
 
 /*****************************************************************************
@@ -925,28 +995,28 @@ int C_fst_match_req(int handle)
  *                                                                           *
  *****************************************************************************/
 
-int C_select_ip1(void *iplist, int nelm, int kind)
+int C_select_ip1(void *iplist, int nelm)
 {
 /*CHC/NRC*/
-	return Xc_Select_ip1(bundle_nb, desire_exclure, iplist, nelm, kind);
+	return Xc_Select_ip1(bundle_nb, desire_exclure, iplist, nelm);
 }
 
-int C_select_ip2(void *iplist, int nelm, int kind)
+int C_select_ip2(void *iplist, int nelm)
 {
 /*CHC/NRC*/
-	return Xc_Select_ip2(bundle_nb, desire_exclure, iplist, nelm, kind);
+	return Xc_Select_ip2(bundle_nb, desire_exclure, iplist, nelm);
 }
 
-int C_select_ip3(void *iplist, int nelm, int kind)
+int C_select_ip3(void *iplist, int nelm)
 {
 /*CHC/NRC*/
-	return Xc_Select_ip3(bundle_nb, desire_exclure, iplist, nelm, kind);
+	return Xc_Select_ip3(bundle_nb, desire_exclure, iplist, nelm);
 }
 
-int C_select_date(int set_nb, int des_exc, int *date_list, int nelm, float delta)
+int C_select_date(int set_nb, int des_exc, int *date_list, int nelm)
 {
 /*CHC/NRC*/
-	return Xc_Select_date(bundle_nb, desire_exclure, date_list, nelm, delta);
+	return Xc_Select_date(bundle_nb, desire_exclure, date_list, nelm);
 }
 
 int C_select_etiquette(char *etiq_list[], int nelm)
@@ -967,24 +1037,24 @@ int C_select_typvar(char *typv_list[], int nelm)
 	return Xc_Select_typvar(bundle_nb, desire_exclure, typv_list, nelm);
 }
 
-int f77name(f_select_ip1)(void *iplist, int *nelm, int *kind)
+int f77name(f_select_ip1)(void *iplist, int *nelm)
 {
-  return(Xc_Select_ip1(bundle_nb, desire_exclure,iplist,*nelm,*kind));
+  return(Xc_Select_ip1(bundle_nb, desire_exclure,iplist,*nelm));
 }
 
-int f77name(f_select_ip2)(void *iplist, int *nelm, int *kind)
+int f77name(f_select_ip2)(void *iplist, int *nelm)
 {
-  return(Xc_Select_ip2(bundle_nb, desire_exclure,iplist,*nelm,*kind));
+  return(Xc_Select_ip2(bundle_nb, desire_exclure,iplist,*nelm));
 }
 
-int f77name(f_select_ip3)(void *iplist, int *nelm, int *kind)
+int f77name(f_select_ip3)(void *iplist, int *nelm)
 {
-  return(Xc_Select_ip3(bundle_nb, desire_exclure,iplist,*nelm,*kind));
+  return(Xc_Select_ip3(bundle_nb, desire_exclure,iplist,*nelm));
 }
 
-int f77name(f_select_date)(int *date_list, int *nelm, float *delta)
+int f77name(f_select_date)(int *date_list, int *nelm)
 {
-  return(Xc_Select_date(bundle_nb, desire_exclure,date_list,*nelm,*delta));
+  return(Xc_Select_date(bundle_nb, desire_exclure,date_list,*nelm));
 }
 
 int f77name(f_select_etiquette)(char *etiq_list, int *nelm, F2Cl flng)
@@ -1291,7 +1361,7 @@ int Directive_dates(int argc , char **argv,char cmd_strt,  void *func(int set_nb
 
   if (range) nelm = -2;
   /* ier = func(set_nb,des_exc,list_entier,nelm,delta); */
-  Xc_Select_date(set_nb,des_exc,list_entier,nelm,delta);
+  Xc_Select_date(set_nb,des_exc,list_entier,nelm);
   return(0);
 }
 
@@ -1360,7 +1430,7 @@ int Directive_datev(int argc , char **argv,char cmd_strt,  void *func(), char *P
   else
     nelm = j;  
   /* func(set_nb,des_exc,list_entier,nelm,delta); */
-  Xc_Select_date(set_nb,des_exc,list_entier,nelm,delta);
+  Xc_Select_date(set_nb,des_exc,list_entier,nelm);
   return(0);
 }
 
@@ -1503,14 +1573,14 @@ void f77name(c_main)(int *handle)
 
   C_requetes_init();
 
-  i = Xc_Select_ip1(2,1,ip1s_i,4,-1);
-  i = Xc_Select_ip1(0,1,ip1s_r,3,1);
-/*  i = Xc_Select_ip1(1,1,ip1s_range,-2,-1);*/
-  i = Xc_Select_ip1(1,1,ip1s_r_range,-2,1);
-  i = Xc_Select_ip2(2,1,ip2s,3,-1);
-  i = Xc_Select_ip3(2,1,ip3s,3,-1);
+  i = Xc_Select_ip1(2,1,ip1s_i,4);
+  i = Xc_Select_ip1(0,1,ip1s_r,3);
+/*  i = Xc_Select_ip1(1,1,ip1s_range,-2);*/
+  i = Xc_Select_ip1(1,1,ip1s_r_range,-2);
+  i = Xc_Select_ip2(2,1,ip2s,3);
+  i = Xc_Select_ip3(2,1,ip3s,3);
   heures=12.0;
-  i = Xc_Select_date(1,1,dates_range,-2,heures);
+  i = Xc_Select_date(1,1,dates_range,-2);
 /*  heures=0.0;
   i = Xc_Select_date(1,1,dates_range,-2,heures);*/
   i = Xc_Select_etiquette(2,1,testeti,3);
