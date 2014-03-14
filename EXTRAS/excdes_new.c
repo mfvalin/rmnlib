@@ -53,19 +53,6 @@ static int last_R = MAX_requetes;
 static FILE *stddebug;
 static int bundle_nb = -1;
 static int desire_exclure = 1;
-#ifdef NOTUSED
-typedef struct {
-  int in_use;
-  enum cquoica arg_type;
-  int ip_kind;
-  int nelm;
-  float delta;
-  union {
-    long tab_elem[MAX_Nlist];
-    float tab_rval[MAX_Nlist];
-  } data;
-} DE_int_float;
-#endif
 typedef struct {
   int in_use;
   int nelm;
@@ -76,21 +63,8 @@ typedef struct {
 typedef struct {
   int in_use;
   int nelm;
-  char *sdata[MAX_Nlist];
+  char pdata[MAX_Nlist][13];
 } DE_char;
-#ifdef NOTUSED
-typedef struct {
-  int in_use;
-  int exdes;
-  DE_char etiquettes;
-  DE_char nomvars;
-  DE_char typvars;
-  DE_int_float dates;
-  DE_int_float ip1s;
-  DE_int_float ip2s;
-  DE_int_float ip3s;
-} Desire_Exclure;
-#endif
 typedef struct {
   int in_use;
   int in_use_supp;
@@ -115,55 +89,66 @@ typedef struct {
 //Desire_Exclure Requetes[MAX_requetes];
 DesireExclure  Requests[MAX_requetes];
 
-void DumpRequestTable()
+void DumpRequestTable(int use_header)
 {
   int i, j;
+  char *sep="\n      ";
+  if(use_header)sep=",";
   for (i==0 ; i<MAX_requetes ; i++) {
     if(Requests[i].in_use) {
-      fprintf(stdout,"=================== Request no %d ===================\n",i);
+      if(use_header) fprintf(stdout,"=================== Request no %d ===================\n",i);
       if(Requests[i].ip1s.in_use){
-        fprintf(stdout,"IP1       (%6s):", in_use[Requests[i].ip1s.in_use]);
-        for(j = 0 ; j < Requests[i].ip1s.nelm ; j++) fprintf(stdout," %d",Requests[i].ip1s.data[j]);
+        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(stdout,"'IP1       ', '%6s', %2d%s %d", in_use[Requests[i].ip1s.in_use],Requests[i].ip1s.nelm,sep,Requests[i].ip1s.data[0]);
+        for(j = 1 ; j < Requests[i].ip1s.nelm ; j++) fprintf(stdout,", %d",Requests[i].ip1s.data[j]);
         fprintf(stdout,"\n");
       }
       if(Requests[i].ip2s.in_use){
-        fprintf(stdout,"IP2       (%6s):", in_use[Requests[i].ip2s.in_use]);
-        for(j = 0 ; j < Requests[i].ip2s.nelm ; j++) fprintf(stdout," %d",Requests[i].ip2s.data[j]);
+        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(stdout,"'IP2       ', '%6s', %2d%s %d", in_use[Requests[i].ip2s.in_use],Requests[i].ip2s.nelm,sep,Requests[i].ip2s.data[0]);
+        for(j = 1 ; j < Requests[i].ip2s.nelm ; j++) fprintf(stdout,", %d",Requests[i].ip2s.data[j]);
         fprintf(stdout,"\n");
       }
       if(Requests[i].ip3s.in_use){
-        fprintf(stdout,"IP3       (%6s):", in_use[Requests[i].ip3s.in_use]);
-        for(j = 0 ; j < Requests[i].ip3s.nelm ; j++) fprintf(stdout," %d",Requests[i].ip3s.data[j]);
+        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(stdout,"'IP3       ', '%6s', %2d%s %d", in_use[Requests[i].ip3s.in_use],Requests[i].ip3s.nelm,sep,Requests[i].ip3s.data[0]);
+        for(j = 1 ; j < Requests[i].ip3s.nelm ; j++) fprintf(stdout,", %d",Requests[i].ip3s.data[j]);
         fprintf(stdout,"\n");
       }
       if(Requests[i].dates.in_use){
-        fprintf(stdout,"dates     (%6s):", in_use[Requests[i].dates.in_use]);
-        for(j = 0 ; j < Requests[i].dates.nelm ; j++) fprintf(stdout," %d",Requests[i].dates.data[j]);
-        if(Requests[i].dates.delta) fprintf(stdout," %d",Requests[i].dates.delta);
+        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(stdout,"'dates     ', '%6s', %2d%s %d", in_use[Requests[i].dates.in_use],Requests[i].dates.nelm,sep,Requests[i].dates.data[0]);
+        for(j = 1 ; j < Requests[i].dates.nelm ; j++) fprintf(stdout,", %d",Requests[i].dates.data[j]);
+        if(Requests[i].dates.delta) fprintf(stdout,", %d",Requests[i].dates.delta);
         fprintf(stdout,"\n");
       }
       if(Requests[i].nomvars.in_use){
-        fprintf(stdout,"Nomvar    (%6s):", in_use[Requests[i].nomvars.in_use]);
-        for(j = 0 ; j < Requests[i].nomvars.nelm ; j++) fprintf(stdout," %s",Requests[i].nomvars.sdata[j]);
+        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(stdout,"'Nomvar    ', '%6s', %2d%s '%-4s'", in_use[Requests[i].nomvars.in_use],Requests[i].nomvars.nelm,sep,Requests[i].nomvars.pdata[0]);
+        for(j = 1 ; j < Requests[i].nomvars.nelm ; j++) fprintf(stdout,", '%-4s'",Requests[i].nomvars.pdata[j]);
         fprintf(stdout,"\n");
       }
       if(Requests[i].typvars.in_use){
-        fprintf(stdout,"Typvar    (%6s):", in_use[Requests[i].typvars.in_use]);
-        for(j = 0 ; j < Requests[i].typvars.nelm ; j++) fprintf(stdout," %s",Requests[i].typvars.sdata[j]);
+        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(stdout,"'Typvar    ', '%6s', %2d%s '%-2s'", in_use[Requests[i].typvars.in_use],Requests[i].typvars.nelm,sep,Requests[i].typvars.pdata[0]);
+        for(j = 1 ; j < Requests[i].typvars.nelm ; j++) fprintf(stdout,", '%-2s'",Requests[i].typvars.pdata[j]);
         fprintf(stdout,"\n");
       }
       if(Requests[i].etiquettes.in_use){
-        fprintf(stdout,"Etiket    (%6s):", in_use[Requests[i].etiquettes.in_use]);
-        for(j = 0 ; j < Requests[i].etiquettes.nelm ; j++) fprintf(stdout," %s",Requests[i].etiquettes.sdata[j]);
+        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(stdout,"'Etiket    ', '%6s', %2d%s '%-12s'", in_use[Requests[i].etiquettes.in_use],Requests[i].etiquettes.nelm,sep,Requests[i].etiquettes.pdata[0]);
+        for(j = 1 ; j < Requests[i].etiquettes.nelm ; j++) fprintf(stdout,", '%-12s'",Requests[i].etiquettes.pdata[j]);
         fprintf(stdout,"\n");
       }
       if(Requests[i].in_use_supp){
-        fprintf(stdout,"Extra criteria: ni=%d, nj=%d, nk=%d, ig1=%d, ig2=%d, 1g3=%d, ig4=%d, gtyp=%c\n", 
+        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(stdout,"'Extra     ', 'value ',  8%s %d, %d, %d, %d, %d, %d, %d, '%c'\n",sep, 
                 Requests[i].nis,Requests[i].njs,Requests[i].nks,
                 Requests[i].ig1s,Requests[i].ig2s,Requests[i].ig3s,Requests[i].ig4s,Requests[i].grdtyps);
       }
-    }
-  }
+    }  /* if */
+  }  /* for */
+  if(! use_header) fprintf(stdout," 0\n");
 }
 
 static int ValidateRequestForSet(int set_nb, int des_exc, int nelm, int nelm_lt, char *msg)
@@ -235,7 +220,7 @@ int Xc_Select_ip1(int set_nb, int des_exc, void *iplist, int nelm)
     Requests[set_nb].ip1s.data[i] = ip_entier[i];
   }
 
-  if (ip_entier[0] == -2 || ip_entier[1] == -2) Requests[set_nb].ip1s.in_use = RANGE;
+  if (ip_entier[0] == -2 || ip_entier[1] == -2) { Requests[set_nb].ip1s.in_use = RANGE; Requests[set_nb].ip1s.nelm = 2 ; }
   if (ip_entier[1] == -2) Requests[set_nb].ip1s.data[1] = Requests[set_nb].ip1s.data[2];   /* value @ value  or value @  or @ @ */
   return(0);
 }
@@ -282,7 +267,7 @@ int Xc_Select_ip2(int set_nb, int des_exc, void *iplist, int nelm)
     Requests[set_nb].ip2s.data[i] = ip_entier[i];
   }
 
-  if (ip_entier[0] == -2 || ip_entier[1] == -2) Requests[set_nb].ip2s.in_use = RANGE;
+  if (ip_entier[0] == -2 || ip_entier[1] == -2) { Requests[set_nb].ip2s.in_use = RANGE;; Requests[set_nb].ip2s.nelm = 2 ; }
   if (ip_entier[1] == -2) Requests[set_nb].ip2s.data[1] = Requests[set_nb].ip2s.data[2];   /* value @ value  or value @  or @ @ */
   return(0);
 }
@@ -329,7 +314,7 @@ int Xc_Select_ip3(int set_nb, int des_exc, void *iplist, int nelm)
     Requests[set_nb].ip3s.data[i] = ip_entier[i];
   }
 
-  if (ip_entier[0] == -2 || ip_entier[1] == -2) Requests[set_nb].ip3s.in_use = RANGE;
+  if (ip_entier[0] == -2 || ip_entier[1] == -2) { Requests[set_nb].ip3s.in_use = RANGE;; Requests[set_nb].ip3s.nelm = 2 ; }
   if (ip_entier[1] == -2) Requests[set_nb].ip3s.data[1] = Requests[set_nb].ip3s.data[2];   /* value @ value  or value @  or @ @ */
   return(0);
 }
@@ -425,9 +410,9 @@ int Xc_Select_etiquette(int set_nb, int des_exc, char *etiq_list[], int nelm)
   Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
   Requests[set_nb].etiquettes.nelm = nelm;
   for (i=0; i<nelm; i++) {
-    strncpy(Requests[set_nb].etiquettes.sdata[i],etiq_list[i],13);
-    dbprint(stddebug,"Debug Requests[%i].etiquettes.sdata[%i]=%s\n",
-           set_nb,i,Requests[set_nb].etiquettes.sdata[i]);
+    strncpy(Requests[set_nb].etiquettes.pdata[i],etiq_list[i],13);
+    dbprint(stddebug,"Debug Requests[%i].etiquettes.pdata[%i]=%s\n",
+           set_nb,i,Requests[set_nb].etiquettes.pdata[i]);
   }
   return(0);
 }
@@ -459,9 +444,9 @@ int Xc_Select_nomvar(int set_nb, int des_exc, char *nomv_list[], int nelm)
   Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
   Requests[set_nb].nomvars.nelm = nelm;
   for (i=0; i<nelm; i++) {
-    strncpy(Requests[set_nb].nomvars.sdata[i],nomv_list[i],5);
-    dbprint(stddebug,"Debug Requests[%i].nomvars.sdata[%i]=%s\n",
-           set_nb,i,Requests[set_nb].nomvars.sdata[i]);
+    strncpy(Requests[set_nb].nomvars.pdata[i],nomv_list[i],5);
+    dbprint(stddebug,"Debug Requests[%i].nomvars.pdata[%i]=%s\n",
+           set_nb,i,Requests[set_nb].nomvars.pdata[i]);
   }
   return(0);
 }
@@ -491,7 +476,7 @@ int Xc_Select_suppl(int set_nb, int des_exc, int ni, int nj, int nk, int ig1, in
   if(valid < 0) return(valid);
 
   Requests[set_nb].in_use = 1;
-  Requests[set_nb].nomvars.in_use = 1;
+  Requests[set_nb].in_use_supp = 1;
   Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
   Requests[set_nb].nis     = ni;
   Requests[set_nb].njs     = nj;
@@ -531,9 +516,9 @@ int Xc_Select_typvar(int set_nb, int des_exc, char *typv_list[], int nelm)
   Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
   Requests[set_nb].typvars.nelm = nelm;
   for (i=0; i<nelm; i++) {
-    strncpy(Requests[set_nb].typvars.sdata[i],typv_list[i],3);
-    dbprint(stddebug,"Debug Requests[%i].typvars.sdata[%i]=%s\n",
-           set_nb,i,Requests[set_nb].typvars.sdata[i]);
+    strncpy(Requests[set_nb].typvars.pdata[i],typv_list[i],3);
+    dbprint(stddebug,"Debug Requests[%i].typvars.pdata[%i]=%s\n",
+           set_nb,i,Requests[set_nb].typvars.pdata[i]);
   }
   return(0);
 }
@@ -639,9 +624,9 @@ int C_fst_match_req(int handle)
 
   if (! Requests[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
 
-  ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,&nbits,&datyp,&ip1,
-                     &ip2,&ip3,typvar,nomvar,etiket,grtyp,&ig1,&ig2,
-                     &ig3,&ig4,&swa,&lng,&dltf,&ubc,&datevalid,&xtra2,&xtra3);
+//  ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,&nbits,&datyp,&ip1,
+//                     &ip2,&ip3,typvar,nomvar,etiket,grtyp,&ig1,&ig2,
+//                     &ig3,&ig4,&swa,&lng,&dltf,&ubc,&datevalid,&xtra2,&xtra3);
 /*  dbprint(stddebug,"Debug C_fst_match_req fstprm date=%d ip1=%d ip2=%d ip3=%d nomvar-->%s<-- typvar-->%s<-- etiket-->%s<--\n",
          date,ip1,ip2,ip3,nomvar,typvar,etiket);*/
   if (ier < 0) return(0);
@@ -662,7 +647,7 @@ int C_fst_match_req(int handle)
         dbprint(stddebug,"Debug C_fst_match_req verifie etiquettes du fichier=%s set_nb=%d\n",etiket,set_nb);
         if (Requests[set_nb].exdes == DESIRE) {
           for (i=0; i < Requests[set_nb].etiquettes.nelm; i++)
-            if (strncmp(Requests[set_nb].etiquettes.sdata[i],etiket,Min(12,strlen(Requests[set_nb].etiquettes.sdata[i]))) == 0) {
+            if (strncmp(Requests[set_nb].etiquettes.pdata[i],etiket,Min(12,strlen(Requests[set_nb].etiquettes.pdata[i]))) == 0) {
               amatch = 1;
               dbprint(stddebug,"Debug C_fst_match_req match desire\n");
               goto Nomvars; /* satisfait la requete */
@@ -671,7 +656,7 @@ int C_fst_match_req(int handle)
         }
         else {
           for (i=0; i < Requests[set_nb].etiquettes.nelm; i++)
-            if (strncmp(Requests[set_nb].etiquettes.sdata[i],etiket,Min(12,strlen(Requests[set_nb].etiquettes.sdata[i])))== 0) {
+            if (strncmp(Requests[set_nb].etiquettes.pdata[i],etiket,Min(12,strlen(Requests[set_nb].etiquettes.pdata[i])))== 0) {
               amatch = -1;  /* enregistrement a exclure */
               dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
               goto Nomvars;
@@ -685,7 +670,7 @@ int C_fst_match_req(int handle)
         dbprint(stddebug,"Debug C_fst_match_req verifie nomvars du fichier=%s set_nb=%d\n",nomvar,set_nb);
         if (Requests[set_nb].exdes == DESIRE) {
           for (i=0; i < Requests[set_nb].nomvars.nelm; i++)
-            if (strncmp(Requests[set_nb].nomvars.sdata[i],nomvar,Min(4,strlen(Requests[set_nb].nomvars.sdata[i]))) == 0) {
+            if (strncmp(Requests[set_nb].nomvars.pdata[i],nomvar,Min(4,strlen(Requests[set_nb].nomvars.pdata[i]))) == 0) {
               amatch = 1;
               dbprint(stddebug,"Debug C_fst_match_req match desire\n");
               goto Typvars; /* satisfait la requete */
@@ -694,7 +679,7 @@ int C_fst_match_req(int handle)
         }
         else {
           for (i=0; i < Requests[set_nb].nomvars.nelm; i++) {
-            if (strncmp(Requests[set_nb].nomvars.sdata[i],nomvar,Min(4,strlen(Requests[set_nb].nomvars.sdata[i]))) == 0) {
+            if (strncmp(Requests[set_nb].nomvars.pdata[i],nomvar,Min(4,strlen(Requests[set_nb].nomvars.pdata[i]))) == 0) {
               amatch = -1; /* enregistrement a exclure */
               dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
               goto Typvars;
@@ -710,7 +695,7 @@ int C_fst_match_req(int handle)
         dbprint(stddebug,"Debug C_fst_match_req verifie typvars set_nb=%d\n",set_nb);
         if (Requests[set_nb].exdes == DESIRE) {
           for (i=0; i < Requests[set_nb].typvars.nelm; i++)
-            if (strncmp(Requests[set_nb].typvars.sdata[i],typvar,Min(2,strlen(Requests[set_nb].typvars.sdata[i]))) == 0) {
+            if (strncmp(Requests[set_nb].typvars.pdata[i],typvar,Min(2,strlen(Requests[set_nb].typvars.pdata[i]))) == 0) {
               amatch = 1;
               dbprint(stddebug,"Debug C_fst_match_req match desire\n");
               goto Dates; /* satisfait la requete */
@@ -719,7 +704,7 @@ int C_fst_match_req(int handle)
         }
         else {
           for (i=0; i < Requests[set_nb].typvars.nelm; i++)
-            if (strncmp(Requests[set_nb].typvars.sdata[i],typvar,Min(2,strlen(Requests[set_nb].typvars.sdata[i])))== 0) {
+            if (strncmp(Requests[set_nb].typvars.pdata[i],typvar,Min(2,strlen(Requests[set_nb].typvars.pdata[i])))== 0) {
               amatch = -1;  /* enregistrement a exclure */
               dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
               goto Dates;
@@ -831,7 +816,7 @@ int C_fst_match_req(int handle)
         switch (Requests[set_nb].ip1s.in_use) {
 
         case VALUE:
-          f77name(convip)(&ip1,&p1,&ip_kind,&mode,string,&flag);
+//          f77name(convip)(&ip1,&p1,&ip_kind,&mode,string,&flag);
           dbprint(stddebug,"Debug C_fst_match_req verifie ip1s du fichier=%d reel=%f set_nb=%d\n",ip1,p1,set_nb);
           for (i=0; i < Requests[set_nb].ip1s.nelm; i++)
             if (p1 == 0.) {
@@ -869,7 +854,7 @@ int C_fst_match_req(int handle)
           break;
 
         case RANGE:
-          f77name(convip)(&ip1,&p1,&ip_kind,&mode,string,&flag);
+//          f77name(convip)(&ip1,&p1,&ip_kind,&mode,string,&flag);
           if (Requests[set_nb].ip1s.data[0] == -1.0)
             r_debut = p1;
           else
@@ -1148,19 +1133,19 @@ int C_requetes_reset(int set_nb, int nomvars, int typvars, int etikets, int date
     Requests[set_nb].nomvars.in_use = UNUSED;
     Requests[set_nb].nomvars.nelm = 0;
     for (j=0; j < MAX_Nlist; j++)
-      strcpy(Requests[set_nb].nomvars.sdata[j],"    ");
+      strcpy(Requests[set_nb].nomvars.pdata[j],"    ");
   }
   if (typvars != -1) {
     Requests[set_nb].typvars.in_use = UNUSED;
     Requests[set_nb].typvars.nelm = 0;
     for (j=0; j < MAX_Nlist; j++)
-      strcpy(Requests[set_nb].typvars.sdata[j],"  ");
+      strcpy(Requests[set_nb].typvars.pdata[j],"  ");
   }
   if (etikets != -1) {
     Requests[set_nb].etiquettes.in_use = UNUSED;
     Requests[set_nb].etiquettes.nelm = 0;
     for (j=0; j < MAX_Nlist; j++)
-      strcpy(Requests[set_nb].etiquettes.sdata[j],"            ");
+      strcpy(Requests[set_nb].etiquettes.pdata[j],"            ");
   }
   if (dates != -1) {
     Requests[set_nb].dates.in_use = UNUSED;
@@ -1208,9 +1193,16 @@ void c_requetes_init(char *requetes_filename, char *debug_filename)
 
   for (i=0; i<MAX_requetes; i++) {
     for (j=0; j<MAX_Nlist; j++) {
-      Requests[i].etiquettes.sdata[j] = (char *) malloc(13);
-      Requests[i].nomvars.sdata[j] = (char *) malloc(5);
-      Requests[i].typvars.sdata[j] = (char *) malloc(3);
+//      Requests[i].etiquettes.sdata[j] = (char *) malloc(13);
+//      Requests[i].nomvars.sdata[j] = (char *) malloc(5);
+//      Requests[i].typvars.sdata[j] = (char *) malloc(3);
+      Requests[i].nis = 0;
+      Requests[i].njs = 0;
+      Requests[i].nks = 0;
+      Requests[i].ig1s = 0;
+      Requests[i].ig2s = 0;
+      Requests[i].ig3s = 0;
+      Requests[i].ig4s = 0;
       Requests[i].grdtyps = ' ';
     }
     C_requetes_reset(i,1,1,1,1,1,1,1);
@@ -1547,7 +1539,8 @@ return 0;
 	return 0; /*CHC/NRC*/
 }
 #if defined (TEST)
-void f77name(c_main)(int *handle)
+//void f77name(c_main)(int *handle)
+main(int argc, char **argv)
 {
 
   int i,j;
@@ -1555,7 +1548,9 @@ void f77name(c_main)(int *handle)
   int ip1s_i[] = { 400,500,600,750 };
   float ip1s_r[] = { .3840, .4440, 0.6110 };
   float ip1s_r_range[] = { .3280, 0.8000 };
-  int ip1s_range[] = {400, 750};
+  int ip1s_range[] = {400, -2, 750};
+  int ip1s_range2[] = {-2, 750};
+  int ip1s_range3[] = { 750, -2};
   int ip2s[] = {0, 12, 24};
   int ip3s[] = {0, 80, 90};
   int dates[] = {313290800, 313301600};
@@ -1571,23 +1566,32 @@ void f77name(c_main)(int *handle)
   dbprint(stddebug,"Debug testnom=%s %s \n",testnom[0],testnom[1]);
   dbprint(stddebug,"Debug testtyp=%s %s %s %s \n",testtyp[0],testtyp[1],testtyp[2],testtyp[3]);
 
-  C_requetes_init();
+  c_requetes_init(NULL,NULL);
 
-  i = Xc_Select_ip1(2,1,ip1s_i,4);
-  i = Xc_Select_ip1(0,1,ip1s_r,3);
-/*  i = Xc_Select_ip1(1,1,ip1s_range,-2);*/
-  i = Xc_Select_ip1(1,1,ip1s_r_range,-2);
+  i = Xc_Select_ip1(1,1,ip1s_i,4);
+  i = Xc_Select_suppl(1, 1, -1, -1, -1, -1, -1, -1, -1, 'Z');
+
+  i = Xc_Select_etiquette(2,1,testeti,3);
+  i = Xc_Select_nomvar(2,1,testnom,2);
+  i = Xc_Select_typvar(2,1,testtyp,4);
+  i = Xc_Select_ip1(2,1,ip1s_range,3);
   i = Xc_Select_ip2(2,1,ip2s,3);
-  i = Xc_Select_ip3(2,1,ip3s,3);
+
+  i = Xc_Select_ip3(3,1,ip3s,3);
+  i = Xc_Select_ip1(3,1,ip1s_range2,2);
+
+  i = Xc_Select_ip1(4,1,ip1s_range3,2);
+  i = Xc_Select_ip2(4,1,ip1s_range2,2);
+  DumpRequestTable(atoi(argv[1]));
+//  i = Xc_Select_ip1(0,1,ip1s_r,3);
+/*  i = Xc_Select_ip1(1,1,ip1s_range,-2);*/
+//  i = Xc_Select_ip1(1,1,ip1s_r_range,-2);
   heures=12.0;
   i = Xc_Select_date(1,1,dates_range,-2);
 /*  heures=0.0;
   i = Xc_Select_date(1,1,dates_range,-2,heures);*/
-  i = Xc_Select_etiquette(2,1,testeti,3);
-  i = Xc_Select_nomvar(2,1,testnom,2);
-  i = Xc_Select_typvar(2,1,testtyp,4);
  /* j = C_fst_match_req(1,*handle);*/
-  j = C_fst_match_req(*handle);
+//  j = C_fst_match_req(*handle);
 
 }
 #endif
