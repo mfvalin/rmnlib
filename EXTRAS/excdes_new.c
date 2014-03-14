@@ -89,66 +89,74 @@ typedef struct {
 //Desire_Exclure Requetes[MAX_requetes];
 DesireExclure  Requests[MAX_requetes];
 
-void DumpRequestTable(int use_header)
+void DumpRequestTable(int use_header, char *filename)
 {
   int i, j;
   char *sep="\n      ";
+  FILE *outfile = NULL;
+
+  if(filename) {
+    outfile = fopen(filename,"w");
+    use_header = 0;
+  }
+  if(outfile == NULL) outfile=stdout;
   if(use_header)sep=",";
   for (i==0 ; i<MAX_requetes ; i++) {
     if(Requests[i].in_use) {
-      if(use_header) fprintf(stdout,"=================== Request no %d ===================\n",i);
+      if(use_header) fprintf(outfile,"=================== Request no %d ===================\n",i);
       if(Requests[i].ip1s.in_use){
-        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
-        fprintf(stdout,"'IP1       ', '%6s', %2d%s %d", in_use[Requests[i].ip1s.in_use],Requests[i].ip1s.nelm,sep,Requests[i].ip1s.data[0]);
-        for(j = 1 ; j < Requests[i].ip1s.nelm ; j++) fprintf(stdout,", %d",Requests[i].ip1s.data[j]);
-        fprintf(stdout,"\n");
+        fprintf(outfile,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(outfile,"'IP1       ', '%6s', %2d%s %d", in_use[Requests[i].ip1s.in_use],Requests[i].ip1s.nelm,sep,Requests[i].ip1s.data[0]);
+        for(j = 1 ; j < Requests[i].ip1s.nelm ; j++) fprintf(outfile,", %d",Requests[i].ip1s.data[j]);
+        fprintf(outfile,"\n");
       }
       if(Requests[i].ip2s.in_use){
-        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
-        fprintf(stdout,"'IP2       ', '%6s', %2d%s %d", in_use[Requests[i].ip2s.in_use],Requests[i].ip2s.nelm,sep,Requests[i].ip2s.data[0]);
-        for(j = 1 ; j < Requests[i].ip2s.nelm ; j++) fprintf(stdout,", %d",Requests[i].ip2s.data[j]);
-        fprintf(stdout,"\n");
+        fprintf(outfile,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(outfile,"'IP2       ', '%6s', %2d%s %d", in_use[Requests[i].ip2s.in_use],Requests[i].ip2s.nelm,sep,Requests[i].ip2s.data[0]);
+        for(j = 1 ; j < Requests[i].ip2s.nelm ; j++) fprintf(outfile,", %d",Requests[i].ip2s.data[j]);
+        fprintf(outfile,"\n");
       }
       if(Requests[i].ip3s.in_use){
-        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
-        fprintf(stdout,"'IP3       ', '%6s', %2d%s %d", in_use[Requests[i].ip3s.in_use],Requests[i].ip3s.nelm,sep,Requests[i].ip3s.data[0]);
-        for(j = 1 ; j < Requests[i].ip3s.nelm ; j++) fprintf(stdout,", %d",Requests[i].ip3s.data[j]);
-        fprintf(stdout,"\n");
+        fprintf(outfile,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(outfile,"'IP3       ', '%6s', %2d%s %d", in_use[Requests[i].ip3s.in_use],Requests[i].ip3s.nelm,sep,Requests[i].ip3s.data[0]);
+        for(j = 1 ; j < Requests[i].ip3s.nelm ; j++) fprintf(outfile,", %d",Requests[i].ip3s.data[j]);
+        fprintf(outfile,"\n");
       }
       if(Requests[i].dates.in_use){
-        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
-        fprintf(stdout,"'dates     ', '%6s', %2d%s %d", in_use[Requests[i].dates.in_use],Requests[i].dates.nelm,sep,Requests[i].dates.data[0]);
-        for(j = 1 ; j < Requests[i].dates.nelm ; j++) fprintf(stdout,", %d",Requests[i].dates.data[j]);
-        if(Requests[i].dates.delta) fprintf(stdout,", %d",Requests[i].dates.delta);
-        fprintf(stdout,"\n");
+        fprintf(outfile,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(outfile,"'dates     ', '%6s', %2d%s %d", in_use[Requests[i].dates.in_use],Requests[i].dates.nelm,sep,Requests[i].dates.data[0]);
+        for(j = 1 ; j < Requests[i].dates.nelm ; j++) fprintf(outfile,", %d",Requests[i].dates.data[j]);
+        if(Requests[i].dates.delta) fprintf(outfile,", %d",Requests[i].dates.delta);
+        fprintf(outfile,"\n");
       }
       if(Requests[i].nomvars.in_use){
-        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
-        fprintf(stdout,"'Nomvar    ', '%6s', %2d%s '%-4s'", in_use[Requests[i].nomvars.in_use],Requests[i].nomvars.nelm,sep,Requests[i].nomvars.pdata[0]);
-        for(j = 1 ; j < Requests[i].nomvars.nelm ; j++) fprintf(stdout,", '%-4s'",Requests[i].nomvars.pdata[j]);
-        fprintf(stdout,"\n");
+        fprintf(outfile,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(outfile,"'Nomvar    ', '%6s', %2d%s '%-4s'", in_use[Requests[i].nomvars.in_use],Requests[i].nomvars.nelm,sep,Requests[i].nomvars.pdata[0]);
+        for(j = 1 ; j < Requests[i].nomvars.nelm ; j++) fprintf(outfile,", '%-4s'",Requests[i].nomvars.pdata[j]);
+        fprintf(outfile,"\n");
       }
       if(Requests[i].typvars.in_use){
-        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
-        fprintf(stdout,"'Typvar    ', '%6s', %2d%s '%-2s'", in_use[Requests[i].typvars.in_use],Requests[i].typvars.nelm,sep,Requests[i].typvars.pdata[0]);
-        for(j = 1 ; j < Requests[i].typvars.nelm ; j++) fprintf(stdout,", '%-2s'",Requests[i].typvars.pdata[j]);
-        fprintf(stdout,"\n");
+        fprintf(outfile,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(outfile,"'Typvar    ', '%6s', %2d%s '%-2s'", in_use[Requests[i].typvars.in_use],Requests[i].typvars.nelm,sep,Requests[i].typvars.pdata[0]);
+        for(j = 1 ; j < Requests[i].typvars.nelm ; j++) fprintf(outfile,", '%-2s'",Requests[i].typvars.pdata[j]);
+        fprintf(outfile,"\n");
       }
       if(Requests[i].etiquettes.in_use){
-        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
-        fprintf(stdout,"'Etiket    ', '%6s', %2d%s '%-12s'", in_use[Requests[i].etiquettes.in_use],Requests[i].etiquettes.nelm,sep,Requests[i].etiquettes.pdata[0]);
-        for(j = 1 ; j < Requests[i].etiquettes.nelm ; j++) fprintf(stdout,", '%-12s'",Requests[i].etiquettes.pdata[j]);
-        fprintf(stdout,"\n");
+        fprintf(outfile,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(outfile,"'Etiket    ', '%6s', %2d%s '%-12s'", in_use[Requests[i].etiquettes.in_use],Requests[i].etiquettes.nelm,sep,Requests[i].etiquettes.pdata[0]);
+        for(j = 1 ; j < Requests[i].etiquettes.nelm ; j++) fprintf(outfile,", '%-12s'",Requests[i].etiquettes.pdata[j]);
+        fprintf(outfile,"\n");
       }
       if(Requests[i].in_use_supp){
-        fprintf(stdout,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
-        fprintf(stdout,"'Extra     ', 'value ',  8%s %d, %d, %d, %d, %d, %d, %d, '%c'\n",sep, 
+        fprintf(outfile,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
+        fprintf(outfile,"'Extra     ', 'value ',  8%s %d, %d, %d, %d, %d, %d, %d, '%c'\n",sep, 
                 Requests[i].nis,Requests[i].njs,Requests[i].nks,
                 Requests[i].ig1s,Requests[i].ig2s,Requests[i].ig3s,Requests[i].ig4s,Requests[i].grdtyps);
       }
     }  /* if */
   }  /* for */
-  if(! use_header) fprintf(stdout," 0\n");
+  if(! use_header) fprintf(outfile," 0\n");
+  if(outfile != stdout) fclose(outfile);
 }
 
 static int ValidateRequestForSet(int set_nb, int des_exc, int nelm, int nelm_lt, char *msg)
@@ -1582,7 +1590,7 @@ main(int argc, char **argv)
 
   i = Xc_Select_ip1(4,1,ip1s_range3,2);
   i = Xc_Select_ip2(4,1,ip1s_range2,2);
-  DumpRequestTable(atoi(argv[1]));
+  DumpRequestTable(atoi(argv[1]),argv[2]);
 //  i = Xc_Select_ip1(0,1,ip1s_r,3);
 /*  i = Xc_Select_ip1(1,1,ip1s_range,-2);*/
 //  i = Xc_Select_ip1(1,1,ip1s_r_range,-2);
