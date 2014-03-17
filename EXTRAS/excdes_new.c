@@ -40,6 +40,9 @@ enum cquoica {unused,entier, reel, deb_fin_entier, deb_fin_reel, deb_fin_entier_
 
 #define DESIRE 1
 #define EXCLURE -1
+              
+#define READLX_DELTA -3
+#define READLX_RANGE -2
 
 #define UNUSED 0
 #define VALUE 1
@@ -89,6 +92,12 @@ typedef struct {
 //Desire_Exclure Requetes[MAX_requetes];
 DesireExclure  Requests[MAX_requetes];
 
+/* put the contents of the request table in text format
+ * 
+ * use_header != 0   : print separators, otherwise produce "csv" type output
+ * filename != NULL  : write output into that file, without separators (ignore use_header)
+ * filename == NULL  : output to stdout
+ */
 void DumpRequestTable(int use_header, char *filename)
 {
   int i, j;
@@ -97,9 +106,9 @@ void DumpRequestTable(int use_header, char *filename)
 
   if(filename) {
     outfile = fopen(filename,"w");
-    use_header = 0;
+    use_header = 0;  /* disregard use_header if filename is not NULL */
   }
-  if(outfile == NULL) outfile=stdout;
+  if(outfile == NULL) outfile=stdout;  /* filename NULL or error opening file */
   if(use_header)sep=",";
   for (i==0 ; i<MAX_requetes ; i++) {
     if(Requests[i].in_use) {
@@ -124,9 +133,8 @@ void DumpRequestTable(int use_header, char *filename)
       }
       if(Requests[i].dates.in_use){
         fprintf(outfile,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
-        fprintf(outfile,"'dates     ', '%6s', %2d%s %d", in_use[Requests[i].dates.in_use],Requests[i].dates.nelm,sep,Requests[i].dates.data[0]);
+        fprintf(outfile,"'Dates     ', '%6s', %2d%s %d", in_use[Requests[i].dates.in_use],Requests[i].dates.nelm,sep,Requests[i].dates.data[0]);
         for(j = 1 ; j < Requests[i].dates.nelm ; j++) fprintf(outfile,", %d",Requests[i].dates.data[j]);
-        if(Requests[i].dates.delta) fprintf(outfile,", %d",Requests[i].dates.delta);
         fprintf(outfile,"\n");
       }
       if(Requests[i].nomvars.in_use){
@@ -149,7 +157,7 @@ void DumpRequestTable(int use_header, char *filename)
       }
       if(Requests[i].in_use_supp){
         fprintf(outfile,"%2d, '%c', ",i,Requests[i].exdes == DESIRE ? 'D' : 'E');
-        fprintf(outfile,"'Extra     ', 'value ',  8%s %d, %d, %d, %d, %d, %d, %d, '%c'\n",sep, 
+        fprintf(outfile,"'Xtra      ', 'value ',  8%s %d, %d, %d, %d, %d, %d, %d, '%c'\n",sep, 
                 Requests[i].nis,Requests[i].njs,Requests[i].nks,
                 Requests[i].ig1s,Requests[i].ig2s,Requests[i].ig3s,Requests[i].ig4s,Requests[i].grdtyps);
       }
@@ -228,8 +236,8 @@ int Xc_Select_ip1(int set_nb, int des_exc, void *iplist, int nelm)
     Requests[set_nb].ip1s.data[i] = ip_entier[i];
   }
 
-  if (ip_entier[0] == -2 || ip_entier[1] == -2) { Requests[set_nb].ip1s.in_use = RANGE; Requests[set_nb].ip1s.nelm = 2 ; }
-  if (ip_entier[1] == -2) Requests[set_nb].ip1s.data[1] = Requests[set_nb].ip1s.data[2];   /* value @ value  or value @  or @ @ */
+  if (ip_entier[0] == READLX_RANGE || ip_entier[1] == READLX_RANGE) { Requests[set_nb].ip1s.in_use = RANGE; Requests[set_nb].ip1s.nelm = 2 ; }
+  if (ip_entier[1] == READLX_RANGE) Requests[set_nb].ip1s.data[1] = Requests[set_nb].ip1s.data[2];   /* value @ value  or value @  or @ @ */
   return(0);
 }
 
@@ -275,8 +283,8 @@ int Xc_Select_ip2(int set_nb, int des_exc, void *iplist, int nelm)
     Requests[set_nb].ip2s.data[i] = ip_entier[i];
   }
 
-  if (ip_entier[0] == -2 || ip_entier[1] == -2) { Requests[set_nb].ip2s.in_use = RANGE;; Requests[set_nb].ip2s.nelm = 2 ; }
-  if (ip_entier[1] == -2) Requests[set_nb].ip2s.data[1] = Requests[set_nb].ip2s.data[2];   /* value @ value  or value @  or @ @ */
+  if (ip_entier[0] == READLX_RANGE || ip_entier[1] == READLX_RANGE) { Requests[set_nb].ip2s.in_use = RANGE;; Requests[set_nb].ip2s.nelm = 2 ; }
+  if (ip_entier[1] == READLX_RANGE) Requests[set_nb].ip2s.data[1] = Requests[set_nb].ip2s.data[2];   /* value @ value  or value @  or @ @ */
   return(0);
 }
 
@@ -322,8 +330,8 @@ int Xc_Select_ip3(int set_nb, int des_exc, void *iplist, int nelm)
     Requests[set_nb].ip3s.data[i] = ip_entier[i];
   }
 
-  if (ip_entier[0] == -2 || ip_entier[1] == -2) { Requests[set_nb].ip3s.in_use = RANGE;; Requests[set_nb].ip3s.nelm = 2 ; }
-  if (ip_entier[1] == -2) Requests[set_nb].ip3s.data[1] = Requests[set_nb].ip3s.data[2];   /* value @ value  or value @  or @ @ */
+  if (ip_entier[0] == READLX_RANGE || ip_entier[1] == READLX_RANGE) { Requests[set_nb].ip3s.in_use = RANGE;; Requests[set_nb].ip3s.nelm = 2 ; }
+  if (ip_entier[1] == READLX_RANGE) Requests[set_nb].ip3s.data[1] = Requests[set_nb].ip3s.data[2];   /* value @ value  or value @  or @ @ */
   return(0);
 }
 
@@ -351,7 +359,7 @@ int Xc_Select_date(int set_nb, int des_exc, int *date_list, int nelm)
   int i, range=0;
   int valid, delta=0;
 
-  valid = ValidateRequestForSet(set_nb, des_exc, nelm, -2, "date");
+  valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "date");
   if(valid < 0) return(valid);
 
   if (date_list[0] == -1) nelm = 1;        /* universal value, rest of values if any is irrelevant */
@@ -367,19 +375,22 @@ int Xc_Select_date(int set_nb, int des_exc, int *date_list, int nelm)
   Requests[set_nb].dates.nelm = nelm;      /* irrelevant if we have a range of dates */
   for (i=0; i<nelm; i++) {
     Requests[set_nb].dates.data[i] = date_list[i];
-    if(date_list[i]==-3) {                 /* DELTA keyword */
+    if(date_list[i]==READLX_DELTA) {                 /* DELTA keyword */
       delta++;
       if(delta > 1 || range == 0 ) goto error ;           /* more than one delta keyword or delta encountered before @  */
       Requests[set_nb].dates.in_use = DELTA;
+      Requests[set_nb].dates.nelm = 3;
+      Requests[set_nb].dates.data[2] = date_list[i+1];
       if(i<nelm-1) Requests[set_nb].dates.delta = date_list[i+1];
     }
-    if(date_list[i]==-2) {   /* @  keyword   */
+    if(date_list[i]==READLX_RANGE) {   /* @  keyword   */
       range++;
       if(range>1 || i>1) goto error ;           /* more than one @ keyword or @ keyword too far in line */
       Requests[set_nb].dates.in_use = RANGE ;
+      Requests[set_nb].dates.nelm = 2;
       if(i==0) Requests[set_nb].dates.data[0] = 0;              /* @ date .... */
       if(i==1) {                                            /* date @ date  or date @ delta */
-        Requests[set_nb].dates.data[1] = date_list[2] != -3  ? date_list[2] : 0x7FFFFFFF ; 
+        Requests[set_nb].dates.data[1] = date_list[2] != READLX_DELTA  ? date_list[2] : 0x7FFFFFFF ; 
       }
     }
     dbprint(stddebug,"Debug Requests[%d].dates.data[%d] = %d\n",set_nb,i,
@@ -1556,13 +1567,16 @@ main(int argc, char **argv)
   int ip1s_i[] = { 400,500,600,750 };
   float ip1s_r[] = { .3840, .4440, 0.6110 };
   float ip1s_r_range[] = { .3280, 0.8000 };
-  int ip1s_range[] = {400, -2, 750};
-  int ip1s_range2[] = {-2, 750};
-  int ip1s_range3[] = { 750, -2};
+  int ip1s_range[] = {400, READLX_RANGE, 750};
+  int ip1s_range2[] = {READLX_RANGE, 750};
+  int ip1s_range3[] = { 750, READLX_RANGE};
   int ip2s[] = {0, 12, 24};
   int ip3s[] = {0, 80, 90};
   int dates[] = {313290800, 313301600};
-  int dates_range[] = {313280000, 313290800};
+  int dates_range[] = {313280000, READLX_RANGE, 313290800};
+  int dates_range1[] = {313280000, READLX_RANGE, 313290800, READLX_DELTA, 12};
+  int dates_range2[] = {313280000, READLX_RANGE};
+  int dates_range3[] = {READLX_RANGE, 313290800};
 
   char *testeti[] = { "Etiquette #1", "R2428V4N", "Etiquet #3" };
   char *testnom[2] = { "TT", "GZ" };
@@ -1578,24 +1592,28 @@ main(int argc, char **argv)
 
   i = Xc_Select_ip1(1,1,ip1s_i,4);
   i = Xc_Select_suppl(1, 1, -1, -1, -1, -1, -1, -1, -1, 'Z');
+  i = Xc_Select_date(1,1,dates_range,3);
 
   i = Xc_Select_etiquette(2,1,testeti,3);
   i = Xc_Select_nomvar(2,1,testnom,2);
   i = Xc_Select_typvar(2,1,testtyp,4);
   i = Xc_Select_ip1(2,1,ip1s_range,3);
   i = Xc_Select_ip2(2,1,ip2s,3);
+  i = Xc_Select_date(2,1,dates_range1,5);
 
   i = Xc_Select_ip3(3,1,ip3s,3);
   i = Xc_Select_ip1(3,1,ip1s_range2,2);
+  i = Xc_Select_date(3,1,dates_range2,2);
 
-  i = Xc_Select_ip1(4,1,ip1s_range3,2);
-  i = Xc_Select_ip2(4,1,ip1s_range2,2);
+  i = Xc_Select_ip1(4,0,ip1s_range3,2);
+  i = Xc_Select_ip2(4,0,ip1s_range2,2);
+  i = Xc_Select_date(4,0,dates_range3,2);
   DumpRequestTable(atoi(argv[1]),argv[2]);
 //  i = Xc_Select_ip1(0,1,ip1s_r,3);
 /*  i = Xc_Select_ip1(1,1,ip1s_range,-2);*/
 //  i = Xc_Select_ip1(1,1,ip1s_r_range,-2);
-  heures=12.0;
-  i = Xc_Select_date(1,1,dates_range,-2);
+//  heures=12.0;
+//  i = Xc_Select_date(1,1,dates_range,-2);
 /*  heures=0.0;
   i = Xc_Select_date(1,1,dates_range,-2,heures);*/
  /* j = C_fst_match_req(1,*handle);*/
