@@ -611,9 +611,11 @@ return 0; /*CHC/NRC*/
  *                      C _ F S T _ M A T C H _ R E Q                        *
  *                                                                           *
  *Objet                                                                      *
- *   Verifier si l'enregistrement courant correspond aux requetes demandees  *
+ *   Verifier si l'enregistrement courant correspond aux criteres demandes   *
  *   Retourne 1 si l'enregistrement correspond, sinon 0                      *
  *   0 est aussi retourne si l'enregistrement correspond a un a exclure      *
+ *                                                                           *
+ *   en bref:  on retourne 1 si on accepte cet enregistrement, 0 sinon       *
  *                                                                           *
  *Arguments                                                                  *
  *                                                                           *
@@ -642,14 +644,18 @@ int C_fst_match_req(int handle)
   float p1,r_debut,r_fin;
   double diff_deb, diff_fin, delta8, date8, remainder;
   char *desire_exclure;
+  int translatable;
 
   if (! Requests[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
 
-//  ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,&nbits,&datyp,&ip1,
-//                     &ip2,&ip3,typvar,nomvar,etiket,grtyp,&ig1,&ig2,
-//                     &ig3,&ig4,&swa,&lng,&dltf,&ubc,&datevalid,&xtra2,&xtra3);
+  ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,&nbits,&datyp,&ip1,
+                     &ip2,&ip3,typvar,nomvar,etiket,grtyp,&ig1,&ig2,
+                     &ig3,&ig4,&swa,&lng,&dltf,&ubc,&datevalid,&xtra2,&xtra3);
 /*  dbprint(stddebug,"Debug C_fst_match_req fstprm date=%d ip1=%d ip2=%d ip3=%d nomvar-->%s<-- typvar-->%s<-- etiket-->%s<--\n",
          date,ip1,ip2,ip3,nomvar,typvar,etiket);*/
+  translatable = FstCanTranslateName(nomvar) ;
+#ifdef FUTURE_USE
+#endif
   if (ier < 0) return(0);
   date = datevalid;
 /*  
@@ -664,68 +670,73 @@ int C_fst_match_req(int handle)
     amatch = 0;
     desire_exclure = (Requests[set_nb].exdes == DESIRE)  ? "desire" : "exclure";
 
+    Supplements:
+      if (Requests[set_nb].in_use_supp) {
+        amatch = 0;
+        if(Requests[set_nb].ig1s != ig1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig2s != ig1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig3s != ig1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig4s != ig2) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].nis  !=  ni) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].nis  !=  nj) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].nis  !=  nk) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].grdtyps  !=  grtyp[0]) continue;  /* requete non satisfaite pour criteres supplementaires */
+        amatch = 1;   /* requete satisfaite */
+      }
     Etiquettes:
       if (Requests[set_nb].etiquettes.in_use) {
+        amatch = 0;
         dbprint(stddebug,"Debug C_fst_match_req verifie etiquettes du fichier=%s set_nb=%d\n",etiket,set_nb);
-        for (i=0; i < Requests[set_nb].etiquettes.nelm; i++)
+        for (i=0; i < Requests[set_nb].etiquettes.nelm; i++) {
           if (strncmp(Requests[set_nb].etiquettes.pdata[i],etiket,Min(12,strlen(Requests[set_nb].etiquettes.pdata[i]))) == 0) {
-            amatch = Requests[set_nb].exdes;
+            amatch = 1;
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-            goto Nomvars; /* satisfait la requete */
+            break;       /* requete satisfaite */
           }
-        continue;  /* rien trouve qui satisfasse la requete pour etiquettes */
+        }
+        if (amatch == 0) continue;  /* requete non satisfaite pour etiquettes */
       }
 
     Nomvars:
       if (Requests[set_nb].nomvars.in_use) {
+        amatch = 0;
         dbprint(stddebug,"Debug C_fst_match_req verifie nomvars du fichier=%s set_nb=%d\n",nomvar,set_nb);
         for (i=0; i < Requests[set_nb].nomvars.nelm; i++)
           if (strncmp(Requests[set_nb].nomvars.pdata[i],nomvar,Min(4,strlen(Requests[set_nb].nomvars.pdata[i]))) == 0) {
-            amatch = Requests[set_nb].exdes;
+            amatch = 1;
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-            goto Typvars; /* satisfait la requete */
+            break;       /* requete satisfaite */
           }
-        continue;  /* rien trouve qui satisfasse la requete pour nomvars */
+        if (amatch == 0) continue;  /* requete non satisfaite pour nomvars */
       }
 
     Typvars:
       if (Requests[set_nb].typvars.in_use) {
+        amatch = 0;
         dbprint(stddebug,"Debug C_fst_match_req verifie typvars set_nb=%d\n",set_nb);
         for (i=0; i < Requests[set_nb].typvars.nelm; i++)
           if (strncmp(Requests[set_nb].typvars.pdata[i],typvar,Min(2,strlen(Requests[set_nb].typvars.pdata[i]))) == 0) {
-            amatch = Requests[set_nb].exdes;
+            amatch = 1;
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-            goto Dates; /* satisfait la requete */
+            break;       /* requete satisfaite */
           }
-        continue;  /* rien trouve qui satisfait la requete pour typvars */
+        if (amatch == 0) continue;  /* requete non satisfaite pour typvars */
       }
 
     Dates:
       if (Requests[set_nb].dates.in_use) {
+          amatch = 0;
           switch (Requests[set_nb].dates.in_use) {
 
           case VALUE:
             dbprint(stddebug,"Debug C_fst_match_req verifie dates entier set_nb=%d\n",set_nb);
-            if (Requests[set_nb].exdes == DESIRE) {
-              for (i=0; i < Requests[set_nb].dates.nelm; i++)
-                if (Requests[set_nb].dates.data[i] == date) {
-                  amatch = 1;
-                  dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-                  goto Ip1s; /* satisfait la requete */
-                }
-              continue;  /* rien trouve qui satisfait la requete pour dates */
-            }
-            else {
-              for (i=0; i < Requests[set_nb].dates.nelm; i++)
-                if (Requests[set_nb].dates.data[i] == date) {
-                  amatch = -1;  /* enregistrement a exclure */
-                  dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
-                  goto Ip1s;
-                }
-              if (amatch == -1) amatch = 0;   /* exclusion additive non satisfaite */  
-              continue;  /* rien trouve a exclure */
-            }
-            break;
+            for (i=0; i < Requests[set_nb].dates.nelm; i++)
+              if (Requests[set_nb].dates.data[i] == date) {
+                amatch = 1;
+                dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
+              }
+            if(amatch == 0) continue;  /* rien trouve qui satisfasse la requete pour dates */
+            break;   /* requete satisfaite */
 
           case RANGE:
             if (Requests[set_nb].dates.data[0] == -1)
@@ -741,20 +752,12 @@ int C_fst_match_req(int handle)
             f77name(difdatr)(&date,&debut,&diff_deb);
             f77name(difdatr)(&date,&fin,&diff_fin);
             dbprint(stddebug,"Debug diff_deb=%f diff_fin=%f\n",diff_deb,diff_fin);
-            if ((diff_deb >= 0.) && (diff_fin <= 0.))
-              if (Requests[set_nb].exdes == DESIRE) {
-                amatch = 1;
-                dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-                goto Ip1s;  /* satisfait la requete */
-                }
-              else {
-                amatch = -1;  /* enregistrement a exclure */
-                dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
-                goto Ip1s;
-              }
-            if (amatch == -1) amatch = 0;   /* exclusion additive non satisfaite */  
-            continue;  /* rien trouve qui satisfait la requete desire/exclure */
-            break;
+            if ((diff_deb >= 0.) && (diff_fin <= 0.)) {
+              amatch = 1;
+              dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
+            }
+            if(amatch == 0) continue;  /* rien trouve qui satisfasse la requete desire/exclure */
+            break;   /* requete satisfaite */
 
           case DELTA:
             dbprint(stddebug,"Debug C_fst_match_req verifie dates debut fin delta set_nb=%d\n",set_nb);
@@ -773,20 +776,12 @@ int C_fst_match_req(int handle)
             f77name(difdatr)(&date,&fin,&diff_fin);
             remainder = fmod(diff_deb,delta8);
             dbprint(stddebug,"Debug diff_deb=%f diff_fin=%f modulo=%f\n",diff_deb,diff_fin,remainder);
-            if ((diff_deb >= 0.) && (diff_fin <= 0.) && (remainder <= (5.0/3600.)))
-              if (Requests[set_nb].exdes == DESIRE) {
-                amatch = 1;
-                dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-                goto Ip1s;  /* satisfait la requete */
-              }
-              else {
-                amatch = -1;  /* enregistrement a exclure */
-                dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
-                goto Ip1s;
-              }
-            if (amatch == -1) amatch = 0;   /* exclusion additive non satisfaite */  
-            continue;  /* rien trouve qui satisfait la requete desire/exclure */
-            break;
+            if ((diff_deb >= 0.) && (diff_fin <= 0.) && (remainder <= (5.0/3600.))) {
+              amatch = 1;
+              dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
+            }
+            if(amatch == 0) continue;  /* rien trouve qui satisfait la requete desire/exclure */
+            break;   /* requete satisfaite */
 
           default:
             fprintf(stderr,"error: C_fst_match_req invalid Requests[%d].dates.in_use=%d\n",
@@ -799,147 +794,51 @@ int C_fst_match_req(int handle)
 
     Ip1s:
       if (Requests[set_nb].ip1s.in_use) {
-        switch (Requests[set_nb].ip1s.in_use) {
-
-        case VALUE:
-//          f77name(convip)(&ip1,&p1,&ip_kind,&mode,string,&flag);
-          dbprint(stddebug,"Debug C_fst_match_req verifie ip1s du fichier=%d reel=%f set_nb=%d\n",ip1,p1,set_nb);
-          for (i=0; i < Requests[set_nb].ip1s.nelm; i++)
-            if (p1 == 0.) {
-              if (Requests[set_nb].ip1s.data[i] == 0.) {
-                amatch = Requests[set_nb].exdes;
-                dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-                goto Ip2s; /* satisfait la requete */
-              }
-            }
-            else if ((Abs(1.0 - (Requests[set_nb].ip1s.data[i]/p1)) < err_tolerance) ) {
-              amatch = Requests[set_nb].exdes;
-              dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-              goto Ip2s; /* satisfait la requete */
-            }
-          continue;  /* rien trouve qui satisfait la requete pour ip1s */
-#ifdef NOTUSED
-          else {
-            for (i=0; i < Requests[set_nb].ip1s.nelm; i++)
-              if (p1 == 0.) {
-                if (Requests[set_nb].ip1s.data[i] == 0.) {
-                  amatch = -1;  /* enregistrement a exclure */
-                  dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
-                  goto Ip2s;
-                }
-              }  
-              else if ((Abs(1.0 - (Requests[set_nb].ip1s.data[i]/p1)) < err_tolerance)) {
-                amatch = -1;  /* enregistrement a exclure */
-                dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
-                goto Ip2s;
-              }
-            if (amatch == -1) amatch = 0;   /* exclusion additive non satisfaite */  
-            continue;   /* rien trouve a exclure */
-          }
+        amatch = 0;
+        dbprint(stddebug,"Debug C_fst_match_req verifie ip2s set_nb=%d\n",set_nb);
+#ifdef FUTURE_USE
+        amatch = match_ip(Requests[set_nb].ip1s.in_use, Requests[set_nb].ip1s.nelm, Requests[set_nb].ip1s.data, ip1, translatable);
 #endif
-          break;
-
-        case RANGE:
-//          f77name(convip)(&ip1,&p1,&ip_kind,&mode,string,&flag);
-          if (Requests[set_nb].ip1s.data[0] == -1.0)
-            r_debut = p1;
-          else
-            r_debut = Requests[set_nb].ip1s.data[0];
-          if (Requests[set_nb].ip1s.data[1] == -1.0)
-            r_fin = p1;
-          else
-            r_fin = Requests[set_nb].ip1s.data[1];
-          dbprint(stddebug,"Debug C_fst_match_req verifie ip1s r_debut=%f r_fin=%f\n",r_debut,r_fin);
-          dbprint(stddebug,"Debug+ C_fst_match_req p1=%f err_tolerance=%f\n",p1,err_tolerance);
-          if ((p1 >= (r_debut-err_tolerance)) && (p1 <= (r_fin+err_tolerance))) {
-            if (Requests[set_nb].exdes == DESIRE) {
-              amatch = 1;
-              dbprint(stddebug,"Debug C_fst_match_req match desire\n");
-              goto Ip2s;  /* satisfait la requete */
-            }
-            else {
-              amatch = -1;  /* enregistrement a exclure */
-              dbprint(stddebug,"Debug C_fst_match_req match exclure\n");
-              goto Ip2s;
-            }
-          }
-          else {
-            if (amatch == -1) amatch = 0;   /* exclusion additive non satisfaite */
-            continue;  /* rien trouve qui satisfait la requete pour ip1s */
-            }
-          break;
-
-        default:
-          fprintf(stderr,"error: C_fst_match_req invalid Requests[%d].ip1s.arg_type=%d\n",
-                set_nb,Requests[set_nb].ip1s.in_use);
-          return(0);
-          break;
-
-
-        } /* end switch */
+        if( amatch != 0 ) {
+          amatch = Requests[set_nb].exdes;
+          if (amatch == EXCLURE) return(0) ;   /* exclure satisfait, on ne veut pas de l'enregistrement */
+          break;       /* requete satisfaite */
+        }
       }
 
     Ip2s:
       if (Requests[set_nb].ip2s.in_use) {
+        amatch = 0;
         dbprint(stddebug,"Debug C_fst_match_req verifie ip2s set_nb=%d\n",set_nb);
-        switch (Requests[set_nb].ip2s.in_use) {
-
-        case VALUE:
-          for (i=0; i < Requests[set_nb].ip2s.nelm; i++)
-            if (Requests[set_nb].ip2s.data[i] == ip2) {
-              amatch = Requests[set_nb].exdes;
-              dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-              goto Ip3s; /* satisfait la requete */
-            }
-          continue;  /* rien trouve qui satisfait la requete pour ip2s */
-
-        case RANGE:
-
-        default:
-          fprintf(stderr,"error: C_fst_match_req invalid Requests[%d].ip2s.arg_type=%d\n",
-                set_nb,Requests[set_nb].ip2s.in_use);
-          return(0);
-          break;
-
-        } /* end switch */
+#ifdef FUTURE_USE
+        amatch = match_ip(Requests[set_nb].ip2s.in_use, Requests[set_nb].ip2s.nelm, Requests[set_nb].ip2s.data, ip1, translatable);
+#endif
+        if( amatch != 0 ) {
+          amatch = Requests[set_nb].exdes;
+          if (amatch == EXCLURE) amatch = 0;   /* exclure satisfait transforme en desire non satisfait */
+          break;       /* requete satisfaite */
+        }
       }
 
     Ip3s:
       if (Requests[set_nb].ip3s.in_use) {
+        amatch = 0;
         dbprint(stddebug,"Debug C_fst_match_req verifie ip3s set_nb=%d\n",set_nb);
-
-        switch (Requests[set_nb].ip3s.in_use) {
-
-        case VALUE:
-          for (i=0; i < Requests[set_nb].ip3s.nelm; i++)
-            if (Requests[set_nb].ip3s.data[i] == ip3) {
-              amatch = Requests[set_nb].exdes;
-              dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-              goto Fin; /* satisfait la requete */
-            }
-          continue;  /* rien trouve qui satisfait la requete pour ip3s */
-
-        case RANGE:
-
-        default:
-          fprintf(stderr,"error: C_fst_match_req invalid Requests[%d].ip3s.arg_type=%d\n",
-                set_nb,Requests[set_nb].ip3s.in_use);
-          return(0);
-          break;
-
-        } /* end switch */
+#ifdef FUTURE_USE
+        amatch = match_ip(Requests[set_nb].ip2s.in_use, Requests[set_nb].ip2s.nelm, Requests[set_nb].ip2s.data, ip1, translatable);
+#endif
+        if( amatch != 0 ) {
+          amatch = Requests[set_nb].exdes;
+          if (amatch == EXCLURE) amatch = 0;   /* exclure satisfait transforme en desire non satisfait */
+          break;       /* requete satisfaite */
+        }
       }  /* end ip3s.in_use */
 
     Fin:
       if (amatch == 1) {
-        dbprint(stddebug,"Debug C_fst_match_req fin requete desire satisfaite, handle=%d \n",handle);
-        return(1);            /* requete desire satisfaite */
-      }
-      else if (amatch == -1) {
-        dbprint(stddebug,"Debug C_fst_match_req fin requete exclure satisfaite handle=%d \n",handle);
-        return(0);            /* requete exclure satisfaite */
-      }
-
+        dbprint(stddebug,"Debug C_fst_match_req fin requete %s satisfaite, handle=%d \n",desire_exclure,handle);
+        return((Requests[set_nb].exdes == DESIRE) ? 1 : 0 );  /* requete desire satisfaite */
+      }      
     /* Next:                  verifier le prochain desire/exclure */
 
   } /* end for */
@@ -948,7 +847,7 @@ int C_fst_match_req(int handle)
   while ((last_in_use > first_R) && (! Requests[last_in_use].in_use))
     last_in_use--;
 /*  fprintf(stderr,"Debug+ last_in_use=%d\n",last_in_use); */
-/* rien trouve qui satisfait les requetes */
+/*  rien trouve qui satisfasse les requetes */
   if ((Requests[last_in_use].exdes == DESIRE) && (Requests[last_in_use].in_use))
     return(0);  /* ne satisfait pas la requete desire */
   else
