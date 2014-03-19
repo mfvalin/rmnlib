@@ -1,0 +1,5 @@
+#!/bin/bash
+rm -f ./a.out excdes_new.o  
+ s.cc -O2 -c -I. -DTEST excdes_new.c fstd98.c fst_missing.c DlInterface.c 
+ s.f90 f_main.f90 convert_ip123.f90  excdes_new.o fstd98.o fst_missing.o DlInterface.o -lrmn_014 
+ ./a.out $*
