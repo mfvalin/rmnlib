@@ -108,9 +108,10 @@ void DumpRequestTable(int use_header, char *filename)
     outfile = fopen(filename,"w");
     use_header = 0;  /* disregard use_header if filename is not NULL */
   }
+
   if(outfile == NULL) outfile=stdout;  /* filename NULL or error opening file */
   if(use_header)sep=",";
-  for (i==0 ; i<MAX_requetes ; i++) {
+  for (i=0 ; i<MAX_requetes ; i++) {
     if(Requests[i].in_use) {
       if(use_header) fprintf(outfile,"=================== Request no %d ===================\n",i);
       if(Requests[i].ip1s.in_use){
@@ -1559,7 +1560,8 @@ return 0;
 }
 #if defined (TEST)
 //void f77name(c_main)(int *handle)
-main(int argc, char **argv)
+//c_main(int argc, char **argv)
+c_main(int argc, char **argv)
 {
 
   int i,j;
@@ -1609,6 +1611,7 @@ main(int argc, char **argv)
   i = Xc_Select_ip2(4,0,ip1s_range2,2);
   i = Xc_Select_date(4,0,dates_range3,2);
   DumpRequestTable(atoi(argv[1]),argv[2]);
+//  DumpRequestTable(0,NULL);
 //  i = Xc_Select_ip1(0,1,ip1s_r,3);
 /*  i = Xc_Select_ip1(1,1,ip1s_range,-2);*/
 //  i = Xc_Select_ip1(1,1,ip1s_r_range,-2);
