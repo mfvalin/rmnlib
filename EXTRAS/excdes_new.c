@@ -603,7 +603,7 @@ int ReadRequestTable(char *filename)
   sscanf(cptr,"%s",s3);
   while(*cptr != ',' ) cptr++ ; cptr++ ;
   sscanf(cptr,"%d",&nvalues);
-  fprintf(stderr,"%d,'%s','%s','%s',%d\n",dirset,s1,s2,s3,nvalues);
+//  fprintf(stderr,"%d,'%s','%s','%s',%d\n",dirset,s1,s2,s3,nvalues);
   rvd = 0 ; /* not used */
   if(s3[0] == 'v') rvd = VALUE;
   if(s3[0] == 'r') rvd = RANGE;
@@ -1694,17 +1694,23 @@ c_main(int argc, char **argv)
   i = Xc_Select_ip2(4,-1,ip1s_range2,2);
   i = Xc_Select_date(4,-1,dates_range3,2);
   i = C_select_groupset(2,5);
-  WriteRequestTable(1,NULL);
-  WriteRequestTable(atoi(argv[1]),argc<narg ? NULL : argv[narg]);
-  ReadRequestTable(argc<narg ? NULL : argv[narg]);
-  WriteRequestTable(1,NULL);
+  WriteRequestTable(atoi(argv[1]),NULL);
+  if(argc>narg){
+    WriteRequestTable(0,argv[narg]);
+    ReadRequestTable(argv[narg]);
+    fprintf(stdout,"=========== Reading Back table===========\n");
+    WriteRequestTable(1,NULL);
+  }
   narg++ ;
-  fprintf(stdout,"=======================================\n");
+  fprintf(stdout,"\n=========================================\n\n");
   i = C_select_groupset(0,1);
-  WriteRequestTable(1,NULL);
-  WriteRequestTable(atoi(argv[1]),argc<narg ? NULL : argv[narg]);
-  ReadRequestTable(argc<narg ? NULL : argv[narg]);
-  WriteRequestTable(1,NULL);
+  WriteRequestTable(atoi(argv[1]),NULL);
+  if(argc>narg){
+    WriteRequestTable(0,argv[narg]);
+    ReadRequestTable(argv[narg]);
+    fprintf(stdout,"=========== Reading Back table===========\n");
+    WriteRequestTable(1,NULL);
+  }
   narg++ ;
 //  DumpRequestTable(0,NULL);
 //  i = Xc_Select_ip1(0,1,ip1s_r,3);
