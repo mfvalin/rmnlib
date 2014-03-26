@@ -36,8 +36,9 @@ implicit none
 ! AUTHOR
 !  M.Valin 2013, 2014
 ! EXAMPLES
-!   use convert_ip123
+!   use ISO_C_BINDING
 !   implicit none
+!   include 'convert_ip123.inc'
 !   integer :: ip1, ip2, ip3, stat
 !   integer, dimension(3) :: vip123
 !   integer :: k1, k2, k3
@@ -58,7 +59,8 @@ implicit none
 !   stat = decode_ip(VRP123,vip123)                  ! vector version of above (decode_ip_3)
 ! NOTES
 !  the FORTRAN user must include
-!    use convert_ip123
+!    use ISO_C_BINDING
+!    include 'convert_ip123.inc'
 !  in order to access this package
 !
 !  individual IP to real value + kind conversions are performed by function convip_plus
@@ -104,8 +106,9 @@ end type
 !  CONVERT_ERROR
 
 ! NOTES
-!  the FORTRAN user must
-!    use convert_ip123
+!  the FORTRAN user must include
+!    use ISO_C_BINDING
+!    include 'convert_ip123.inc'
 !  in order to use this derived type and the symbolic names for kind
 !******
 
@@ -238,7 +241,8 @@ end subroutine swap
 ! - RP1 and RP2 both containing a range will be flagged as an error
 ! - in case of error, one or more of ip1,2,3 may be returned as -1
 ! the FORTRAN user must
-!    use convert_ip123
+!    use ISO_C_BINDING
+!    include 'convert_ip123.inc'
 ! in order to access this function
   implicit none  ! coupled (rp1,rp2,rp3) to (ip1,ip2,ip3) conversion with type enforcement
 ! ARGUMENTS
@@ -326,7 +330,8 @@ function decode_ip_0(RP1,RP2,RP3,IP1V,IP2V,IP3V) result(status) BIND (C,name='De
 ! - RP1 and RP2 both containing a range will be flagged as an error
 ! - in case of error, ip1,2,3 will be returned as -1
 ! the FORTRAN user must
-!  use convert_ip123
+!    use ISO_C_BINDING
+!    include 'convert_ip123.inc'
 ! in order to access this function
   implicit none ! coupled (ip1,ip2,ip3) to (rp1,rp2,rp3) conversion with type enforcement
 ! ARGUMENTS
@@ -465,7 +470,8 @@ function encode_ip_2(IP1,IP2,IP3,P1,kkind1,P2,kkind2,P3,kkind3) result(status) B
 ! - ip2/ip3 forced to proper descending order (not flagged as warning)
 ! - in case of error, the contents of ip1/2/3 is undefined (possibly -1)
 ! the FORTRAN user must
-!  use convert_ip123
+!    use ISO_C_BINDING
+!    include 'convert_ip123.inc'
 ! in order to access this function
 implicit none  ! explicit, almost independent (rp,kind) to (ip) conversion
 
@@ -544,6 +550,10 @@ implicit none
 ! NOTES
 ! - this function is C interoperable
 ! - in case of error, (value,kind) pairs are undefined (may contain anything)
+! the FORTRAN user must
+!    use ISO_C_BINDING
+!    include 'convert_ip123.inc'
+! in order to access this function
 !******
 
   character(len=1) :: dummy
