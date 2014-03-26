@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <convert_ip.h>
+
 #define MAX_Nlist 40
 #define MAX_requetes 20
 #define Abs(x) (((x) < 0) ? -(x) : x)
@@ -32,6 +34,8 @@
 
 char **fill_string_array(char **string_array, char *farray, int nc, int ns, int rmblanks);
 char **allocate_string_array(int ns);
+void c_requetes_init(char *f1,char *f2);
+
 #ifdef NOTUSED
 enum cquoica {unused,entier, reel, deb_fin_entier, deb_fin_reel, deb_fin_entier_delta,
               deb_fin_reel_delta} parametre;
@@ -90,7 +94,8 @@ typedef struct {
 } DesireExclure;
 
 //Desire_Exclure Requetes[MAX_requetes];
-DesireExclure  Requests[MAX_requetes];
+static DesireExclure  Requests[MAX_requetes];
+static int package_not_initialized = 1;
 
 /* put the contents of the request table in text format
  * 
@@ -98,12 +103,13 @@ DesireExclure  Requests[MAX_requetes];
  * filename != NULL  : write output into that file, without separators (ignore use_header)
  * filename == NULL  : output to stdout
  */
-void DumpRequestTable(int use_header, char *filename)
+void WriteRequestTable(int use_header, char *filename)
 {
   int i, j;
   char *sep="\n      ";
   FILE *outfile = NULL;
 
+  if(package_not_initialized) c_requetes_init(NULL,NULL);
   if(filename) {
     outfile = fopen(filename,"w");
     use_header = 0;  /* disregard use_header if filename is not NULL */
@@ -168,8 +174,17 @@ void DumpRequestTable(int use_header, char *filename)
   if(outfile != stdout) fclose(outfile);
 }
 
+/*
+ * basic validation of requests
+ * do we exceed the max number of request sets ?
+ * do we have a value list that is too long ?
+ * check for special case where nelm is negative
+ * are we consistent (desire/exclure) for this request set ?
+ */
 static int ValidateRequestForSet(int set_nb, int des_exc, int nelm, int nelm_lt, char *msg)
 {
+  if(package_not_initialized) c_requetes_init(NULL,NULL);
+
   if (set_nb > MAX_requetes) {
     fprintf(stderr,"error: C_select_%s set_nb=%d > MAX_requetes=%d\n",msg,set_nb,MAX_requetes);
     return(-1);
@@ -181,14 +196,15 @@ static int ValidateRequestForSet(int set_nb, int des_exc, int nelm, int nelm_lt,
   }
 
   if (nelm <= 0) {
-    if (nelm != nelm_lt) {   /* if nelm < 0, it must be equal to nelm_lt */
+    if (nelm != nelm_lt) {   /* if nelm <= 0, it must be equal to nelm_lt */
       fprintf(stderr,"error: C_select_%s nelm invalid = %d\n",msg,nelm);
       return(-3);
     }
   }
 
   if ((Requests[set_nb].in_use) && (((des_exc == 1) ? DESIRE : EXCLURE) != Requests[set_nb].exdes)) {
-    fprintf(stderr,"C_select_ip1 error: des_exc value differs from previous call for set number=%d\n",set_nb);
+    fprintf(stderr,"C_select_%s error: des_exc value differs from previous call for set number=%d\n",msg,set_nb);
+    fprintf(stderr,"expected %s, got %s \n",(Requests[set_nb].exdes==DESIRE) ? "desire":"exclure",(des_exc == 1) ? "desire":"exclure");
     return(-4);
   }
 
@@ -226,7 +242,7 @@ int Xc_Select_ip1(int set_nb, int des_exc, void *iplist, int nelm)
   Requests[set_nb].in_use = USED;          /* set is in use */
   Requests[set_nb].ip1s.in_use = VALUE;    /* item in set is in use */
   Requests[set_nb].ip1s.delta = 0;         /* delta not supported */
-  Requests[set_nb].exdes = (des_exc) ? DESIRE : EXCLURE;
+  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
   Requests[set_nb].ip1s.nelm = nelm;     /* if range, the value of nelm does not matter, the first 2 values are used */
   Requests[set_nb].ip1s.data[0] = ip_entier[0];  /* first value from list */
 
@@ -273,7 +289,7 @@ int Xc_Select_ip2(int set_nb, int des_exc, void *iplist, int nelm)
   Requests[set_nb].in_use = USED;          /* set is in use */
   Requests[set_nb].ip2s.in_use = VALUE;    /* item in set is in use */
   Requests[set_nb].ip2s.delta = 0;         /* delta not supported */
-  Requests[set_nb].exdes = (des_exc) ? DESIRE : EXCLURE;
+  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
   Requests[set_nb].ip2s.nelm = nelm;     /* if range, the value of nelm does not matter, the first 2 values are used */
   Requests[set_nb].ip2s.data[0] = ip_entier[0];  /* first value from list */
 
@@ -320,7 +336,7 @@ int Xc_Select_ip3(int set_nb, int des_exc, void *iplist, int nelm)
   Requests[set_nb].in_use = USED;          /* set is in use */
   Requests[set_nb].ip3s.in_use = VALUE;    /* item in set is in use */
   Requests[set_nb].ip3s.delta = 0;         /* delta not supported */
-  Requests[set_nb].exdes = (des_exc) ? DESIRE : EXCLURE;
+  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
   Requests[set_nb].ip3s.nelm = nelm;     /* if range, the value of nelm does not matter, the first 2 values are used */
   Requests[set_nb].ip3s.data[0] = ip_entier[0];  /* first value from list */
 
@@ -543,6 +559,145 @@ int Xc_Select_typvar(int set_nb, int des_exc, char *typv_list[], int nelm)
   return(0);
 }
 
+int ReadRequestTable(char *filename)
+{
+  char line[4096];
+  FILE *input=NULL;
+  char *cptr;
+  int dirset;
+  char s1[16], s2[16], s3[16];
+  char sar[40][13];
+  char *sarp[41];
+  int nvalues;
+  int a[100];
+  int i, j;
+  int nx[7];
+  char gtyp;
+  int rvd; /* range, value, delta */
+  int dex ; /* desire / exclure */
+  int status;
+
+  status = 0;
+  if(filename != NULL) input=fopen(filename,"r");
+  if(input == NULL) {
+    fprintf(stderr,"ERROR: cannot open directive file '%s'\n",filename);
+    return(-1);
+  }
+  readnext:
+  cptr=fgets(line,sizeof(line),input);
+//  fprintf(stderr,"header=%s",line);
+  dirset=0;
+  s1[0]='\000';
+  s2[0]='\000';
+  s3[0]='\000';
+  nvalues=0;
+  
+  sscanf(line,"%d",&dirset);
+  if(dirset==0) {fclose(input) ; return(0); }
+  cptr=line;
+  while(*cptr != '\'' ) cptr++ ; cptr++ ;
+  sscanf(cptr,"%s",s1);
+  while(*cptr != ',' ) cptr++ ; while(*cptr != '\'' ) cptr++ ; cptr++ ;
+  sscanf(cptr,"%s",s2);
+  while(*cptr != ',' ) cptr++ ; while(*cptr != '\'' ) cptr++ ; cptr++ ;
+  sscanf(cptr,"%s",s3);
+  while(*cptr != ',' ) cptr++ ; cptr++ ;
+  sscanf(cptr,"%d",&nvalues);
+//  fprintf(stderr,"%d,'%s','%s','%s',%d\n",dirset,s1,s2,s3,nvalues);
+  rvd = 0 ; /* not used */
+  if(s3[0] == 'v') rvd = VALUE;
+  if(s3[0] == 'r') rvd = RANGE;
+  if(s3[0] == 'd') rvd = DELTA;
+  dex = s1[0] == 'D' ? DESIRE : EXCLURE ;
+  
+  cptr=fgets(line,sizeof(line),input);
+  cptr = line;
+//  fprintf(stderr,"reading data\n");
+
+  if(s2[0]=='D') {                            /*  Date */
+    sscanf(cptr,"%d",a);
+    for (i=1;i<nvalues;i++) {
+      while(*cptr != ',' ) cptr++ ; cptr++ ;
+      sscanf(cptr,"%d",a+i);
+    }
+    if(rvd == RANGE) {
+      nvalues=3;
+      a[2]=a[1];
+      a[1]=READLX_RANGE;
+    }
+    if(rvd == DELTA) {
+      nvalues=5;
+      a[4]=a[2];
+      a[3]=READLX_DELTA;
+      a[2]=a[1];
+      a[1]=READLX_RANGE;
+    }
+    status = Xc_Select_date(dirset,dex,a,nvalues);
+//    for (i=0;i<nvalues;i++) {
+//      fprintf(stderr," %d",a[i]);
+//    }
+//    fprintf(stderr,"\n");
+    
+  }else if(s2[0]=='I') {                       /* IP1/2/3 */
+    sscanf(cptr,"%d",a);
+    for (i=1;i<nvalues;i++) {
+      while(*cptr != ',' ) cptr++ ; cptr++ ;
+      sscanf(cptr,"%d",a+i);
+    }
+    if(rvd == RANGE) {
+      nvalues=3;
+      a[2]=a[1];
+      a[1]=READLX_RANGE;
+    }
+    if(rvd == DELTA) nvalues = 0;
+    if(s2[2]=='1') status = Xc_Select_ip1(dirset,dex,a,nvalues);
+    if(s2[2]=='2') status = Xc_Select_ip2(dirset,dex,a,nvalues);
+    if(s2[2]=='3') status = Xc_Select_ip3(dirset,dex,a,nvalues);
+//    for (i=0;i<nvalues;i++) {
+//      fprintf(stderr," %d",a[i]);
+//    }
+//    fprintf(stderr,"\n");
+    
+  }else if(s2[0]=='X'){                           /* Xtra  */
+    sscanf(cptr,"%d",a);
+    for (i=1;i<8;i++) {
+      while(*cptr != ',' ) cptr++ ; cptr++ ;
+      sscanf(cptr,"%d",a+i);
+    }
+    while(*cptr != '\'' ) cptr++ ; cptr++ ;
+    gtyp=*cptr;
+    status = Xc_Select_suppl(dirset,dex,a[0],a[1],a[2],a[3],a[4],a[5],a[6],gtyp);
+//    for (i=0;i<8;i++) {
+//      fprintf(stderr," %d",a[i]);
+//    }
+//    fprintf(stderr," %c\n",gtyp);
+    
+  }else if(s2[0]=='N' || s2[0]=='T' || s2[0]=='E'){   /* Nomvar, Typvar or Etiket */
+    for (i=0;i<nvalues;i++) {
+      while(*cptr != '\'' ) cptr++ ; cptr++ ;
+      j=0;
+      while(*cptr != '\'' ) sar[i][j++]=*cptr++; cptr++ ;
+      sar[i][j]='\000';
+      sarp[i] = sar[i];
+    }
+    sarp[nvalues] = NULL;
+    if(s2[0] == 'N') status = Xc_Select_nomvar(dirset,dex,sarp,nvalues) ;
+    if(s2[0] == 'T') status = Xc_Select_typvar(dirset,dex,sarp,nvalues) ;
+    if(s2[0] == 'E') status = Xc_Select_etiquette(dirset,dex,sarp,nvalues) ;
+//    for (i=0;i<nvalues;i++) {
+//      fprintf(stderr," '%s'",sar[i]);
+//    }
+//     fprintf(stderr,"\n");
+  }else{
+    fprintf(stderr,"ERROR: unrecognized type s2='%s' in directive file\n",s2);
+    status = -1;
+  }
+  if(status != 0) { fclose(input);  return -1; }
+  goto readnext;
+  return 0;
+}
+
+
 /*****************************************************************************
  *                      C _ S E L E C T _ G R O U P S E T                    *
  *                                                                           *
@@ -557,8 +712,9 @@ int Xc_Select_typvar(int set_nb, int des_exc, char *typv_list[], int nelm)
  *****************************************************************************/
 int C_select_groupset(int first_set_nb, int last_set_nb)
 {
+  if(package_not_initialized) c_requetes_init(NULL,NULL);
   if ((first_set_nb > MAX_requetes) || (last_set_nb > MAX_requetes) || (first_set_nb > last_set_nb)) {
-    fprintf(stderr,"error: C_select_groupset first_set_nb=%d, last_set_nb=%d, MAX_requetes=%d\n",
+    fprintf(stderr,"ERROR: C_select_groupset first_set_nb=%d, last_set_nb=%d, MAX_requetes=%d\n",
             first_set_nb,last_set_nb,MAX_requetes);
     return(-1);
   }
@@ -572,15 +728,17 @@ return 0; /*CHC/NRC*/
  *                                                                           *
  *Objet                                                                      *
  *   Change la variable globale pour le mode desire                          *
+ *   augmenter bundle_nb de 1                                                *
  *                                                                           *
  *****************************************************************************/
 int C_filtre_desire()
 {
   
+  if(package_not_initialized) c_requetes_init(NULL,NULL);
   bundle_nb++;
   desire_exclure = 1;
   if (bundle_nb > MAX_requetes) {
-    fprintf(stderr,"error: C_filtre_desire nb=%d > MAX desire/exclure =%d\n",bundle_nb,MAX_requetes);
+    fprintf(stderr,"ERROR: C_filtre_desire nb=%d > MAX desire/exclure =%d\n",bundle_nb,MAX_requetes);
     return(-1);
   }
   printf("desire bundle_nb = %d, desire_exclure = %d\n",bundle_nb,desire_exclure);
@@ -592,15 +750,17 @@ return 0; /*CHC/NRC*/
  *                                                                           *
  *Objet                                                                      *
  *   Change la variable globale pour le mode exclure                         *
+ *   augmenter bundle_nb de 1                                                *
  *                                                                           *
  *****************************************************************************/
 int C_filtre_exclure()
 {
   
+  if(package_not_initialized) c_requetes_init(NULL,NULL);
   bundle_nb++;
   desire_exclure = 0;
   if (bundle_nb > MAX_requetes) {
-    fprintf(stderr,"error: C_filtre_exclure nb=%d > MAX desire/exclure =%d\n",bundle_nb,MAX_requetes);
+    fprintf(stderr,"ERROR: C_filtre_exclure nb=%d > MAX desire/exclure =%d\n",bundle_nb,MAX_requetes);
     return(-1);
   }
   printf("exclure bundle_nb = %d, desire_exclure = %d\n",bundle_nb,desire_exclure);
@@ -608,7 +768,53 @@ return 0; /*CHC/NRC*/
 }
 
 /*****************************************************************************
- *                      C _ F S T _ M A T C H _ R E Q                        *
+ * match_ip                                                                  *
+ * is ip0 equivalent to one of the values in data (nelm elements) ?          *
+ *                                                                           *
+ * return 1 if yes, return 0 if no                                           *
+ *****************************************************************************/
+static int match_ip(int in_use, int nelm, int *data, int ip1, int translatable)
+{
+  int amatch=0;
+  int mode = -1;   /* IP to P,KIND conversion */
+  int i, ip, kind1, kind2, kind3;
+  float p1, p2, p3, delta;
+
+  if( ! in_use ) return 0;
+
+  if( in_use == RANGE ) {
+    if(! translatable) return(0) ;      /* name is not translatable we are done */
+    ConvertIp(&ip, &p1, &kind1, mode);  /* convert candidate value */
+    ip = data[0];
+    ConvertIp(&ip, &p2, &kind2, mode);  /* convert bottom value */
+    ip = data[1];
+    ConvertIp(&ip, &p3, &kind3, mode);  /* convert top value */
+    if(kind1 != kind2 || kind1 != kind3) return 0 ;  /* not same kind, no match */
+    if(p2<=p1 && p1<=p3) return 1 ;     /* we have a match */
+    return 0;   /* if we fell through, we have no match */
+  }
+  if( in_use != VALUE ) return 1 ; /* delta not supported */
+
+  for (i==0 ; i<nelm ; i++) {
+    if(ip1 == data[i]) return 1;  /* we have a match */
+  }
+  if(! translatable) return(0) ;/* name is not translatable we are done */
+  ip = ip1;
+  ConvertIp(&ip, &p1, &kind1, mode);  /* convert candidate value */
+  for (i==0 ; i<nelm ; i++) {
+    ip = data[i];
+    ConvertIp(&ip, &p2, &kind2, mode); /* convert match reference */
+    if(kind1 != kind2) continue;       /* not same kind, no match */
+    if(p2 == 0 && p1 != p2) continue ; /* if one is 0, both must be, no match */
+    delta = 1.0- p1/p2 ;
+    if(delta < 0) delta = -delta;    /* abs(relative error)  */
+    if( delta < 0.000001) return 1 ; /* we have a match */
+  }
+  return 0 ;   /* if we fell through, we have no match */
+}
+
+/*****************************************************************************
+ *                      C _ F S T _ M A T C H _ P A R M                      *
  *                                                                           *
  *Objet                                                                      *
  *   Verifier si l'enregistrement courant correspond aux criteres demandes   *
@@ -619,50 +825,33 @@ return 0; /*CHC/NRC*/
  *                                                                           *
  *Arguments                                                                  *
  *                                                                           *
- *  IN  set_nb     numero associe a un groupe d'elements desire/exclure      *
  *  IN  handle     handle de l'enregistrement courant                        *
+ * IN   datevalid,...,ig4                                                    *
+ *      ce qui a ete obtenu de fstprm pour handle                            *
  *                                                                           *
  *****************************************************************************/
-int c_fst_match_req(int handle)
+int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int nj, int nk,
+                     int ip1, int ip2, int ip3, char *typvar, char *nomvar, char *etiket,
+                     char *grtyp, int ig1, int ig2, int ig3, int ig4)
 {
-  return(1);
-}
-int C_fst_match_req(int handle)
-{
-  int ier, i, j, set_nb, last_in_use;
-  int ni, nj, nk, date, dateo, ip1, ip2, ip3, ig1, ig2, ig3, ig4;
-  int nbits, swa, ubc, lng, dltf, datevalid, xtra2, xtra3, deet, npas, datyp;
-  char etiket[13]={' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','\0'};
-  char typvar[3]={' ',' ','\0'};
-  char nomvar[5]={' ',' ',' ',' ','\0'};
-  char grtyp[2]={' ','\0'};
+  int i, j, set_nb, last_in_use;
   int mode=-1,flag=0;
   int ip_kind, amatch=0;
-  char string[30], *stripblanks;
-  long debut, fin;
-  float err_tolerance = 1.0/pow(2.0,17);
-  float p1,r_debut,r_fin;
-  double diff_deb, diff_fin, delta8, date8, remainder;
+  int debut, fin, date;
+  double diff_deb, diff_fin, delta8, remainder;
   char *desire_exclure;
   int translatable;
 
+  if(package_not_initialized) c_requetes_init(NULL,NULL);
   if (! Requests[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
 
-  ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,&nbits,&datyp,&ip1,
-                     &ip2,&ip3,typvar,nomvar,etiket,grtyp,&ig1,&ig2,
-                     &ig3,&ig4,&swa,&lng,&dltf,&ubc,&datevalid,&xtra2,&xtra3);
-/*  dbprint(stddebug,"Debug C_fst_match_req fstprm date=%d ip1=%d ip2=%d ip3=%d nomvar-->%s<-- typvar-->%s<-- etiket-->%s<--\n",
-         date,ip1,ip2,ip3,nomvar,typvar,etiket);*/
-  translatable = FstCanTranslateName(nomvar) ;
-#ifdef FUTURE_USE
+#ifdef NOTUSED
+  dbprint(stddebug,"Debug C_fst_match_req fstprm date=%d ip1=%d ip2=%d ip3=%d nomvar-->%s<-- typvar-->%s<-- etiket-->%s<--\n",
+                   date,ip1,ip2,ip3,nomvar,typvar,etiket);
 #endif
-  if (ier < 0) return(0);
+  translatable = FstCanTranslateName(nomvar) ;
   date = datevalid;
-/*  
-  stripblanks = strtok(nomvar," ");
-  stripblanks = strtok(typvar," ");
-  stripblanks = strtok(etiket," ");
-*/
+
   for (set_nb=first_R; (set_nb <= last_R) && Requests[set_nb].in_use; set_nb++) {
 
     /* process supplementary parameters if any right here */
@@ -681,7 +870,7 @@ int C_fst_match_req(int handle)
         if(Requests[set_nb].nis  !=  nj) continue;  /* requete non satisfaite pour criteres supplementaires */
         if(Requests[set_nb].nis  !=  nk) continue;  /* requete non satisfaite pour criteres supplementaires */
         if(Requests[set_nb].grdtyps  !=  grtyp[0]) continue;  /* requete non satisfaite pour criteres supplementaires */
-        amatch = 1;   /* requete satisfaite */
+        amatch = 1;   /* requete satisfaite jusqu'ici */
       }
     Etiquettes:
       if (Requests[set_nb].etiquettes.in_use) {
@@ -691,7 +880,7 @@ int C_fst_match_req(int handle)
           if (strncmp(Requests[set_nb].etiquettes.pdata[i],etiket,Min(12,strlen(Requests[set_nb].etiquettes.pdata[i]))) == 0) {
             amatch = 1;
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-            break;       /* requete satisfaite */
+            break;       /* requete satisfaite jusqu'ici */
           }
         }
         if (amatch == 0) continue;  /* requete non satisfaite pour etiquettes */
@@ -705,7 +894,7 @@ int C_fst_match_req(int handle)
           if (strncmp(Requests[set_nb].nomvars.pdata[i],nomvar,Min(4,strlen(Requests[set_nb].nomvars.pdata[i]))) == 0) {
             amatch = 1;
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-            break;       /* requete satisfaite */
+            break;       /* requete satisfaite jusqu'ici */
           }
         if (amatch == 0) continue;  /* requete non satisfaite pour nomvars */
       }
@@ -718,7 +907,7 @@ int C_fst_match_req(int handle)
           if (strncmp(Requests[set_nb].typvars.pdata[i],typvar,Min(2,strlen(Requests[set_nb].typvars.pdata[i]))) == 0) {
             amatch = 1;
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-            break;       /* requete satisfaite */
+            break;       /* requete satisfaite jusqu'ici */
           }
         if (amatch == 0) continue;  /* requete non satisfaite pour typvars */
       }
@@ -736,7 +925,7 @@ int C_fst_match_req(int handle)
                 dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
               }
             if(amatch == 0) continue;  /* rien trouve qui satisfasse la requete pour dates */
-            break;   /* requete satisfaite */
+            break;   /* requete satisfaite jusqu'ici */
 
           case RANGE:
             if (Requests[set_nb].dates.data[0] == -1)
@@ -757,7 +946,7 @@ int C_fst_match_req(int handle)
               dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
             }
             if(amatch == 0) continue;  /* rien trouve qui satisfasse la requete desire/exclure */
-            break;   /* requete satisfaite */
+            break;   /* requete satisfaite jusqu'ici */
 
           case DELTA:
             dbprint(stddebug,"Debug C_fst_match_req verifie dates debut fin delta set_nb=%d\n",set_nb);
@@ -781,7 +970,7 @@ int C_fst_match_req(int handle)
               dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
             }
             if(amatch == 0) continue;  /* rien trouve qui satisfait la requete desire/exclure */
-            break;   /* requete satisfaite */
+            break;   /* requete satisfaite jusqu'ici */
 
           default:
             fprintf(stderr,"error: C_fst_match_req invalid Requests[%d].dates.in_use=%d\n",
@@ -796,43 +985,25 @@ int C_fst_match_req(int handle)
       if (Requests[set_nb].ip1s.in_use) {
         amatch = 0;
         dbprint(stddebug,"Debug C_fst_match_req verifie ip2s set_nb=%d\n",set_nb);
-#ifdef FUTURE_USE
         amatch = match_ip(Requests[set_nb].ip1s.in_use, Requests[set_nb].ip1s.nelm, Requests[set_nb].ip1s.data, ip1, translatable);
-#endif
-        if( amatch != 0 ) {
-          amatch = Requests[set_nb].exdes;
-          if (amatch == EXCLURE) return(0) ;   /* exclure satisfait, on ne veut pas de l'enregistrement */
-          break;       /* requete satisfaite */
-        }
+        if(amatch == 0) continue ;  /* requete non satisfaite pour ip1 */
       }
 
     Ip2s:
       if (Requests[set_nb].ip2s.in_use) {
         amatch = 0;
         dbprint(stddebug,"Debug C_fst_match_req verifie ip2s set_nb=%d\n",set_nb);
-#ifdef FUTURE_USE
         amatch = match_ip(Requests[set_nb].ip2s.in_use, Requests[set_nb].ip2s.nelm, Requests[set_nb].ip2s.data, ip1, translatable);
-#endif
-        if( amatch != 0 ) {
-          amatch = Requests[set_nb].exdes;
-          if (amatch == EXCLURE) amatch = 0;   /* exclure satisfait transforme en desire non satisfait */
-          break;       /* requete satisfaite */
-        }
+        if(amatch == 0) continue ;  /* requete non satisfaite pour ip2 */
       }
 
     Ip3s:
       if (Requests[set_nb].ip3s.in_use) {
         amatch = 0;
         dbprint(stddebug,"Debug C_fst_match_req verifie ip3s set_nb=%d\n",set_nb);
-#ifdef FUTURE_USE
         amatch = match_ip(Requests[set_nb].ip2s.in_use, Requests[set_nb].ip2s.nelm, Requests[set_nb].ip2s.data, ip1, translatable);
-#endif
-        if( amatch != 0 ) {
-          amatch = Requests[set_nb].exdes;
-          if (amatch == EXCLURE) amatch = 0;   /* exclure satisfait transforme en desire non satisfait */
-          break;       /* requete satisfaite */
-        }
-      }  /* end ip3s.in_use */
+        if(amatch == 0) continue ;  /* requete non satisfaite pour ip3 */
+      }
 
     Fin:
       if (amatch == 1) {
@@ -854,6 +1025,44 @@ int C_fst_match_req(int handle)
     return(1);  /* rien a exclure */
 
 } /* end fst_match_req */
+
+/*****************************************************************************
+ *                      C _ F S T _ M A T C H _ R E Q                        *
+ *                                                                           *
+ *Objet                                                                      *
+ *   Verifier si l'enregistrement courant correspond aux criteres demandes   *
+ *   Retourne 1 si l'enregistrement correspond, sinon 0                      *
+ *   0 est aussi retourne si l'enregistrement correspond a un a exclure      *
+ *                                                                           *
+ *   en bref:  on retourne 1 si on accepte cet enregistrement, 0 sinon       *
+ *                                                                           *
+ *Arguments                                                                  *
+ *                                                                           *
+ *  IN  handle     handle de l'enregistrement a valider                      *
+ *                                                                           *
+ *****************************************************************************/
+int c_fst_match_req(int handle)
+{
+  int ier;
+  int ni, nj, nk, dateo, ip1, ip2, ip3, ig1, ig2, ig3, ig4;
+  int nbits, swa, ubc, lng, dltf, datevalid, xtra2, xtra3, deet, npas, datyp;
+  char etiket[13]={' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','\0'};
+  char typvar[3]={' ',' ','\0'};
+  char nomvar[5]={' ',' ',' ',' ','\0'};
+  char grtyp[2]={' ','\0'};
+  int status;
+  
+  return(1);
+  if(package_not_initialized) c_requetes_init(NULL,NULL);
+  if (! Requests[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
+  ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,&nbits,&datyp,&ip1,
+                     &ip2,&ip3,typvar,nomvar,etiket,grtyp,&ig1,&ig2,
+                     &ig3,&ig4,&swa,&lng,&dltf,&ubc,&datevalid,&xtra2,&xtra3);
+  if (ier < 0) return(0);
+  status = c_fst_match_parm(handle, datevalid, deet, npas, ni, nj, nk, ip1, ip2, ip3,
+                            typvar, nomvar, etiket, grtyp, ig1, ig2, ig3, ig4) ;
+  return status ;
+}
 
 /*****************************************************************************
  *                     L E S   I N T E R F A C E S                           *
@@ -904,7 +1113,13 @@ int C_select_nomvar(char *nomv_list[], int nelm)
 int C_select_typvar(char *typv_list[], int nelm)
 {
 /*CHC/NRC*/
-	return Xc_Select_typvar(bundle_nb, desire_exclure, typv_list, nelm);
+    return Xc_Select_typvar(bundle_nb, desire_exclure, typv_list, nelm);
+}
+
+int C_select_suppl(int ni, int nj, int nk, int ig1, int ig2, int ig3, int ig4, char gtyp)
+{
+/*CHC/NRC*/
+    return Xc_Select_suppl(bundle_nb, desire_exclure, ni, nj, nk, ig1, ig2, ig3, ig4, gtyp);
 }
 
 int f77name(f_select_ip1)(void *iplist, int *nelm)
@@ -925,6 +1140,11 @@ int f77name(f_select_ip3)(void *iplist, int *nelm)
 int f77name(f_select_date)(int *date_list, int *nelm)
 {
   return(Xc_Select_date(bundle_nb, desire_exclure,date_list,*nelm));
+}
+
+int f77name(f_select_suppl)(int *ni, int *nj, int *nk, int *ig1, int *ig2, int *ig3, int *ig4, char *gtyp, F2Cl flng)
+{
+    return Xc_Select_suppl(bundle_nb, desire_exclure, *ni, *nj, *nk, *ig1, *ig2, *ig3, *ig4, *gtyp);
 }
 
 int f77name(f_select_etiquette)(char *etiq_list, int *nelm, F2Cl flng)
@@ -980,7 +1200,7 @@ int f77name(f_filtre_exclure)()
   
 int f77name(f_fst_match_req)(int *handle)
 {
-  return(C_fst_match_req(*handle));
+  return(c_fst_match_req(*handle));
 }
 
 /*****************************************************************************
@@ -1078,9 +1298,6 @@ void c_requetes_init(char *requetes_filename, char *debug_filename)
 
   for (i=0; i<MAX_requetes; i++) {
     for (j=0; j<MAX_Nlist; j++) {
-//      Requests[i].etiquettes.sdata[j] = (char *) malloc(13);
-//      Requests[i].nomvars.sdata[j] = (char *) malloc(5);
-//      Requests[i].typvars.sdata[j] = (char *) malloc(3);
       Requests[i].nis = 0;
       Requests[i].njs = 0;
       Requests[i].nks = 0;
@@ -1090,13 +1307,14 @@ void c_requetes_init(char *requetes_filename, char *debug_filename)
       Requests[i].ig4s = 0;
       Requests[i].grdtyps = ' ';
     }
-    C_requetes_reset(i,1,1,1,1,1,1,1);
+    C_requetes_reset(i,0,0,0,0,0,0,0);
   }
 
   /* requetes_filename = getenv("FST_FILTER_FILE"); */
   if (requetes_filename != NULL)
     ier = C_requetes_read_file(requetes_filename);
   fprintf(stderr,"request table initialized \n");
+  package_not_initialized = 0;
 }
 
 /*****************************************************************************
@@ -1448,14 +1666,14 @@ c_main(int argc, char **argv)
   char *testeti[] = { "Etiquette #1", "R2428V4N", "Etiquet #3" };
   char *testnom[2] = { "TT", "GZ" };
   char *testtyp[4] = { "P", "V1", "V2", "V3" };
+  int narg = 2;
 
   dbprint(stddebug,"Debug debut \n");
   dbprint(stddebug,"Debug testeti=%s %s %s \n",testeti[0],testeti[1],testeti[2]);
   dbprint(stddebug,"Debug testeti=%s %s %s \n",testeti[0],testeti[1],testeti[2]);
   dbprint(stddebug,"Debug testnom=%s %s \n",testnom[0],testnom[1]);
   dbprint(stddebug,"Debug testtyp=%s %s %s %s \n",testtyp[0],testtyp[1],testtyp[2],testtyp[3]);
-
-  c_requetes_init(NULL,NULL);
+//  c_requetes_init(NULL,NULL);
 
   i = Xc_Select_ip1(1,1,ip1s_i,4);
   i = Xc_Select_suppl(1, 1, -1, -1, -1, -1, -1, -1, -1, 'Z');
@@ -1472,13 +1690,28 @@ c_main(int argc, char **argv)
   i = Xc_Select_ip1(3,1,ip1s_range2,2);
   i = Xc_Select_date(3,1,dates_range2,2);
 
-  i = Xc_Select_ip1(4,0,ip1s_range3,2);
-  i = Xc_Select_ip2(4,0,ip1s_range2,2);
-  i = Xc_Select_date(4,0,dates_range3,2);
+  i = Xc_Select_ip1(4,-1,ip1s_range3,2);
+  i = Xc_Select_ip2(4,-1,ip1s_range2,2);
+  i = Xc_Select_date(4,-1,dates_range3,2);
   i = C_select_groupset(2,5);
-  DumpRequestTable(atoi(argv[1]),argv[2]);
+  WriteRequestTable(atoi(argv[1]),NULL);
+  if(argc>narg){
+    WriteRequestTable(0,argv[narg]);
+    ReadRequestTable(argv[narg]);
+    fprintf(stdout,"=========== Reading Back table===========\n");
+    WriteRequestTable(1,NULL);
+  }
+  narg++ ;
+  fprintf(stdout,"\n=========================================\n\n");
   i = C_select_groupset(0,1);
-  DumpRequestTable(atoi(argv[1]),argv[2]);
+  WriteRequestTable(atoi(argv[1]),NULL);
+  if(argc>narg){
+    WriteRequestTable(0,argv[narg]);
+    ReadRequestTable(argv[narg]);
+    fprintf(stdout,"=========== Reading Back table===========\n");
+    WriteRequestTable(1,NULL);
+  }
+  narg++ ;
 //  DumpRequestTable(0,NULL);
 //  i = Xc_Select_ip1(0,1,ip1s_r,3);
 /*  i = Xc_Select_ip1(1,1,ip1s_range,-2);*/

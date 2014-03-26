@@ -2,7 +2,7 @@
 DISTDIR=..
 # extras with respect to RPN's version of rmnlib (14)
 # EXTRAS  : load in local library
-EXTRAS = fstd98.o DlInterface.o convert_ip123.o fst_missing.o register_dl_routines.o dlfcn.o
+EXTRAS = fstd98.o DlInterface.o convert_ip123.o fst_missing.o register_dl_routines.o dlfcn.o convip_plus.o
 # EXTRAS2 : do not load yet
 EXTRAS2 = float_packer.o  c_zfstlib.o vmm.o
 TESTS = test_z test_p test_f test_d test_c
@@ -43,7 +43,10 @@ fstd98.o: fstd98.c  if_fstd98.c
 
 # IP123 conversion
 convert_ip123.o:	convert_ip123.f90
-	s.f90 -c -O 2 convert_ip123.f90
+	s.f90 -c -O 2 $<
+
+convip_plus.o:	convip_plus.f90 convert_ip123.f90
+	s.f90 -c -O 2 convip_plus.f90
 
 localdist: $(EXTRAS) $(EXTRAS2)
 	mkdir -p Locallib/$(EC_ARCH)/
