@@ -103,7 +103,7 @@ static int package_not_initialized = 1;
  * filename != NULL  : write output into that file, without separators (ignore use_header)
  * filename == NULL  : output to stdout
  */
-void DumpRequestTable(int use_header, char *filename)
+void WriteRequestTable(int use_header, char *filename)
 {
   int i, j;
   char *sep="\n      ";
@@ -196,7 +196,7 @@ static int ValidateRequestForSet(int set_nb, int des_exc, int nelm, int nelm_lt,
   }
 
   if (nelm <= 0) {
-    if (nelm != nelm_lt) {   /* if nelm < 0, it must be equal to nelm_lt */
+    if (nelm != nelm_lt) {   /* if nelm <= 0, it must be equal to nelm_lt */
       fprintf(stderr,"error: C_select_%s nelm invalid = %d\n",msg,nelm);
       return(-3);
     }
@@ -557,6 +557,145 @@ int Xc_Select_typvar(int set_nb, int des_exc, char *typv_list[], int nelm)
   }
   return(0);
 }
+
+int ReadRequestTable(char *filename)
+{
+  char line[4096];
+  FILE *input=NULL;
+  char *cptr;
+  int dirset;
+  char s1[16], s2[16], s3[16];
+  char sar[40][13];
+  char *sarp[41];
+  int nvalues;
+  int a[100];
+  int i, j;
+  int nx[7];
+  char gtyp;
+  int rvd; /* range, value, delta */
+  int dex ; /* desire / exclure */
+  int status;
+
+  status = 0;
+  if(filename != NULL) input=fopen(filename,"r");
+  if(input == NULL) {
+    fprintf(stderr,"ERROR: cannot open directive file '%s'\n",filename);
+    return(-1);
+  }
+  readnext:
+  cptr=fgets(line,sizeof(line),input);
+//  fprintf(stderr,"header=%s",line);
+  dirset=0;
+  s1[0]='\000';
+  s2[0]='\000';
+  s3[0]='\000';
+  nvalues=0;
+  
+  sscanf(line,"%d",&dirset);
+  if(dirset==0) exit(0);
+  cptr=line;
+  while(*cptr != '\'' ) cptr++ ; cptr++ ;
+  sscanf(cptr,"%s",s1);
+  while(*cptr != ',' ) cptr++ ; while(*cptr != '\'' ) cptr++ ; cptr++ ;
+  sscanf(cptr,"%s",s2);
+  while(*cptr != ',' ) cptr++ ; while(*cptr != '\'' ) cptr++ ; cptr++ ;
+  sscanf(cptr,"%s",s3);
+  while(*cptr != ',' ) cptr++ ; cptr++ ;
+  sscanf(cptr,"%d",&nvalues);
+  fprintf(stderr,"%d,'%s','%s','%s',%d\n",dirset,s1,s2,s3,nvalues);
+  rvd = 0 ; /* not used */
+  if(s3[0] == 'v') rvd = VALUE;
+  if(s3[0] == 'r') rvd = RANGE;
+  if(s3[0] == 'v') rvd = DELTA;
+  dex = s1[0] == 'D' ? DESIRE : EXCLURE ;
+  
+  cptr=fgets(line,sizeof(line),input);
+  cptr = line;
+//  fprintf(stderr,"reading data\n");
+
+  if(s2[0]=='D') {                            /*  Date */
+    sscanf(cptr,"%d",a);
+    for (i=1;i<nvalues;i++) {
+      while(*cptr != ',' ) cptr++ ; cptr++ ;
+      sscanf(cptr,"%d",a+i);
+    }
+    if(rvd == RANGE) {
+      nvalues=3;
+      a[2]=a[1];
+      a[1]=READLX_RANGE;
+    }
+    if(rvd == DELTA) {
+      nvalues=5;
+      a[4]=a[2];
+      a[3]=READLX_DELTA;
+      a[2]=a[1];
+      a[1]=READLX_RANGE;
+    }
+    status = Xc_Select_date(dirset,dex,a,nvalues);
+//    for (i=0;i<nvalues;i++) {
+//      fprintf(stderr," %d",a[i]);
+//    }
+//    fprintf(stderr,"\n");
+    
+  }else if(s2[0]=='I') {                       /* IP1/2/3 */
+    sscanf(cptr,"%d",a);
+    for (i=1;i<nvalues;i++) {
+      while(*cptr != ',' ) cptr++ ; cptr++ ;
+      sscanf(cptr,"%d",a+i);
+    }
+    if(rvd == RANGE) {
+      nvalues=3;
+      a[2]=a[1];
+      a[1]=READLX_RANGE;
+    }
+    if(rvd == DELTA) nvalues = 0;
+    if(s2[2]=='1') status = Xc_Select_ip1(dirset,dex,a,nvalues);
+    if(s2[2]=='2') status = Xc_Select_ip2(dirset,dex,a,nvalues);
+    if(s2[2]=='3') status = Xc_Select_ip3(dirset,dex,a,nvalues);
+//    for (i=0;i<nvalues;i++) {
+//      fprintf(stderr," %d",a[i]);
+//    }
+//    fprintf(stderr,"\n");
+    
+  }else if(s2[0]=='X'){                           /* Xtra  */
+    sscanf(cptr,"%d",a);
+    for (i=1;i<8;i++) {
+      while(*cptr != ',' ) cptr++ ; cptr++ ;
+      sscanf(cptr,"%d",a+i);
+    }
+    while(*cptr != '\'' ) cptr++ ; cptr++ ;
+    gtyp=*cptr;
+    status = Xc_Select_suppl(dirset,dex,a[0],a[1],a[2],a[3],a[4],a[5],a[6],gtyp);
+//    for (i=0;i<8;i++) {
+//      fprintf(stderr," %d",a[i]);
+//    }
+//    fprintf(stderr," %c\n",gtyp);
+    
+  }else if(s2[0]=='N' || s2[0]=='T' || s2[0]=='E'){   /* Nomvar, Typvar or Etiket */
+    for (i=0;i<nvalues;i++) {
+      while(*cptr != '\'' ) cptr++ ; cptr++ ;
+      j=0;
+      while(*cptr != '\'' ) sar[i][j++]=*cptr++; cptr++ ;
+      sar[i][j]='\000';
+      sarp[i] = sar[i];
+    }
+    sarp[nvalues] = NULL;
+    if(s2[0] == 'N') status = Xc_Select_nomvar(dirset,dex,sarp,nvalues) ;
+    if(s2[0] == 'T') status = Xc_Select_typvar(dirset,dex,sarp,nvalues) ;
+    if(s2[0] == 'E') status = Xc_Select_etiquette(dirset,dex,sarp,nvalues) ;
+//    for (i=0;i<nvalues;i++) {
+//      fprintf(stderr," '%s'",sar[i]);
+//    }
+//     fprintf(stderr,"\n");
+  }else{
+    fprintf(stderr,"ERROR: unrecognized type s2='%s' in directive file\n",s2);
+    status = -1;
+  }
+  if(status != 0) return -1;
+  goto readnext;
+  return 0;
+}
+
 
 /*****************************************************************************
  *                      C _ S E L E C T _ G R O U P S E T                    *
@@ -1554,9 +1693,15 @@ c_main(int argc, char **argv)
   i = Xc_Select_ip2(4,0,ip1s_range2,2);
   i = Xc_Select_date(4,0,dates_range3,2);
   i = C_select_groupset(2,5);
-  DumpRequestTable(atoi(argv[1]),argc<narg ? NULL : argv[narg]); narg++ ;
+  WriteRequestTable(atoi(argv[1]),argc<narg ? NULL : argv[narg]);
+  ReadRequestTable(argc<narg ? NULL : argv[narg]);
+  WriteRequestTable(1,argc<narg ? NULL : argv[narg]);
+   narg++ ;
   i = C_select_groupset(0,1);
-  DumpRequestTable(atoi(argv[1]),argc<narg ? NULL : argv[narg]); narg++ ;
+  WriteRequestTable(atoi(argv[1]),argc<narg ? NULL : argv[narg]);
+  ReadRequestTable(argc<narg ? NULL : argv[narg]);
+  WriteRequestTable(1,argc<narg ? NULL : argv[narg]);
+   narg++ ;
 //  DumpRequestTable(0,NULL);
 //  i = Xc_Select_ip1(0,1,ip1s_r,3);
 /*  i = Xc_Select_ip1(1,1,ip1s_range,-2);*/
