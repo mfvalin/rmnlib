@@ -5,7 +5,7 @@
 !  necessaire avant de lire/ecrire un enregistrement sur un fichier standard.
 ! SYNOPSIS
 SUBROUTINE CONVIP_plus( ip, p, kind, mode, string, flagv )
-  use convert_ip123
+  use convert_ip123_int
   implicit none
   include 'convip_plus.inc'
 

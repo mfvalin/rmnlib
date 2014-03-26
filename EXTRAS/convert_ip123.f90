@@ -19,7 +19,7 @@
 ! */
 !****P* rmnlib/convert_ip123
 ! SYNOPSIS
-module convert_ip123
+module convert_ip123_int
 use ISO_C_BINDING
 implicit none
 ! DESCRIPTION
@@ -664,6 +664,6 @@ implicit none ! explicit, independent (ip) to (rp,kind) conversion
 
 return
 end function decode_ip_3
-end module convert_ip123
+end module convert_ip123_int
 
 !end module convert_ip123
