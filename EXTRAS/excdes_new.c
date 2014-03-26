@@ -203,7 +203,8 @@ static int ValidateRequestForSet(int set_nb, int des_exc, int nelm, int nelm_lt,
   }
 
   if ((Requests[set_nb].in_use) && (((des_exc == 1) ? DESIRE : EXCLURE) != Requests[set_nb].exdes)) {
-    fprintf(stderr,"C_select_ip1 error: des_exc value differs from previous call for set number=%d\n",set_nb);
+    fprintf(stderr,"C_select_%s error: des_exc value differs from previous call for set number=%d\n",msg,set_nb);
+    fprintf(stderr,"expected %s, got %s \n",(Requests[set_nb].exdes==DESIRE) ? "desire":"exclure",(des_exc == 1) ? "desire":"exclure");
     return(-4);
   }
 
@@ -241,7 +242,7 @@ int Xc_Select_ip1(int set_nb, int des_exc, void *iplist, int nelm)
   Requests[set_nb].in_use = USED;          /* set is in use */
   Requests[set_nb].ip1s.in_use = VALUE;    /* item in set is in use */
   Requests[set_nb].ip1s.delta = 0;         /* delta not supported */
-  Requests[set_nb].exdes = (des_exc) ? DESIRE : EXCLURE;
+  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
   Requests[set_nb].ip1s.nelm = nelm;     /* if range, the value of nelm does not matter, the first 2 values are used */
   Requests[set_nb].ip1s.data[0] = ip_entier[0];  /* first value from list */
 
@@ -288,7 +289,7 @@ int Xc_Select_ip2(int set_nb, int des_exc, void *iplist, int nelm)
   Requests[set_nb].in_use = USED;          /* set is in use */
   Requests[set_nb].ip2s.in_use = VALUE;    /* item in set is in use */
   Requests[set_nb].ip2s.delta = 0;         /* delta not supported */
-  Requests[set_nb].exdes = (des_exc) ? DESIRE : EXCLURE;
+  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
   Requests[set_nb].ip2s.nelm = nelm;     /* if range, the value of nelm does not matter, the first 2 values are used */
   Requests[set_nb].ip2s.data[0] = ip_entier[0];  /* first value from list */
 
@@ -335,7 +336,7 @@ int Xc_Select_ip3(int set_nb, int des_exc, void *iplist, int nelm)
   Requests[set_nb].in_use = USED;          /* set is in use */
   Requests[set_nb].ip3s.in_use = VALUE;    /* item in set is in use */
   Requests[set_nb].ip3s.delta = 0;         /* delta not supported */
-  Requests[set_nb].exdes = (des_exc) ? DESIRE : EXCLURE;
+  Requests[set_nb].exdes = (des_exc == 1) ? DESIRE : EXCLURE;
   Requests[set_nb].ip3s.nelm = nelm;     /* if range, the value of nelm does not matter, the first 2 values are used */
   Requests[set_nb].ip3s.data[0] = ip_entier[0];  /* first value from list */
 
@@ -1689,9 +1690,9 @@ c_main(int argc, char **argv)
   i = Xc_Select_ip1(3,1,ip1s_range2,2);
   i = Xc_Select_date(3,1,dates_range2,2);
 
-  i = Xc_Select_ip1(4,0,ip1s_range3,2);
-  i = Xc_Select_ip2(4,0,ip1s_range2,2);
-  i = Xc_Select_date(4,0,dates_range3,2);
+  i = Xc_Select_ip1(4,-1,ip1s_range3,2);
+  i = Xc_Select_ip2(4,-1,ip1s_range2,2);
+  i = Xc_Select_date(4,-1,dates_range3,2);
   i = C_select_groupset(2,5);
   WriteRequestTable(1,NULL);
   WriteRequestTable(atoi(argv[1]),argc<narg ? NULL : argv[narg]);
