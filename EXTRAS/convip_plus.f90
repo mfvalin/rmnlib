@@ -517,7 +517,7 @@ end function value_to_string
 !===============================================================================================
 subroutine test_value_to_string
   implicit none
-  include 'convert_ip123.inc'
+  include 'convip_plus.inc'
   character (len=8) :: stringa
   character (len=12) :: stringb
   character (len=15) :: stringc
@@ -609,7 +609,7 @@ subroutine c_kind_to_string(code,s1,s2) BIND(C,name='KindToString')  ! interface
 ! translate kind integer code to 2 character string, gateway to Fortran kind_to_string
   use ISO_C_BINDING
   implicit none
-  include 'convert_ip123.inc'
+  include 'convip_plus.inc'
 
   integer(C_INT), intent(IN), value :: code
   character(C_CHAR), intent(OUT) :: s1, s2
