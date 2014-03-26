@@ -236,7 +236,7 @@ int Xc_Select_ip1(int set_nb, int des_exc, void *iplist, int nelm)
   int valid;
 
   valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "ip1");
-  if(valid < 0) return(valid);
+  if(valid < 0) goto error ;
 
   if (ip_entier[0] == -1) nelm = 1;        /* universal value, rest of values if any is irrelevant */
   Requests[set_nb].in_use = USED;          /* set is in use */
@@ -248,7 +248,7 @@ int Xc_Select_ip1(int set_nb, int des_exc, void *iplist, int nelm)
 
   if (nelm == 1 ) return(0);               /* one value, cannot be a range */
 
-  Requests[set_nb].ip1s.data[2] = 0x7FFFFFFF ;   /* open interval by default for case value @*/
+  Requests[set_nb].ip1s.data[2] = READLX_RANGE ;   /* open interval by default for case value @*/
   for (i=1; i<nelm; i++) {                       /* rest of values */
     Requests[set_nb].ip1s.data[i] = ip_entier[i];
   }
@@ -256,6 +256,9 @@ int Xc_Select_ip1(int set_nb, int des_exc, void *iplist, int nelm)
   if (ip_entier[0] == READLX_RANGE || ip_entier[1] == READLX_RANGE) { Requests[set_nb].ip1s.in_use = RANGE; Requests[set_nb].ip1s.nelm = 2 ; }
   if (ip_entier[1] == READLX_RANGE) Requests[set_nb].ip1s.data[1] = Requests[set_nb].ip1s.data[2];   /* value @ value  or value @  or @ @ */
   return(0);
+error:
+  Requests[set_nb].dates.in_use = UNUSED;
+  return(-1);
 }
 
 /*****************************************************************************
@@ -283,7 +286,7 @@ int Xc_Select_ip2(int set_nb, int des_exc, void *iplist, int nelm)
   int valid;
 
   valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "ip2");
-  if(valid < 0) return(valid);
+  if(valid < 0) goto error ;
 
   if (ip_entier[0] == -1) nelm = 1;        /* universal value, rest of values if any is irrelevant */
   Requests[set_nb].in_use = USED;          /* set is in use */
@@ -295,7 +298,7 @@ int Xc_Select_ip2(int set_nb, int des_exc, void *iplist, int nelm)
 
   if (nelm == 1 ) return(0);               /* one value, cannot be a range */
 
-  Requests[set_nb].ip2s.data[2] = 0x7FFFFFFF ;   /* open interval by default for case value @*/
+  Requests[set_nb].ip2s.data[2] = READLX_RANGE ;   /* open interval by default for case value @*/
   for (i=1; i<nelm; i++) {                       /* rest of values */
     Requests[set_nb].ip2s.data[i] = ip_entier[i];
   }
@@ -303,6 +306,9 @@ int Xc_Select_ip2(int set_nb, int des_exc, void *iplist, int nelm)
   if (ip_entier[0] == READLX_RANGE || ip_entier[1] == READLX_RANGE) { Requests[set_nb].ip2s.in_use = RANGE;; Requests[set_nb].ip2s.nelm = 2 ; }
   if (ip_entier[1] == READLX_RANGE) Requests[set_nb].ip2s.data[1] = Requests[set_nb].ip2s.data[2];   /* value @ value  or value @  or @ @ */
   return(0);
+error:
+  Requests[set_nb].dates.in_use = UNUSED;
+  return(-1);
 }
 
 /*****************************************************************************
@@ -330,7 +336,7 @@ int Xc_Select_ip3(int set_nb, int des_exc, void *iplist, int nelm)
   int valid;
 
   valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "ip3");
-  if(valid < 0) return(valid);
+  if(valid < 0) goto error ;
 
   if (ip_entier[0] == -1) nelm = 1;        /* universal value, rest of values if any is irrelevant */
   Requests[set_nb].in_use = USED;          /* set is in use */
@@ -342,7 +348,7 @@ int Xc_Select_ip3(int set_nb, int des_exc, void *iplist, int nelm)
 
   if (nelm == 1 ) return(0);               /* one value, cannot be a range */
 
-  Requests[set_nb].ip3s.data[2] = 0x7FFFFFFF ;   /* open interval by default for case value @*/
+  Requests[set_nb].ip3s.data[2] = READLX_RANGE ;   /* open interval by default for case value @*/
   for (i=1; i<nelm; i++) {                       /* rest of values */
     Requests[set_nb].ip3s.data[i] = ip_entier[i];
   }
@@ -350,6 +356,9 @@ int Xc_Select_ip3(int set_nb, int des_exc, void *iplist, int nelm)
   if (ip_entier[0] == READLX_RANGE || ip_entier[1] == READLX_RANGE) { Requests[set_nb].ip3s.in_use = RANGE;; Requests[set_nb].ip3s.nelm = 2 ; }
   if (ip_entier[1] == READLX_RANGE) Requests[set_nb].ip3s.data[1] = Requests[set_nb].ip3s.data[2];   /* value @ value  or value @  or @ @ */
   return(0);
+error:
+  Requests[set_nb].dates.in_use = UNUSED;
+  return(-1);
 }
 
 /*****************************************************************************
@@ -377,7 +386,7 @@ int Xc_Select_date(int set_nb, int des_exc, int *date_list, int nelm)
   int valid, delta=0;
 
   valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "date");
-  if(valid < 0) return(valid);
+  if(valid < 0) goto error ;
 
   if (date_list[0] == -1) nelm = 1;        /* universal value, rest of values if any is irrelevant */
   Requests[set_nb].in_use = USED;          /* set is in use */
@@ -395,19 +404,22 @@ int Xc_Select_date(int set_nb, int des_exc, int *date_list, int nelm)
     if(date_list[i]==READLX_DELTA) {                 /* DELTA keyword */
       delta++;
       if(delta > 1 || range == 0 ) goto error ;           /* more than one delta keyword or delta encountered before @  */
+      if(i >= nelm-1) goto error ;                        /* no value follows delta */
+      if(i != 3) goto error ;                             /* must be date1 @ date2 delta hours */
       Requests[set_nb].dates.in_use = DELTA;
       Requests[set_nb].dates.nelm = 3;
       Requests[set_nb].dates.data[2] = date_list[i+1];
-      if(i<nelm-1) Requests[set_nb].dates.delta = date_list[i+1];
+      Requests[set_nb].dates.delta = date_list[i+1];
     }
     if(date_list[i]==READLX_RANGE) {   /* @  keyword   */
       range++;
       if(range>1 || i>1) goto error ;           /* more than one @ keyword or @ keyword too far in line */
+      if(i > 1) goto error ;                    /*  @ cannot be found beyond position 2 */
       Requests[set_nb].dates.in_use = RANGE ;
       Requests[set_nb].dates.nelm = 2;
-      if(i==0) Requests[set_nb].dates.data[0] = 0;              /* @ date .... */
-      if(i==1) {                                            /* date @ date  or date @ delta */
-        Requests[set_nb].dates.data[1] = date_list[2] != READLX_DELTA  ? date_list[2] : 0x7FFFFFFF ; 
+      if(i==0) Requests[set_nb].dates.data[0] = READLX_RANGE;              /* @ date .... */
+      if(i==1 && nelm>2) {                                            /* date @ date  or date @ delta */
+        Requests[set_nb].dates.data[1] = (date_list[2] > 0)  ? date_list[2] : READLX_RANGE ; 
       }
     }
     dbprint(stddebug,"Debug Requests[%d].dates.data[%d] = %d\n",set_nb,i,
@@ -439,7 +451,7 @@ int Xc_Select_etiquette(int set_nb, int des_exc, char *etiq_list[], int nelm)
   int valid;
 
   valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "etiquette");
-  if(valid < 0) return(valid);
+  if(valid < 0) goto error ;
 
   Requests[set_nb].in_use = 1;
   Requests[set_nb].etiquettes.in_use = 1;
@@ -451,6 +463,9 @@ int Xc_Select_etiquette(int set_nb, int des_exc, char *etiq_list[], int nelm)
            set_nb,i,Requests[set_nb].etiquettes.pdata[i]);
   }
   return(0);
+error:
+  Requests[set_nb].dates.in_use = UNUSED;
+  return(-1);
 }
 
 /*****************************************************************************
@@ -473,7 +488,7 @@ int Xc_Select_nomvar(int set_nb, int des_exc, char *nomv_list[], int nelm)
   int valid;
 
   valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "nomvar");
-  if(valid < 0) return(valid);
+  if(valid < 0) goto error ;
 
   Requests[set_nb].in_use = 1;
   Requests[set_nb].nomvars.in_use = 1;
@@ -485,6 +500,9 @@ int Xc_Select_nomvar(int set_nb, int des_exc, char *nomv_list[], int nelm)
            set_nb,i,Requests[set_nb].nomvars.pdata[i]);
   }
   return(0);
+error:
+  Requests[set_nb].dates.in_use = UNUSED;
+  return(-1);
 }
 
 /*****************************************************************************
@@ -509,7 +527,7 @@ int Xc_Select_suppl(int set_nb, int des_exc, int ni, int nj, int nk, int ig1, in
   int valid;
 
   valid = ValidateRequestForSet(set_nb, des_exc, 1, 1, "suppl");
-  if(valid < 0) return(valid);
+  if(valid < 0) goto error ;
 
   Requests[set_nb].in_use = 1;
   Requests[set_nb].in_use_supp = 1;
@@ -523,6 +541,9 @@ int Xc_Select_suppl(int set_nb, int des_exc, int ni, int nj, int nk, int ig1, in
   Requests[set_nb].ig4s    = ig4;
   Requests[set_nb].grdtyps = gtyp;
   return(0);
+error:
+  Requests[set_nb].dates.in_use = UNUSED;
+  return(-1);
 }
 
 /*****************************************************************************
@@ -545,7 +566,7 @@ int Xc_Select_typvar(int set_nb, int des_exc, char *typv_list[], int nelm)
   int valid;
 
   valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "typvar");
-  if(valid < 0) return(valid);
+  if(valid < 0) goto error ;
 
   Requests[set_nb].in_use = 1;
   Requests[set_nb].typvars.in_use = 1;
@@ -557,6 +578,9 @@ int Xc_Select_typvar(int set_nb, int des_exc, char *typv_list[], int nelm)
            set_nb,i,Requests[set_nb].typvars.pdata[i]);
   }
   return(0);
+error:
+  Requests[set_nb].dates.in_use = UNUSED;
+  return(-1);
 }
 
 int ReadRequestTable(char *filename)
@@ -1675,10 +1699,6 @@ c_main(int argc, char **argv)
   dbprint(stddebug,"Debug testtyp=%s %s %s %s \n",testtyp[0],testtyp[1],testtyp[2],testtyp[3]);
 //  c_requetes_init(NULL,NULL);
 
-  i = Xc_Select_ip1(1,1,ip1s_i,4);
-  i = Xc_Select_suppl(1, 1, -1, -1, -1, -1, -1, -1, -1, 'Z');
-  i = Xc_Select_date(1,1,dates_range,3);
-
   i = Xc_Select_etiquette(2,1,testeti,3);
   i = Xc_Select_nomvar(2,1,testnom,2);
   i = Xc_Select_typvar(2,1,testtyp,4);
@@ -1686,8 +1706,9 @@ c_main(int argc, char **argv)
   i = Xc_Select_ip2(2,1,ip2s,3);
   i = Xc_Select_date(2,1,dates_range1,5);
 
-  i = Xc_Select_ip3(3,1,ip3s,3);
   i = Xc_Select_ip1(3,1,ip1s_range2,2);
+  i = Xc_Select_ip3(3,1,ip3s,3);
+  i = Xc_Select_ip2(3,1,ip1s_range3,2);
   i = Xc_Select_date(3,1,dates_range2,2);
 
   i = Xc_Select_ip1(4,-1,ip1s_range3,2);
@@ -1697,16 +1718,23 @@ c_main(int argc, char **argv)
   WriteRequestTable(atoi(argv[1]),NULL);
   if(argc>narg){
     WriteRequestTable(0,argv[narg]);
+    c_requetes_init(NULL,NULL);
     ReadRequestTable(argv[narg]);
     fprintf(stdout,"=========== Reading Back table===========\n");
     WriteRequestTable(1,NULL);
   }
   narg++ ;
   fprintf(stdout,"\n=========================================\n\n");
+
+  c_requetes_init(NULL,NULL);
+  i = Xc_Select_ip1(1,1,ip1s_i,4);
+  i = Xc_Select_suppl(1, 1, -1, -1, -1, -1, -1, -1, -1, 'Z');
+  i = Xc_Select_date(1,1,dates_range,3);
   i = C_select_groupset(0,1);
   WriteRequestTable(atoi(argv[1]),NULL);
   if(argc>narg){
     WriteRequestTable(0,argv[narg]);
+    c_requetes_init(NULL,NULL);
     ReadRequestTable(argv[narg]);
     fprintf(stdout,"=========== Reading Back table===========\n");
     WriteRequestTable(1,NULL);
