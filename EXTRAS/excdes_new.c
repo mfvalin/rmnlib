@@ -592,7 +592,7 @@ int ReadRequestTable(char *filename)
   nvalues=0;
   
   sscanf(line,"%d",&dirset);
-  if(dirset==0) exit(0);
+  if(dirset==0) {fclose(input) ; return(0); }
   cptr=line;
   while(*cptr != '\'' ) cptr++ ; cptr++ ;
   sscanf(cptr,"%s",s1);
@@ -606,7 +606,7 @@ int ReadRequestTable(char *filename)
   rvd = 0 ; /* not used */
   if(s3[0] == 'v') rvd = VALUE;
   if(s3[0] == 'r') rvd = RANGE;
-  if(s3[0] == 'v') rvd = DELTA;
+  if(s3[0] == 'd') rvd = DELTA;
   dex = s1[0] == 'D' ? DESIRE : EXCLURE ;
   
   cptr=fgets(line,sizeof(line),input);
@@ -691,7 +691,7 @@ int ReadRequestTable(char *filename)
     fprintf(stderr,"ERROR: unrecognized type s2='%s' in directive file\n",s2);
     status = -1;
   }
-  if(status != 0) return -1;
+  if(status != 0) { fclose(input);  return -1; }
   goto readnext;
   return 0;
 }
@@ -1693,15 +1693,18 @@ c_main(int argc, char **argv)
   i = Xc_Select_ip2(4,0,ip1s_range2,2);
   i = Xc_Select_date(4,0,dates_range3,2);
   i = C_select_groupset(2,5);
+  WriteRequestTable(1,NULL);
   WriteRequestTable(atoi(argv[1]),argc<narg ? NULL : argv[narg]);
   ReadRequestTable(argc<narg ? NULL : argv[narg]);
-  WriteRequestTable(1,argc<narg ? NULL : argv[narg]);
-   narg++ ;
+  WriteRequestTable(1,NULL);
+  narg++ ;
+  fprintf(stdout,"=======================================\n");
   i = C_select_groupset(0,1);
+  WriteRequestTable(1,NULL);
   WriteRequestTable(atoi(argv[1]),argc<narg ? NULL : argv[narg]);
   ReadRequestTable(argc<narg ? NULL : argv[narg]);
-  WriteRequestTable(1,argc<narg ? NULL : argv[narg]);
-   narg++ ;
+  WriteRequestTable(1,NULL);
+  narg++ ;
 //  DumpRequestTable(0,NULL);
 //  i = Xc_Select_ip1(0,1,ip1s_r,3);
 /*  i = Xc_Select_ip1(1,1,ip1s_range,-2);*/
