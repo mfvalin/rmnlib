@@ -644,7 +644,7 @@ int ReadRequestTable(char *filename)
       while(*cptr != ',' ) cptr++ ; cptr++ ;
       sscanf(cptr,"%d",a+i);
     }
-    if(rvd == RANGE) {
+    if(rvd == RANGE && a[0] >= 0 && a[1] >= 0) {
       nvalues=3;
       a[2]=a[1];
       a[1]=READLX_RANGE;
@@ -716,7 +716,7 @@ int ReadRequestTable(char *filename)
     fprintf(stderr,"ERROR: unrecognized type s2='%s' in directive file\n",s2);
     status = -1;
   }
-  if(status != 0) { fclose(input);  return -1; }
+  if(status != 0) { fprintf(stderr,"ERROR: status=%d\n",status); fclose(input);  return -1; }
   goto readnext;
   return 0;
 }
