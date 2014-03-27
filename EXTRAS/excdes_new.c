@@ -810,9 +810,19 @@ static int match_ip(int in_use, int nelm, int *data, int ip1, int translatable)
     if(! translatable) return(0) ;      /* name is not translatable we are done */
     ConvertIp(&ip, &p1, &kind1, mode);  /* convert candidate value */
     ip = data[0];
-    ConvertIp(&ip, &p2, &kind2, mode);  /* convert bottom value */
+    if(ip >= 0) {
+      ConvertIp(&ip, &p2, &kind2, mode);  /* convert bottom value   */
+    }else{                                /* open bottom  value @   */
+      p2 = p1;
+      kind2 = kind1;
+    }
     ip = data[1];
-    ConvertIp(&ip, &p3, &kind3, mode);  /* convert top value */
+    if(ip >= 0) {
+      ConvertIp(&ip, &p3, &kind3, mode);  /* convert top value   */
+    }else{                                /* open top   value @  */
+      p3 = p1;
+      kind3 = kind1;
+    }
     if(kind1 != kind2 || kind1 != kind3) return 0 ;  /* not same kind, no match */
     if(p2<=p1 && p1<=p3) return 1 ;     /* we have a match */
     return 0;   /* if we fell through, we have no match */
@@ -820,7 +830,7 @@ static int match_ip(int in_use, int nelm, int *data, int ip1, int translatable)
   if( in_use != VALUE ) return 1 ; /* delta not supported */
 
   for (i==0 ; i<nelm ; i++) {
-    if(ip1 == data[i]) return 1;  /* we have a match */
+    if(ip1 == data[i] || data[i] == -1) return 1;  /* we have a match */
   }
   if(! translatable) return(0) ;/* name is not translatable we are done */
   ip = ip1;
@@ -886,25 +896,25 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
     Supplements:
       if (Requests[set_nb].in_use_supp) {
         amatch = 0;
-        if(Requests[set_nb].ig1s != ig1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig2s != ig1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig3s != ig1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig4s != ig2) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].nis  !=  ni) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].nis  !=  nj) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].nis  !=  nk) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].grdtyps  !=  grtyp[0]) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig1s != ig1 && ig1 != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig2s != ig2 && ig2 != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig3s != ig3 && ig3 != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig4s != ig2 && ig4 != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].nis  !=  ni &&  ni != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].nis  !=  nj &&  nj != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].nis  !=  nk &&  nk != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].grdtyps  !=  grtyp[0] && grtyp[0] != ' ') continue;  /* requete non satisfaite pour criteres supplementaires */
         amatch = 1;   /* requete satisfaite jusqu'ici */
       }
     Etiquettes:
       if (Requests[set_nb].etiquettes.in_use) {
         amatch = 0;
+        if(Requests[set_nb].etiquettes.pdata[0][0] == ' ') amatch = 1;
         dbprint(stddebug,"Debug C_fst_match_req verifie etiquettes du fichier=%s set_nb=%d\n",etiket,set_nb);
-        for (i=0; i < Requests[set_nb].etiquettes.nelm; i++) {
+        for (i=0; i < Requests[set_nb].etiquettes.nelm && amatch == 0; i++) {
           if (strncmp(Requests[set_nb].etiquettes.pdata[i],etiket,Min(12,strlen(Requests[set_nb].etiquettes.pdata[i]))) == 0) {
-            amatch = 1;
+            amatch = 1;       /* requete satisfaite jusqu'ici */
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-            break;       /* requete satisfaite jusqu'ici */
           }
         }
         if (amatch == 0) continue;  /* requete non satisfaite pour etiquettes */
@@ -913,12 +923,12 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
     Nomvars:
       if (Requests[set_nb].nomvars.in_use) {
         amatch = 0;
+        if(Requests[set_nb].nomvars.pdata[0][0] == ' ') amatch = 1;
         dbprint(stddebug,"Debug C_fst_match_req verifie nomvars du fichier=%s set_nb=%d\n",nomvar,set_nb);
-        for (i=0; i < Requests[set_nb].nomvars.nelm; i++)
+        for (i=0; i < Requests[set_nb].nomvars.nelm && amatch == 0; i++)
           if (strncmp(Requests[set_nb].nomvars.pdata[i],nomvar,Min(4,strlen(Requests[set_nb].nomvars.pdata[i]))) == 0) {
-            amatch = 1;
+            amatch = 1;       /* requete satisfaite jusqu'ici */
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-            break;       /* requete satisfaite jusqu'ici */
           }
         if (amatch == 0) continue;  /* requete non satisfaite pour nomvars */
       }
@@ -926,12 +936,12 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
     Typvars:
       if (Requests[set_nb].typvars.in_use) {
         amatch = 0;
+        if(Requests[set_nb].typvars.pdata[0][0] == ' ') amatch = 1;
         dbprint(stddebug,"Debug C_fst_match_req verifie typvars set_nb=%d\n",set_nb);
-        for (i=0; i < Requests[set_nb].typvars.nelm; i++)
+        for (i=0; i < Requests[set_nb].typvars.nelm && amatch == 0; i++)
           if (strncmp(Requests[set_nb].typvars.pdata[i],typvar,Min(2,strlen(Requests[set_nb].typvars.pdata[i]))) == 0) {
-            amatch = 1;
+            amatch = 1;       /* requete satisfaite jusqu'ici */
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
-            break;       /* requete satisfaite jusqu'ici */
           }
         if (amatch == 0) continue;  /* requete non satisfaite pour typvars */
       }
@@ -943,7 +953,8 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
 
           case VALUE:
             dbprint(stddebug,"Debug C_fst_match_req verifie dates entier set_nb=%d\n",set_nb);
-            for (i=0; i < Requests[set_nb].dates.nelm; i++)
+            if(Requests[set_nb].dates.data[0] == -1) amatch = 1;
+            for (i=0; i < Requests[set_nb].dates.nelm && amatch == 0; i++)
               if (Requests[set_nb].dates.data[i] == date) {
                 amatch = 1;
                 dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
@@ -952,12 +963,12 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
             break;   /* requete satisfaite jusqu'ici */
 
           case RANGE:
-            if (Requests[set_nb].dates.data[0] == -1)
+            if (Requests[set_nb].dates.data[0] <= 0)
               debut = date;
             else {
               debut = Requests[set_nb].dates.data[0];
               }
-            if (Requests[set_nb].dates.data[1] == -1)
+            if (Requests[set_nb].dates.data[1] <= 0)
               fin = date;
             else
               fin = Requests[set_nb].dates.data[1];
@@ -974,12 +985,12 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
 
           case DELTA:
             dbprint(stddebug,"Debug C_fst_match_req verifie dates debut fin delta set_nb=%d\n",set_nb);
-            if (Requests[set_nb].dates.data[0] == -1)
+            if (Requests[set_nb].dates.data[0] <= 0)
               debut = date;
             else {
               debut = Requests[set_nb].dates.data[0];
               }
-            if (Requests[set_nb].dates.data[1] == -1)
+            if (Requests[set_nb].dates.data[1] <= 0)
               fin = date;
             else
               fin = Requests[set_nb].dates.data[1];
@@ -1007,25 +1018,28 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
 
     Ip1s:
       if (Requests[set_nb].ip1s.in_use) {
-        amatch = 0;
+        amatch = (Requests[set_nb].ip1s.data[0] == -1) ? 1 : 0 ;
         dbprint(stddebug,"Debug C_fst_match_req verifie ip2s set_nb=%d\n",set_nb);
-        amatch = match_ip(Requests[set_nb].ip1s.in_use, Requests[set_nb].ip1s.nelm, Requests[set_nb].ip1s.data, ip1, translatable);
+        if( amatch == 0)
+          amatch = match_ip(Requests[set_nb].ip1s.in_use, Requests[set_nb].ip1s.nelm, Requests[set_nb].ip1s.data, ip1, translatable);
         if(amatch == 0) continue ;  /* requete non satisfaite pour ip1 */
       }
 
     Ip2s:
       if (Requests[set_nb].ip2s.in_use) {
-        amatch = 0;
+        amatch = (Requests[set_nb].ip2s.data[0] == -1) ? 1 : 0 ;
         dbprint(stddebug,"Debug C_fst_match_req verifie ip2s set_nb=%d\n",set_nb);
-        amatch = match_ip(Requests[set_nb].ip2s.in_use, Requests[set_nb].ip2s.nelm, Requests[set_nb].ip2s.data, ip1, translatable);
+        if( amatch == 0)
+          amatch = match_ip(Requests[set_nb].ip2s.in_use, Requests[set_nb].ip2s.nelm, Requests[set_nb].ip2s.data, ip1, translatable);
         if(amatch == 0) continue ;  /* requete non satisfaite pour ip2 */
       }
 
     Ip3s:
       if (Requests[set_nb].ip3s.in_use) {
-        amatch = 0;
+        amatch = (Requests[set_nb].ip3s.data[0] == -1) ? 1 : 0 ;
         dbprint(stddebug,"Debug C_fst_match_req verifie ip3s set_nb=%d\n",set_nb);
-        amatch = match_ip(Requests[set_nb].ip2s.in_use, Requests[set_nb].ip2s.nelm, Requests[set_nb].ip2s.data, ip1, translatable);
+        if( amatch == 0)
+          amatch = match_ip(Requests[set_nb].ip2s.in_use, Requests[set_nb].ip2s.nelm, Requests[set_nb].ip2s.data, ip1, translatable);
         if(amatch == 0) continue ;  /* requete non satisfaite pour ip3 */
       }
 
