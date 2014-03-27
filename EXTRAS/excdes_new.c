@@ -404,11 +404,11 @@ int Xc_Select_date(int set_nb, int des_exc, int *date_list, int nelm)
       range++;
       if(range>1 || i>1) goto error ;           /* more than one @ keyword or @ keyword too far in line */
       Requests[set_nb].dates.in_use = RANGE ;
-      Requests[set_nb].dates.nelm = 2;
-      if(i==0) Requests[set_nb].dates.data[0] = 0;              /* @ date .... */
-      if(i==1) {                                            /* date @ date  or date @ delta */
-        Requests[set_nb].dates.data[1] = date_list[2] != READLX_DELTA  ? date_list[2] : 0x7FFFFFFF ; 
+//      if(i==0) Requests[set_nb].dates.data[0] = 0;              /* @ date .... */
+      if(i==1 && nelm==3) {                                            /* date @ date  or date @ delta */
+        Requests[set_nb].dates.data[1] = date_list[2] ;
       }
+      Requests[set_nb].dates.nelm = 2;
     }
     dbprint(stddebug,"Debug Requests[%d].dates.data[%d] = %d\n",set_nb,i,
            Requests[set_nb].dates.data[i]);
@@ -603,7 +603,7 @@ int ReadRequestTable(char *filename)
   sscanf(cptr,"%s",s3);
   while(*cptr != ',' ) cptr++ ; cptr++ ;
   sscanf(cptr,"%d",&nvalues);
-//  fprintf(stderr,"%d,'%s','%s','%s',%d\n",dirset,s1,s2,s3,nvalues);
+  fprintf(stderr,"%d,'%s','%s','%s',%d\n",dirset,s1,s2,s3,nvalues);
   rvd = 0 ; /* not used */
   if(s3[0] == 'v') rvd = VALUE;
   if(s3[0] == 'r') rvd = RANGE;
@@ -620,7 +620,7 @@ int ReadRequestTable(char *filename)
       while(*cptr != ',' ) cptr++ ; cptr++ ;
       sscanf(cptr,"%d",a+i);
     }
-    if(rvd == RANGE) {
+    if(rvd == RANGE && a[0]>=0 && a[1] >= 0) {
       nvalues=3;
       a[2]=a[1];
       a[1]=READLX_RANGE;
@@ -633,11 +633,12 @@ int ReadRequestTable(char *filename)
       a[1]=READLX_RANGE;
     }
     status = Xc_Select_date(dirset,dex,a,nvalues);
-//    for (i=0;i<nvalues;i++) {
-//      fprintf(stderr," %d",a[i]);
-//    }
-//    fprintf(stderr,"\n");
-    
+    if(status != 0) {
+      for (i=0;i<nvalues;i++) {
+        fprintf(stderr," %d",a[i]);
+      }
+      fprintf(stderr,"\n");
+    }
   }else if(s2[0]=='I') {                       /* IP1/2/3 */
     sscanf(cptr,"%d",a);
     for (i=1;i<nvalues;i++) {
@@ -653,11 +654,12 @@ int ReadRequestTable(char *filename)
     if(s2[2]=='1') status = Xc_Select_ip1(dirset,dex,a,nvalues);
     if(s2[2]=='2') status = Xc_Select_ip2(dirset,dex,a,nvalues);
     if(s2[2]=='3') status = Xc_Select_ip3(dirset,dex,a,nvalues);
-//    for (i=0;i<nvalues;i++) {
-//      fprintf(stderr," %d",a[i]);
-//    }
-//    fprintf(stderr,"\n");
-    
+    if(status != 0) {
+      for (i=0;i<nvalues;i++) {
+        fprintf(stderr," %d",a[i]);
+      }
+      fprintf(stderr,"\n");
+    }
   }else if(s2[0]=='X'){                           /* Xtra  */
     sscanf(cptr,"%d",a);
     for (i=1;i<8;i++) {
@@ -667,11 +669,12 @@ int ReadRequestTable(char *filename)
     while(*cptr != '\'' ) cptr++ ; cptr++ ;
     gtyp=*cptr;
     status = Xc_Select_suppl(dirset,dex,a[0],a[1],a[2],a[3],a[4],a[5],a[6],gtyp);
-//    for (i=0;i<8;i++) {
-//      fprintf(stderr," %d",a[i]);
-//    }
-//    fprintf(stderr," %c\n",gtyp);
-    
+    if(status != 0) {
+      for (i=0;i<8;i++) {
+        fprintf(stderr," %d",a[i]);
+      }
+      fprintf(stderr," %c\n",gtyp);
+  }
   }else if(s2[0]=='N' || s2[0]=='T' || s2[0]=='E'){   /* Nomvar, Typvar or Etiket */
     for (i=0;i<nvalues;i++) {
       while(*cptr != '\'' ) cptr++ ; cptr++ ;
@@ -684,15 +687,21 @@ int ReadRequestTable(char *filename)
     if(s2[0] == 'N') status = Xc_Select_nomvar(dirset,dex,sarp,nvalues) ;
     if(s2[0] == 'T') status = Xc_Select_typvar(dirset,dex,sarp,nvalues) ;
     if(s2[0] == 'E') status = Xc_Select_etiquette(dirset,dex,sarp,nvalues) ;
-//    for (i=0;i<nvalues;i++) {
-//      fprintf(stderr," '%s'",sar[i]);
-//    }
-//     fprintf(stderr,"\n");
+    if(status != 0) {
+      for (i=0;i<nvalues;i++) {
+        fprintf(stderr," '%s'",sar[i]);
+      }
+      fprintf(stderr,"\n");
+    }
   }else{
     fprintf(stderr,"ERROR: unrecognized type s2='%s' in directive file\n",s2);
     status = -1;
   }
-  if(status != 0) { fclose(input);  return -1; }
+  if(status != 0) {
+    fclose(input);
+    fprintf(stderr,"ERROR: status=%d in ReadRequestTable\n",status);
+    return -1;
+  }
   goto readnext;
   return 0;
 }
