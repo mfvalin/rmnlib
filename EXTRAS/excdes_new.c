@@ -891,8 +891,11 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
   char *desire_exclure;
   int translatable;
 
-  if(package_not_initialized) c_requetes_init(NULL,NULL);
-  if (! Requests[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
+  if(package_not_initialized) {
+    fprintf(stderr,"INFO: c_fst_match_parm, initializing request tables \n");
+    c_requetes_init(NULL,NULL);
+  }
+//  if (! Requests[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
 
 #ifdef NOTUSED
   dbprint(stddebug,"Debug C_fst_match_req fstprm date=%d ip1=%d ip2=%d ip3=%d nomvar-->%s<-- typvar-->%s<-- etiket-->%s<--\n",
@@ -900,26 +903,25 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
 #endif
   translatable = FstCanTranslateName(nomvar) ;
   date = datevalid;
-
-  for (set_nb=first_R; (set_nb <= last_R) && Requests[set_nb].in_use; set_nb++) {
+//  for (set_nb=first_R; set_nb <= last_R ; set_nb++) fprintf(stderr," %d",Requests[set_nb].in_use) ; fprintf(stderr,"\n");
+  for (set_nb=first_R; (set_nb <= last_R) ; set_nb++) {
+    if(Requests[set_nb].in_use == 0)continue ;
 
     /* process supplementary parameters if any right here */
-
     amatch = 0;
     desire_exclure = (Requests[set_nb].exdes == DESIRE)  ? "desire" : "exclure";
 //fprintf(stderr,"matching request set %d\n",set_nb);
     Supplements:
       if (Requests[set_nb].in_use_supp) {
-//fprintf(stderr,"matching extra\n");
         amatch = 0;
-        if(Requests[set_nb].ig1s != ig1 && ig1 != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig2s != ig2 && ig2 != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig3s != ig3 && ig3 != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig4s != ig2 && ig4 != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].nis  !=  ni &&  ni != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].nis  !=  nj &&  nj != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].nis  !=  nk &&  nk != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].grdtyps  !=  grtyp[0] && grtyp[0] != ' ') continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig1s != ig1 && Requests[set_nb].ig1s != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig2s != ig2 && Requests[set_nb].ig2s != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig3s != ig3 && Requests[set_nb].ig3s != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig4s != ig2 && Requests[set_nb].ig4s != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].nis  !=  ni &&  Requests[set_nb].nis != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].njs  !=  nj &&  Requests[set_nb].njs != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].nks  !=  nk &&  Requests[set_nb].nks != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].grdtyps  !=  grtyp[0] && Requests[set_nb].grdtyps != ' ') continue;  /* requete non satisfaite pour criteres supplementaires */
         amatch = 1;   /* requete satisfaite jusqu'ici */
       }
     Etiquettes:
@@ -1107,26 +1109,24 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
 int c_fst_match_req(int handle)
 {
   int ier;
-  int ni, nj, nk, dateo, ip1, ip2, ip3, ig1, ig2, ig3, ig4;
-  int nbits, swa, ubc, lng, dltf, datevalid, xtra2, xtra3, datyp;
+  int ni, nj, nk, dateo, deet, npas, ip1, ip2, ip3, ig1, ig2, ig3, ig4;
+  int nbits, swa, ubc, lng, dltf, datevalid, xtra1, xtra2, xtra3, datyp;
   char etiket[13]={' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','\0'};
   char typvar[3]={' ',' ','\0'};
   char nomvar[5]={' ',' ',' ',' ','\0'};
   char grtyp[2]={' ','\0'};
   int status;
-  
-  return(1);
+//  return(1);
   if(package_not_initialized) c_requetes_init(NULL,NULL);
-  if (! Requests[first_R].in_use) {
-    fprintf(stderr,"first_R=%d\n",first_R);
-    return(1);        /* aucune requete desire ou exclure */
-  }
-  ier = c_fstprm(handle,&dateo,&ni,&nj,&nk,&nbits,&datyp,&ip1,
-                     &ip2,&ip3,typvar,nomvar,etiket,grtyp,&ig1,&ig2,
-                     &ig3,&ig4,&swa,&lng,&dltf,&ubc,&datevalid,&xtra2,&xtra3);
+  ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,
+                     &nbits,&datyp,&ip1,&ip2,&ip3,typvar,
+                     nomvar,etiket,grtyp,&ig1,&ig2,&ig3,&ig4,&swa,&lng,
+                     &dltf,&ubc,&xtra1,&xtra2,&xtra3);
+
   if (ier < 0) return(0);
   status = c_fst_match_parm(handle, datevalid, ni, nj, nk, ip1, ip2, ip3,
                             typvar, nomvar, etiket, grtyp, ig1, ig2, ig3, ig4) ;
+//  fprintf(stderr,"c_fst_match_req/fstd status=%d\n",status);
   return status ;
 }
 
@@ -1141,25 +1141,16 @@ int C_fst_match_req(int handle)
   char grtyp[2]={' ','\0'};
   int status;
   
-//  return(1);
   if(package_not_initialized) c_requetes_init(NULL,NULL);
-//  if (! Requests[first_R].in_use) {
-//    fprintf(stderr,"first_R=%d\n",first_R);
-//    return(1);        /* aucune requete desire ou exclure */
-//  }
-//  ier = c_fstprm(handle,&dateo,&ni,&nj,&nk,&nbits,&datyp,&ip1,
-//                     &ip2,&ip3,typvar,nomvar,etiket,grtyp,&ig1,&ig2,
-//                     &ig3,&ig4,&swa,&lng,&dltf,&ubc,&datevalid,&xtra2,&xtra3);
   ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,
                      &nbits,&datyp,&ip1,&ip2,&ip3,typvar,
                      nomvar,etiket,grtyp,&ig1,&ig2,&ig3,&ig4,&swa,&lng,
                      &dltf,&ubc,&xtra1,&xtra2,&xtra3);
 
-  fprintf(stderr,"C_fst_match_req handle=%d, ier=%d\n",handle,ier);
   if (ier < 0) return(0);
   status = c_fst_match_parm(handle, datevalid, ni, nj, nk, ip1, ip2, ip3,
                             typvar, nomvar, etiket, grtyp, ig1, ig2, ig3, ig4) ;
-  fprintf(stderr,"C_fst_match_req status=%d\n",status);
+//  fprintf(stderr,"C_fst_match_req status=%d\n",status);
   return status ;
 }
 

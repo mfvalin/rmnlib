@@ -80,7 +80,7 @@
           integer(C_INT), intent(IN), value :: set_nb, des_exc
           integer(C_INT), intent(IN), value :: ni, nj, nk
           integer(C_INT), intent(IN), value :: ig1, ig2, ig3, ig4
-          character(C_CHAR), intent(IN) :: gtyp
+          character(C_CHAR), intent(IN), value :: gtyp
         end function Select_suppl
 
         subroutine Dump_Request_Table() BIND(C,name='DumpRequestTable')
