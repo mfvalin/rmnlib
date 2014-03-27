@@ -1017,6 +1017,9 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
               fin = date;
             else
               fin = Requests[set_nb].dates.data[1];
+/***************************************************************/
+/* delta devrait etre en secondes, va falloir corriger le code */
+/***************************************************************/
             delta8 = Requests[set_nb].dates.delta;
             dbprint(stddebug,"Debug C_fst_match_req verifie dates debut=%d fin=%d delta=%f\n",debut,fin,delta8);
             f77name(difdatr)(&date,&debut,&diff_deb);
