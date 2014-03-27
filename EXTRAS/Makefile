@@ -4,12 +4,15 @@ DISTDIR=..
 # EXTRAS  : load in local library
 EXTRAS = fstd98.o DlInterface.o convert_ip123.o fst_missing.o register_dl_routines.o dlfcn.o convip_plus.o
 # EXTRAS2 : do not load yet
-EXTRAS2 = float_packer.o  c_zfstlib.o vmm.o
-TESTS = test_z test_p test_f test_d test_c
+EXTRAS2 = float_packer.o  c_zfstlib.o vmm.o excdes_new.o
+TESTS = test_z test_p test_f test_d test_c test_excdes
 
 #RMNLIB = librmnbeta_14.819u.a
 #RMNLIB = librmn_014.826u.a
-RMNLIB = librmnbeta_015.a
+BASE_RMNLIB := rmn_014
+NEW_RMNLIB := rmnbeta_015
+TEST_RMNLIB := Locallib/$(EC_ARCH)/lib$(NEW_RMNLIB).a
+EXTRA_LOCAL := -ILocalinclude/$(EC_ARCH) -LLocallib/$(EC_ARCH) -l$(NEW_RMNLIB)
 all:	obj
 
 # dynamic loader interface
@@ -17,6 +20,9 @@ DlInterface.o:	DlInterface.c
 	s.cc -c DlInterface.c
 
 register_dl_routines.o: register_dl_routines.c
+	s.cc -c -O 2 $<
+
+excdes_new.o:	excdes_new.c
 	s.cc -c -O 2 $<
 
 dlfcn.o: dlfcn.f90
@@ -48,19 +54,23 @@ convert_ip123.o:	convert_ip123.f90
 convip_plus.o:	convip_plus.f90 convert_ip123.f90
 	s.f90 -c -O 2 convip_plus.f90
 
-localdist: $(EXTRAS) $(EXTRAS2)
+$(TEST_RMNLIB): $(EXTRAS) $(EXTRAS2)
 	mkdir -p Locallib/$(EC_ARCH)/
-	ar rcv Locallib/$(EC_ARCH)/$(RMNLIB) $(EXTRAS) $(EXTRAS2)
+	s.locate --lib $(BASE_RMNLIB) && cp $$(s.locate --lib $(BASE_RMNLIB)) $(TEST_RMNLIB)
 	mkdir -p Localinclude/$(EC_ARCH)/
-	mv *.mod Localinclude/$(EC_ARCH)/
+	cp *.mod *.inc Localinclude/$(EC_ARCH)/
 	cp convert_ip.h Localinclude/
-	rm -f *.o *.mod
+	ar rcv $(TEST_RMNLIB) $(EXTRAS) $(EXTRAS2)
+
+
+localdist: $(TEST_RMNLIB)
+#	rm -f *.o *.mod
 
 dist: $(EXTRAS)
 	mkdir -p $(DISTDIR)/lib/$(EC_ARCH)
-	ar rcv $(DISTDIR)/lib/$(EC_ARCH)/$(RMNLIB) $(EXTRAS)
+	ar rcv $(DISTDIR)/lib/$(EC_ARCH)/$(NEW_RMNLIB) $(EXTRAS)
 	mkdir -p $(DISTDIR)/include/$(EC_ARCH)
-	mv *.mod $(DISTDIR)/include/$(EC_ARCH)/
+	cp *.mod $(DISTDIR)/include/$(EC_ARCH)/
 	cp convert_ip.h $(DISTDIR)/include/convert_ip.h_new
 	mv $(DISTDIR)/include/convert_ip.h_new $(DISTDIR)/include/convert_ip.h
 	rm -f $(EXTRAS)
@@ -71,19 +81,25 @@ libshared.so: shared.f90
 	s.f90 -shared -o $@ $<
 
 # Fortran dynamic loader interface test
-test_d: DlInanterface.o  dlfcn.o register_dl_routines.o libshared.so test_dlfcn.f90
-	s.f90 -o $@ test_dlfcn.f90 DlInterface.o  dlfcn.o register_dl_routines.o -ldl
+test_d: $(TEST_RMNLIB) libshared.so test_dlfcn.f90
+	s.f90 -o $@ test_dlfcn.f90 $(EXTRA_LOCAL) -ldl
 
-# missing data feaure for standard files test
+# missing data feature for standard files test
 test_f:	fstd98.c  if_fstd98.c fst_missing.c
 	s.cc -c -O 2 -DSELFTEST fstd98.c fst_missing.c
-	s.f90 -o $@ test_missing.f90 fstd98.o fst_missing.o -lrmnbeta_014
+	s.f90 -o $@ test_missing.f90 fstd98.o fst_missing.o $(EXTRA_LOCAL)
+	rm -f fstd98.o fst_missing.o
 
-test_ff: fstd98.c  if_fstd98.c fst_missing.c test_missing.f90
-	s.cc -c -O 2 fstd98.c fst_missing.c
+test_ff: $(TEST_RMNLIB) test_missing.f90
+#	s.cc -c -O 2 fstd98.c fst_missing.c
 	echo "call test_missing_values ; stop ; end" >test_missing_main.f90
-	s.f90 -o $@ test_missing_main.f90 test_missing.f90 fstd98.o fst_missing.o -lrmnbeta_014
+	s.f90 -o $@ test_missing_main.f90 test_missing.f90 $(EXTRA_LOCAL)
 	rm test_missing_main.f90
+
+test_excdes: $(TEST_RMNLIB) test_excdes.f90 excdes_new.c
+	s.cc -c excdes_new.c -DTEST -Dc_main=c_main_
+	s.f90 test_excdes.f90 excdes_new.o $(EXTRA_LOCAL) -o $@
+	rm -f excdes_new.o
 
 # F type floating point packer test
 test_p:	float_packer.c
@@ -94,9 +110,9 @@ test_z:	c_zfstlib.c
 	s.cc -o $@ -O 3 -DTEST_TURBO c_zfstlib.c -lm
 
 # IP123 conversion tests
-test_c:	convert_ip123.o test_c_convip.c test_f_convip.f90
+test_c:	$(TEST_RMNLIB) test_c_convip.c test_f_convip.f90
 	s.cc -c test_c_convip.c
-	s.f90 -o $@ test_f_convip.f90 test_c_convip.o convert_ip123.o
+	s.f90 -o $@ test_f_convip.f90 test_c_convip.o $(EXTRA_LOCAL)
 
 obj: $(EXTRAS) $(EXTRAS2)
 #	rm -f *.o *.mod

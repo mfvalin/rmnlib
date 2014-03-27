@@ -814,9 +814,10 @@ static int match_ip(int in_use, int nelm, int *data, int ip1, int translatable)
   float p1, p2, p3, delta;
 
   if( ! in_use ) return 0;
-
   if( in_use == RANGE ) {
+//fprintf(stderr,"range matching %d\n",ip1);
     if(! translatable) return(0) ;      /* name is not translatable we are done */
+    ip = ip1;
     ConvertIp(&ip, &p1, &kind1, mode);  /* convert candidate value */
     ip = data[0];
     if(ip >= 0) {
@@ -838,13 +839,15 @@ static int match_ip(int in_use, int nelm, int *data, int ip1, int translatable)
   }
   if( in_use != VALUE ) return 1 ; /* delta not supported */
 
-  for (i==0 ; i<nelm ; i++) {
+//fprintf(stderr,"value matching %d, list of %d elements\n",ip1,nelm);
+  for (i=0 ; i<nelm ; i++) {
+//fprintf(stderr,"list[%d]=%d\n",i,data[i]);
     if(ip1 == data[i] || data[i] == -1) return 1;  /* we have a match */
   }
   if(! translatable) return(0) ;/* name is not translatable we are done */
   ip = ip1;
   ConvertIp(&ip, &p1, &kind1, mode);  /* convert candidate value */
-  for (i==0 ; i<nelm ; i++) {
+  for (i=0 ; i<nelm ; i++) {
     ip = data[i];
     ConvertIp(&ip, &p2, &kind2, mode); /* convert match reference */
     if(kind1 != kind2) continue;       /* not same kind, no match */
@@ -873,7 +876,7 @@ static int match_ip(int in_use, int nelm, int *data, int ip1, int translatable)
  *      ce qui a ete obtenu de fstprm pour handle                            *
  *                                                                           *
  *****************************************************************************/
-int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int nj, int nk,
+int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
                      int ip1, int ip2, int ip3, char *typvar, char *nomvar, char *etiket,
                      char *grtyp, int ig1, int ig2, int ig3, int ig4)
 {
@@ -901,9 +904,10 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
 
     amatch = 0;
     desire_exclure = (Requests[set_nb].exdes == DESIRE)  ? "desire" : "exclure";
-
+//fprintf(stderr,"matching request set %d\n",set_nb);
     Supplements:
       if (Requests[set_nb].in_use_supp) {
+//fprintf(stderr,"matching extra\n");
         amatch = 0;
         if(Requests[set_nb].ig1s != ig1 && ig1 != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
         if(Requests[set_nb].ig2s != ig2 && ig2 != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
@@ -926,6 +930,7 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
           }
         }
+//fprintf(stderr,"matching etiket, amatch=%d\n",amatch);
         if (amatch == 0) continue;  /* requete non satisfaite pour etiquettes */
       }
 
@@ -939,6 +944,7 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
             amatch = 1;       /* requete satisfaite jusqu'ici */
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
           }
+//fprintf(stderr,"matching nomvar, amatch=%d\n",amatch);
         if (amatch == 0) continue;  /* requete non satisfaite pour nomvars */
       }
 
@@ -952,6 +958,7 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
             amatch = 1;       /* requete satisfaite jusqu'ici */
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
           }
+//fprintf(stderr,"matching typvar, amatch=%d\n",amatch);
         if (amatch == 0) continue;  /* requete non satisfaite pour typvars */
       }
 
@@ -968,6 +975,7 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
                 amatch = 1;
                 dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
               }
+//fprintf(stderr,"matching date value, amatch=%d\n",amatch);
             if(amatch == 0) continue;  /* rien trouve qui satisfasse la requete pour dates */
             break;   /* requete satisfaite jusqu'ici */
 
@@ -989,6 +997,7 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
               amatch = 1;
               dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
             }
+//fprintf(stderr,"matching date range, amatch=%d\n",amatch);
             if(amatch == 0) continue;  /* rien trouve qui satisfasse la requete desire/exclure */
             break;   /* requete satisfaite jusqu'ici */
 
@@ -1013,6 +1022,7 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
               amatch = 1;
               dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
             }
+//fprintf(stderr,"matching date delta, amatch=%d\n",amatch);
             if(amatch == 0) continue;  /* rien trouve qui satisfait la requete desire/exclure */
             break;   /* requete satisfaite jusqu'ici */
 
@@ -1031,6 +1041,7 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
         dbprint(stddebug,"Debug C_fst_match_req verifie ip2s set_nb=%d\n",set_nb);
         if( amatch == 0)
           amatch = match_ip(Requests[set_nb].ip1s.in_use, Requests[set_nb].ip1s.nelm, Requests[set_nb].ip1s.data, ip1, translatable);
+//fprintf(stderr,"%s matching ip1=%d, amatch=%d\n",in_use[Requests[set_nb].ip1s.in_use],ip1,amatch);
         if(amatch == 0) continue ;  /* requete non satisfaite pour ip1 */
       }
 
@@ -1039,7 +1050,8 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
         amatch = (Requests[set_nb].ip2s.data[0] == -1) ? 1 : 0 ;
         dbprint(stddebug,"Debug C_fst_match_req verifie ip2s set_nb=%d\n",set_nb);
         if( amatch == 0)
-          amatch = match_ip(Requests[set_nb].ip2s.in_use, Requests[set_nb].ip2s.nelm, Requests[set_nb].ip2s.data, ip1, translatable);
+          amatch = match_ip(Requests[set_nb].ip2s.in_use, Requests[set_nb].ip2s.nelm, Requests[set_nb].ip2s.data, ip2, translatable);
+//printf(stderr,"%s matching ip2=%d, amatch=%d\n",in_use[Requests[set_nb].ip2s.in_use],ip2,amatch);
         if(amatch == 0) continue ;  /* requete non satisfaite pour ip2 */
       }
 
@@ -1048,14 +1060,15 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
         amatch = (Requests[set_nb].ip3s.data[0] == -1) ? 1 : 0 ;
         dbprint(stddebug,"Debug C_fst_match_req verifie ip3s set_nb=%d\n",set_nb);
         if( amatch == 0)
-          amatch = match_ip(Requests[set_nb].ip2s.in_use, Requests[set_nb].ip2s.nelm, Requests[set_nb].ip2s.data, ip1, translatable);
+          amatch = match_ip(Requests[set_nb].ip3s.in_use, Requests[set_nb].ip3s.nelm, Requests[set_nb].ip3s.data, ip3, translatable);
+//fprintf(stderr,"%s matching ip3=%d, amatch=%d\n",in_use[Requests[set_nb].ip3s.in_use],ip3,amatch);
         if(amatch == 0) continue ;  /* requete non satisfaite pour ip3 */
       }
 
     Fin:
       if (amatch == 1) {
         dbprint(stddebug,"Debug C_fst_match_req fin requete %s satisfaite, handle=%d \n",desire_exclure,handle);
-        return((Requests[set_nb].exdes == DESIRE) ? 1 : 0 );  /* requete desire satisfaite */
+        return((Requests[set_nb].exdes == DESIRE) ? set_nb+1 : 0 );  /* requete desire satisfaite */
       }      
     /* Next:                  verifier le prochain desire/exclure */
 
@@ -1092,7 +1105,7 @@ int c_fst_match_req(int handle)
 {
   int ier;
   int ni, nj, nk, dateo, ip1, ip2, ip3, ig1, ig2, ig3, ig4;
-  int nbits, swa, ubc, lng, dltf, datevalid, xtra2, xtra3, deet, npas, datyp;
+  int nbits, swa, ubc, lng, dltf, datevalid, xtra2, xtra3, datyp;
   char etiket[13]={' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','\0'};
   char typvar[3]={' ',' ','\0'};
   char nomvar[5]={' ',' ',' ',' ','\0'};
@@ -1102,11 +1115,11 @@ int c_fst_match_req(int handle)
   return(1);
   if(package_not_initialized) c_requetes_init(NULL,NULL);
   if (! Requests[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
-  ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,&nbits,&datyp,&ip1,
+  ier = c_fstprm(handle,&dateo,&ni,&nj,&nk,&nbits,&datyp,&ip1,
                      &ip2,&ip3,typvar,nomvar,etiket,grtyp,&ig1,&ig2,
                      &ig3,&ig4,&swa,&lng,&dltf,&ubc,&datevalid,&xtra2,&xtra3);
   if (ier < 0) return(0);
-  status = c_fst_match_parm(handle, datevalid, deet, npas, ni, nj, nk, ip1, ip2, ip3,
+  status = c_fst_match_parm(handle, datevalid, ni, nj, nk, ip1, ip2, ip3,
                             typvar, nomvar, etiket, grtyp, ig1, ig2, ig3, ig4) ;
   return status ;
 }
@@ -1726,6 +1739,7 @@ c_main(int argc, char **argv)
   i = Xc_Select_nomvar(2,1,testnom,2);
   i = Xc_Select_typvar(2,1,testtyp,4);
   i = Xc_Select_ip1(2,1,ip1s_range,3);
+//  i = Xc_Select_ip1(2,1,ip1s_i,4);
   i = Xc_Select_ip2(2,1,ip2s,3);
   i = Xc_Select_date(2,1,dates_range1,5);
 
@@ -1739,6 +1753,14 @@ c_main(int argc, char **argv)
   i = Xc_Select_date(4,-1,dates_range3,2);
   i = C_select_groupset(2,5);
   WriteRequestTable(atoi(argv[1]),NULL);
+  
+//i=c_fst_match_parm(handle,  datevalid, ni, nj, nk,       ip1,       ip2,       ip3,typvar,nomvar,      etiket,grtyp,ig1,ig2,ig3,ig4)
+  i=c_fst_match_parm(-1    ,  313280000, 50, 51, 52,       500,        12,         0,   "P",  "TT",  "R2428V4N","X"  ,  0,  0,  0,  0);
+  fprintf(stderr,"match result = %d \n",i);
+  i=c_fst_match_parm(-1    ,  313280000, 50, 51, 52,  41394464,        12,         0,   "P",  "TT",  "R2428V4N","X"  ,  0,  0,  0,  0);
+  fprintf(stderr,"match result = %d \n",i);
+  i=c_fst_match_parm(-1    ,  313290800, 50, 51, 52,       750,       750,     77777,   "P",  "TT",  "R2428V4N","X"  ,  0,  0,  0,  0);
+  fprintf(stderr,"match result = %d \n",i);
   if(argc>narg){
     WriteRequestTable(0,argv[narg]);
     c_requetes_init(NULL,NULL);
