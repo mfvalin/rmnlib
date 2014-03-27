@@ -173,7 +173,10 @@ void WriteRequestTable(int use_header, char *filename)
   if(! use_header) fprintf(outfile," 0\n");
   if(outfile != stdout) fclose(outfile);
 }
-
+void DumpRequestTable()
+{
+  WriteRequestTable(1,NULL);
+}
 /*
  * basic validation of requests
  * do we exceed the max number of request sets ?
@@ -1114,13 +1117,49 @@ int c_fst_match_req(int handle)
   
   return(1);
   if(package_not_initialized) c_requetes_init(NULL,NULL);
-  if (! Requests[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
+  if (! Requests[first_R].in_use) {
+    fprintf(stderr,"first_R=%d\n",first_R);
+    return(1);        /* aucune requete desire ou exclure */
+  }
   ier = c_fstprm(handle,&dateo,&ni,&nj,&nk,&nbits,&datyp,&ip1,
                      &ip2,&ip3,typvar,nomvar,etiket,grtyp,&ig1,&ig2,
                      &ig3,&ig4,&swa,&lng,&dltf,&ubc,&datevalid,&xtra2,&xtra3);
   if (ier < 0) return(0);
   status = c_fst_match_parm(handle, datevalid, ni, nj, nk, ip1, ip2, ip3,
                             typvar, nomvar, etiket, grtyp, ig1, ig2, ig3, ig4) ;
+  return status ;
+}
+
+int C_fst_match_req(int handle)
+{
+  int ier;
+  int ni, nj, nk, dateo, deet, npas, ip1, ip2, ip3, ig1, ig2, ig3, ig4;
+  int nbits, swa, ubc, lng, dltf, datevalid, xtra1, xtra2, xtra3, datyp;
+  char etiket[13]={' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','\0'};
+  char typvar[3]={' ',' ','\0'};
+  char nomvar[5]={' ',' ',' ',' ','\0'};
+  char grtyp[2]={' ','\0'};
+  int status;
+  
+//  return(1);
+  if(package_not_initialized) c_requetes_init(NULL,NULL);
+//  if (! Requests[first_R].in_use) {
+//    fprintf(stderr,"first_R=%d\n",first_R);
+//    return(1);        /* aucune requete desire ou exclure */
+//  }
+//  ier = c_fstprm(handle,&dateo,&ni,&nj,&nk,&nbits,&datyp,&ip1,
+//                     &ip2,&ip3,typvar,nomvar,etiket,grtyp,&ig1,&ig2,
+//                     &ig3,&ig4,&swa,&lng,&dltf,&ubc,&datevalid,&xtra2,&xtra3);
+  ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,
+                     &nbits,&datyp,&ip1,&ip2,&ip3,typvar,
+                     nomvar,etiket,grtyp,&ig1,&ig2,&ig3,&ig4,&swa,&lng,
+                     &dltf,&ubc,&xtra1,&xtra2,&xtra3);
+
+  fprintf(stderr,"C_fst_match_req handle=%d, ier=%d\n",handle,ier);
+  if (ier < 0) return(0);
+  status = c_fst_match_parm(handle, datevalid, ni, nj, nk, ip1, ip2, ip3,
+                            typvar, nomvar, etiket, grtyp, ig1, ig2, ig3, ig4) ;
+  fprintf(stderr,"C_fst_match_req status=%d\n",status);
   return status ;
 }
 
@@ -1207,6 +1246,19 @@ int f77name(f_select_suppl)(int *ni, int *nj, int *nk, int *ig1, int *ig2, int *
     return Xc_Select_suppl(bundle_nb, desire_exclure, *ni, *nj, *nk, *ig1, *ig2, *ig3, *ig4, *gtyp);
 }
 
+int Xf_Select_etiquette(int set_nb, int des_exc, char *etiq_list, int nelm, int flng)
+{
+  char **string_array;
+  int i,ier;
+  dbprint(stddebug,"Debug desire_etiquette lng=%d nelm=%d\n",flng,nelm);
+  string_array = fill_string_array(allocate_string_array(nelm),etiq_list,flng,nelm,0);
+  for (i=0; i < nelm; i++)
+      dbprint(stddebug,"Debug string_array[%d]-->%s<--\n",i,string_array[i]);
+  ier = Xc_Select_etiquette(set_nb, des_exc,string_array,nelm);
+  free_string_array(string_array);
+  return(ier);
+}
+
 int f77name(f_select_etiquette)(char *etiq_list, int *nelm, F2Cl flng)
 {
   char **string_array;
@@ -1220,6 +1272,19 @@ int f77name(f_select_etiquette)(char *etiq_list, int *nelm, F2Cl flng)
   return(ier);
 }
 
+int Xf_Select_nomvar(int set_nb, int des_exc, char *nomv_list, int nelm, int flng)
+{
+  char **string_array;
+  int i,ier;
+  dbprint(stddebug,"Debug desire_etiquette lng=%d nelm=%d\n",flng,nelm);
+  string_array = fill_string_array(allocate_string_array(nelm),nomv_list,flng,nelm,0);
+  for (i=0; i < nelm; i++)
+      dbprint(stddebug,"Debug string_array[%d]-->%s<--\n",i,string_array[i]);
+  ier = Xc_Select_nomvar(set_nb, des_exc,string_array,nelm);
+  free_string_array(string_array);
+  return(ier);
+}
+
 int f77name(f_select_nomvar)(char *nomv_list, int *nelm, F2Cl flng)
 {
   char **string_array;
@@ -1229,6 +1294,19 @@ int f77name(f_select_nomvar)(char *nomv_list, int *nelm, F2Cl flng)
   for (i=0; i < *nelm; i++)
       dbprint(stddebug,"Debug string_array[%d]-->%s<--\n",i,string_array[i]);
   ier = Xc_Select_nomvar(bundle_nb, desire_exclure,string_array,*nelm);
+  free_string_array(string_array);
+  return(ier);
+}
+
+int Xf_Select_typvar(int set_nb, int des_exc, char *typv_list, int nelm, int flng)
+{
+  char **string_array;
+  int i,ier;
+  dbprint(stddebug,"Debug desire_etiquette lng=%d nelm=%d\n",flng,nelm);
+  string_array = fill_string_array(allocate_string_array(nelm),typv_list,flng,nelm,0);
+  for (i=0; i < nelm; i++)
+      dbprint(stddebug,"Debug string_array[%d]-->%s<--\n",i,string_array[i]);
+  ier = Xc_Select_typvar(set_nb, des_exc,string_array,nelm);
   free_string_array(string_array);
   return(ier);
 }

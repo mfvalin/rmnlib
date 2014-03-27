@@ -60,6 +60,7 @@ $(TEST_RMNLIB): $(EXTRAS) $(EXTRAS2)
 	mkdir -p Localinclude/$(EC_ARCH)/
 	cp *.mod *.inc Localinclude/$(EC_ARCH)/
 	cp convert_ip.h Localinclude/
+	ar d $(TEST_RMNLIB) excdes.o
 	ar rcv $(TEST_RMNLIB) $(EXTRAS) $(EXTRAS2)
 
 
