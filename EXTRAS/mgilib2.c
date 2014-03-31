@@ -355,6 +355,10 @@ ftnword f77name (mgi_term) ()
   /* close all channels */
   int chan, ier = -1;
 
+  /* if memory channel, the last one to "term" a channel dumps contents into appropriate file */
+  /* chn[chan].mode == 'W' / 'R' in this case */
+  /* $HOME/.gossip/SHM/chn[chan].name is the appropriate file */
+
   for (chan = 0; chan <= ichan; chan++)
     {
       if(chn[chan].name && strcmp((char *)chn[chan].name, "") && chn[chan].gchannel > 0)
@@ -428,10 +432,11 @@ ftnword f77name (mgi_init) (char *channel_name, int lname)
       snprintf(env_var_name,sizeof(env_var_name),"SHM_%s",chn[chan].name);
       env_var_name[sizeof(env_var_name)-1]='\0';
       env_var_value = getenv(env_var_name);
-      if(env_var_value != NULL) {
+      if(env_var_value != NULL) {                /* it is a shared memory channel */
         chn[chan].shmid = atoi(env_var_value);   /* get shared memory segment ID */
         chn[chan].shmbuf = shmat(chn[chan].shmid, NULL, 0);
         if(chn[chan].shmbuf == (void *) -1) chn[chan].shmbuf = NULL;  /* cannot attach shared memory segment */
+        /* chn[chan].shmbuf->limit must not be 0 if memory segment was properly initialized at creation  */
       }
 
     if ((intBuffer = (int *) malloc(BUFSIZE * sizeof(int))) == NULL)
@@ -468,9 +473,11 @@ ftnword f77name (mgi_open) (ftnword *f_chan, char *mode, int lmode)
           chn[chan].gchannel = retry_connect( chan );
       } else {   /* it is  a shared memory channel, initialize it for write  */
         shm = chn[chan].shmbuf;
-        shm->first = 0;
-        shm->in    = 0;
-        shm->limit = 0;
+        /* add error code if already connected for write or not ready for write */
+        /* id(shm->write_status != -1 ) ... */
+        shm->write_status = 1;  /* connected for write */
+        chn[chan].gchannel = 123456 ;
+        chn[chan].mode = 'W';
       }
 
     }
@@ -483,13 +490,15 @@ ftnword f77name (mgi_open) (ftnword *f_chan, char *mode, int lmode)
           chn[chan].gchannel = retry_connect( chan );
       } else {   /* it is  a shared memory channel, initialize it for read */
         shm = chn[chan].shmbuf;
-        shm->first = 0;
-        shm->out   = 0;
-        shm->limit = 0;
+        /* add error code if already connected for read or not ready for read */
+        /* id(shm->read_status != -1 ) ... */
+        shm->read_status = 1;  /* connected for read */
+        chn[chan].gchannel = 123456 ;
+        chn[chan].mode = 'R';
       }
     }
   else if (*mode == 'S') 
-    { /* store mode (for restart files)*/
+    { /* store mode (for restart files) */
       chn[chan].mode = 'S';
       chn[chan].nblks = 0;
       chn[chan].msgno_W++;
@@ -548,7 +557,7 @@ int retry_connect( int chan )
   return chn[chan].gchannel; 
   
 }
-ftnword f77name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, char *dtype, int ltype)
+ftnword f77name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, char *dtype, F2Cl ltype)
      /* to write elements from "buffer" into the specified channel
 	opened for WRITEMODE. It actually writes
 	
@@ -579,6 +588,10 @@ ftnword f77name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, ch
       
       return WRITE_ERROR;
     }
+
+  /* if shared memory channel (chn[chan].shmbuf != NULL) intercept here */
+  /* call mgi_shm_write(chn[chan].shmbuf,buffer,nelem                    ,*dtype) (*dtype != 'C') */
+  /* call mgi_shm_write(chn[chan].shmbuf,buffer,(nelem<ltype)?nelem:ltype,*dtype) (*dtype == 'C')  */
 
   if ( *dtype == 'C' )
     {
@@ -661,7 +674,7 @@ void f77name (mgi_set_timeout) (ftnword *chan, ftnword *timeout)
 
 }
 
-ftnword f77name (mgi_read) (ftnword *f_chan, void *buffer, ftnword *f_nelem, char *dtype, int ltype)
+ftnword f77name (mgi_read) (ftnword *f_chan, void *buffer, ftnword *f_nelem, char *dtype, F2Cl ltype)
 
      /* to read elements directly from the data file related to the 
 	specified channel into "buffer". The channel must be opened for 
@@ -686,6 +699,10 @@ ftnword f77name (mgi_read) (ftnword *f_chan, void *buffer, ftnword *f_nelem, cha
     }
 
   bzero(buffer, nelem);
+
+  /* if shared memory channel (chn[chan].shmbuf != NULL), intercept here */
+  /* call mgi_shm_read(chn[chan].shmbuf,buffer,nelem,*dtype,nelem) (*dtype != 'C' )*/
+  /* call mgi_shm_read(chn[chan].shmbuf,buffer,nelem,*dtype,ltype) (*dtype == 'C') */
 
   ier = send_command_to_server(chn[chan].gchannel, "READ");
 
