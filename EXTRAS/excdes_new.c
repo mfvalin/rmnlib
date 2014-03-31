@@ -173,7 +173,10 @@ void WriteRequestTable(int use_header, char *filename)
   if(! use_header) fprintf(outfile," 0\n");
   if(outfile != stdout) fclose(outfile);
 }
-
+void DumpRequestTable()
+{
+  WriteRequestTable(1,NULL);
+}
 /*
  * basic validation of requests
  * do we exceed the max number of request sets ?
@@ -416,11 +419,11 @@ int Xc_Select_date(int set_nb, int des_exc, int *date_list, int nelm)
       if(range>1 || i>1) goto error ;           /* more than one @ keyword or @ keyword too far in line */
       if(i > 1) goto error ;                    /*  @ cannot be found beyond position 2 */
       Requests[set_nb].dates.in_use = RANGE ;
-      Requests[set_nb].dates.nelm = 2;
-      if(i==0) Requests[set_nb].dates.data[0] = READLX_RANGE;              /* @ date .... */
-      if(i==1 && nelm>2) {                                            /* date @ date  or date @ delta */
-        Requests[set_nb].dates.data[1] = (date_list[2] > 0)  ? date_list[2] : READLX_RANGE ; 
+//      if(i==0) Requests[set_nb].dates.data[0] = 0;              /* @ date .... */
+      if(i==1 && nelm>3) {                                            /* date @ date  or date @ delta */
+        Requests[set_nb].dates.data[1] = date_list[2] ;
       }
+      Requests[set_nb].dates.nelm = 2;
     }
     dbprint(stddebug,"Debug Requests[%d].dates.data[%d] = %d\n",set_nb,i,
            Requests[set_nb].dates.data[i]);
@@ -644,7 +647,7 @@ int ReadRequestTable(char *filename)
       while(*cptr != ',' ) cptr++ ; cptr++ ;
       sscanf(cptr,"%d",a+i);
     }
-    if(rvd == RANGE) {
+    if(rvd == RANGE && a[0] >= 0 && a[1] >= 0) {
       nvalues=3;
       a[2]=a[1];
       a[1]=READLX_RANGE;
@@ -657,11 +660,12 @@ int ReadRequestTable(char *filename)
       a[1]=READLX_RANGE;
     }
     status = Xc_Select_date(dirset,dex,a,nvalues);
-//    for (i=0;i<nvalues;i++) {
-//      fprintf(stderr," %d",a[i]);
-//    }
-//    fprintf(stderr,"\n");
-    
+    if(status != 0) {
+      for (i=0;i<nvalues;i++) {
+        fprintf(stderr," %d",a[i]);
+      }
+      fprintf(stderr,"\n");
+    }
   }else if(s2[0]=='I') {                       /* IP1/2/3 */
     sscanf(cptr,"%d",a);
     for (i=1;i<nvalues;i++) {
@@ -677,11 +681,12 @@ int ReadRequestTable(char *filename)
     if(s2[2]=='1') status = Xc_Select_ip1(dirset,dex,a,nvalues);
     if(s2[2]=='2') status = Xc_Select_ip2(dirset,dex,a,nvalues);
     if(s2[2]=='3') status = Xc_Select_ip3(dirset,dex,a,nvalues);
-//    for (i=0;i<nvalues;i++) {
-//      fprintf(stderr," %d",a[i]);
-//    }
-//    fprintf(stderr,"\n");
-    
+    if(status != 0) {
+      for (i=0;i<nvalues;i++) {
+        fprintf(stderr," %d",a[i]);
+      }
+      fprintf(stderr,"\n");
+    }
   }else if(s2[0]=='X'){                           /* Xtra  */
     sscanf(cptr,"%d",a);
     for (i=1;i<8;i++) {
@@ -691,11 +696,12 @@ int ReadRequestTable(char *filename)
     while(*cptr != '\'' ) cptr++ ; cptr++ ;
     gtyp=*cptr;
     status = Xc_Select_suppl(dirset,dex,a[0],a[1],a[2],a[3],a[4],a[5],a[6],gtyp);
-//    for (i=0;i<8;i++) {
-//      fprintf(stderr," %d",a[i]);
-//    }
-//    fprintf(stderr," %c\n",gtyp);
-    
+    if(status != 0) {
+      for (i=0;i<8;i++) {
+        fprintf(stderr," %d",a[i]);
+      }
+      fprintf(stderr," %c\n",gtyp);
+  }
   }else if(s2[0]=='N' || s2[0]=='T' || s2[0]=='E'){   /* Nomvar, Typvar or Etiket */
     for (i=0;i<nvalues;i++) {
       while(*cptr != '\'' ) cptr++ ; cptr++ ;
@@ -708,15 +714,21 @@ int ReadRequestTable(char *filename)
     if(s2[0] == 'N') status = Xc_Select_nomvar(dirset,dex,sarp,nvalues) ;
     if(s2[0] == 'T') status = Xc_Select_typvar(dirset,dex,sarp,nvalues) ;
     if(s2[0] == 'E') status = Xc_Select_etiquette(dirset,dex,sarp,nvalues) ;
-//    for (i=0;i<nvalues;i++) {
-//      fprintf(stderr," '%s'",sar[i]);
-//    }
-//     fprintf(stderr,"\n");
+    if(status != 0) {
+      for (i=0;i<nvalues;i++) {
+        fprintf(stderr," '%s'",sar[i]);
+      }
+      fprintf(stderr,"\n");
+    }
   }else{
     fprintf(stderr,"ERROR: unrecognized type s2='%s' in directive file\n",s2);
     status = -1;
   }
-  if(status != 0) { fclose(input);  return -1; }
+  if(status != 0) {
+    fclose(input);
+    fprintf(stderr,"ERROR: status=%d in ReadRequestTable\n",status);
+    return -1;
+  }
   goto readnext;
   return 0;
 }
@@ -805,9 +817,10 @@ static int match_ip(int in_use, int nelm, int *data, int ip1, int translatable)
   float p1, p2, p3, delta;
 
   if( ! in_use ) return 0;
-
   if( in_use == RANGE ) {
+//fprintf(stderr,"range matching %d\n",ip1);
     if(! translatable) return(0) ;      /* name is not translatable we are done */
+    ip = ip1;
     ConvertIp(&ip, &p1, &kind1, mode);  /* convert candidate value */
     ip = data[0];
     if(ip >= 0) {
@@ -829,13 +842,15 @@ static int match_ip(int in_use, int nelm, int *data, int ip1, int translatable)
   }
   if( in_use != VALUE ) return 1 ; /* delta not supported */
 
-  for (i==0 ; i<nelm ; i++) {
+//fprintf(stderr,"value matching %d, list of %d elements\n",ip1,nelm);
+  for (i=0 ; i<nelm ; i++) {
+//fprintf(stderr,"list[%d]=%d\n",i,data[i]);
     if(ip1 == data[i] || data[i] == -1) return 1;  /* we have a match */
   }
   if(! translatable) return(0) ;/* name is not translatable we are done */
   ip = ip1;
   ConvertIp(&ip, &p1, &kind1, mode);  /* convert candidate value */
-  for (i==0 ; i<nelm ; i++) {
+  for (i=0 ; i<nelm ; i++) {
     ip = data[i];
     ConvertIp(&ip, &p2, &kind2, mode); /* convert match reference */
     if(kind1 != kind2) continue;       /* not same kind, no match */
@@ -864,7 +879,7 @@ static int match_ip(int in_use, int nelm, int *data, int ip1, int translatable)
  *      ce qui a ete obtenu de fstprm pour handle                            *
  *                                                                           *
  *****************************************************************************/
-int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int nj, int nk,
+int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
                      int ip1, int ip2, int ip3, char *typvar, char *nomvar, char *etiket,
                      char *grtyp, int ig1, int ig2, int ig3, int ig4)
 {
@@ -876,8 +891,11 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
   char *desire_exclure;
   int translatable;
 
-  if(package_not_initialized) c_requetes_init(NULL,NULL);
-  if (! Requests[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
+  if(package_not_initialized) {
+    fprintf(stderr,"INFO: c_fst_match_parm, initializing request tables \n");
+    c_requetes_init(NULL,NULL);
+  }
+//  if (! Requests[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
 
 #ifdef NOTUSED
   dbprint(stddebug,"Debug C_fst_match_req fstprm date=%d ip1=%d ip2=%d ip3=%d nomvar-->%s<-- typvar-->%s<-- etiket-->%s<--\n",
@@ -885,25 +903,25 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
 #endif
   translatable = FstCanTranslateName(nomvar) ;
   date = datevalid;
-
-  for (set_nb=first_R; (set_nb <= last_R) && Requests[set_nb].in_use; set_nb++) {
+//  for (set_nb=first_R; set_nb <= last_R ; set_nb++) fprintf(stderr," %d",Requests[set_nb].in_use) ; fprintf(stderr,"\n");
+  for (set_nb=first_R; (set_nb <= last_R) ; set_nb++) {
+    if(Requests[set_nb].in_use == 0)continue ;
 
     /* process supplementary parameters if any right here */
-
     amatch = 0;
     desire_exclure = (Requests[set_nb].exdes == DESIRE)  ? "desire" : "exclure";
-
+//fprintf(stderr,"matching request set %d\n",set_nb);
     Supplements:
       if (Requests[set_nb].in_use_supp) {
         amatch = 0;
-        if(Requests[set_nb].ig1s != ig1 && ig1 != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig2s != ig2 && ig2 != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig3s != ig3 && ig3 != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig4s != ig2 && ig4 != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].nis  !=  ni &&  ni != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].nis  !=  nj &&  nj != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].nis  !=  nk &&  nk != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].grdtyps  !=  grtyp[0] && grtyp[0] != ' ') continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig1s != ig1 && Requests[set_nb].ig1s != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig2s != ig2 && Requests[set_nb].ig2s != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig3s != ig3 && Requests[set_nb].ig3s != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig4s != ig2 && Requests[set_nb].ig4s != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].nis  !=  ni &&  Requests[set_nb].nis != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].njs  !=  nj &&  Requests[set_nb].njs != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].nks  !=  nk &&  Requests[set_nb].nks != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].grdtyps  !=  grtyp[0] && Requests[set_nb].grdtyps != ' ') continue;  /* requete non satisfaite pour criteres supplementaires */
         amatch = 1;   /* requete satisfaite jusqu'ici */
       }
     Etiquettes:
@@ -917,6 +935,7 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
           }
         }
+//fprintf(stderr,"matching etiket, amatch=%d\n",amatch);
         if (amatch == 0) continue;  /* requete non satisfaite pour etiquettes */
       }
 
@@ -930,6 +949,7 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
             amatch = 1;       /* requete satisfaite jusqu'ici */
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
           }
+//fprintf(stderr,"matching nomvar, amatch=%d\n",amatch);
         if (amatch == 0) continue;  /* requete non satisfaite pour nomvars */
       }
 
@@ -943,6 +963,7 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
             amatch = 1;       /* requete satisfaite jusqu'ici */
             dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
           }
+//fprintf(stderr,"matching typvar, amatch=%d\n",amatch);
         if (amatch == 0) continue;  /* requete non satisfaite pour typvars */
       }
 
@@ -959,6 +980,7 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
                 amatch = 1;
                 dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
               }
+//fprintf(stderr,"matching date value, amatch=%d\n",amatch);
             if(amatch == 0) continue;  /* rien trouve qui satisfasse la requete pour dates */
             break;   /* requete satisfaite jusqu'ici */
 
@@ -980,6 +1002,7 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
               amatch = 1;
               dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
             }
+//fprintf(stderr,"matching date range, amatch=%d\n",amatch);
             if(amatch == 0) continue;  /* rien trouve qui satisfasse la requete desire/exclure */
             break;   /* requete satisfaite jusqu'ici */
 
@@ -994,6 +1017,9 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
               fin = date;
             else
               fin = Requests[set_nb].dates.data[1];
+/***************************************************************/
+/* delta devrait etre en secondes, va falloir corriger le code */
+/***************************************************************/
             delta8 = Requests[set_nb].dates.delta;
             dbprint(stddebug,"Debug C_fst_match_req verifie dates debut=%d fin=%d delta=%f\n",debut,fin,delta8);
             f77name(difdatr)(&date,&debut,&diff_deb);
@@ -1004,6 +1030,7 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
               amatch = 1;
               dbprint(stddebug,"Debug C_fst_match_req match %s\n",desire_exclure);
             }
+//fprintf(stderr,"matching date delta, amatch=%d\n",amatch);
             if(amatch == 0) continue;  /* rien trouve qui satisfait la requete desire/exclure */
             break;   /* requete satisfaite jusqu'ici */
 
@@ -1022,6 +1049,7 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
         dbprint(stddebug,"Debug C_fst_match_req verifie ip2s set_nb=%d\n",set_nb);
         if( amatch == 0)
           amatch = match_ip(Requests[set_nb].ip1s.in_use, Requests[set_nb].ip1s.nelm, Requests[set_nb].ip1s.data, ip1, translatable);
+//fprintf(stderr,"%s matching ip1=%d, amatch=%d\n",in_use[Requests[set_nb].ip1s.in_use],ip1,amatch);
         if(amatch == 0) continue ;  /* requete non satisfaite pour ip1 */
       }
 
@@ -1030,7 +1058,8 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
         amatch = (Requests[set_nb].ip2s.data[0] == -1) ? 1 : 0 ;
         dbprint(stddebug,"Debug C_fst_match_req verifie ip2s set_nb=%d\n",set_nb);
         if( amatch == 0)
-          amatch = match_ip(Requests[set_nb].ip2s.in_use, Requests[set_nb].ip2s.nelm, Requests[set_nb].ip2s.data, ip1, translatable);
+          amatch = match_ip(Requests[set_nb].ip2s.in_use, Requests[set_nb].ip2s.nelm, Requests[set_nb].ip2s.data, ip2, translatable);
+//printf(stderr,"%s matching ip2=%d, amatch=%d\n",in_use[Requests[set_nb].ip2s.in_use],ip2,amatch);
         if(amatch == 0) continue ;  /* requete non satisfaite pour ip2 */
       }
 
@@ -1039,14 +1068,15 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
         amatch = (Requests[set_nb].ip3s.data[0] == -1) ? 1 : 0 ;
         dbprint(stddebug,"Debug C_fst_match_req verifie ip3s set_nb=%d\n",set_nb);
         if( amatch == 0)
-          amatch = match_ip(Requests[set_nb].ip2s.in_use, Requests[set_nb].ip2s.nelm, Requests[set_nb].ip2s.data, ip1, translatable);
+          amatch = match_ip(Requests[set_nb].ip3s.in_use, Requests[set_nb].ip3s.nelm, Requests[set_nb].ip3s.data, ip3, translatable);
+//fprintf(stderr,"%s matching ip3=%d, amatch=%d\n",in_use[Requests[set_nb].ip3s.in_use],ip3,amatch);
         if(amatch == 0) continue ;  /* requete non satisfaite pour ip3 */
       }
 
     Fin:
       if (amatch == 1) {
         dbprint(stddebug,"Debug C_fst_match_req fin requete %s satisfaite, handle=%d \n",desire_exclure,handle);
-        return((Requests[set_nb].exdes == DESIRE) ? 1 : 0 );  /* requete desire satisfaite */
+        return((Requests[set_nb].exdes == DESIRE) ? set_nb+1 : 0 );  /* requete desire satisfaite */
       }      
     /* Next:                  verifier le prochain desire/exclure */
 
@@ -1082,23 +1112,48 @@ int c_fst_match_parm(int handle, int datevalid, int deet, int npas, int ni, int 
 int c_fst_match_req(int handle)
 {
   int ier;
-  int ni, nj, nk, dateo, ip1, ip2, ip3, ig1, ig2, ig3, ig4;
-  int nbits, swa, ubc, lng, dltf, datevalid, xtra2, xtra3, deet, npas, datyp;
+  int ni, nj, nk, dateo, deet, npas, ip1, ip2, ip3, ig1, ig2, ig3, ig4;
+  int nbits, swa, ubc, lng, dltf, datevalid, xtra1, xtra2, xtra3, datyp;
+  char etiket[13]={' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','\0'};
+  char typvar[3]={' ',' ','\0'};
+  char nomvar[5]={' ',' ',' ',' ','\0'};
+  char grtyp[2]={' ','\0'};
+  int status;
+//  return(1);
+  if(package_not_initialized) c_requetes_init(NULL,NULL);
+  ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,
+                     &nbits,&datyp,&ip1,&ip2,&ip3,typvar,
+                     nomvar,etiket,grtyp,&ig1,&ig2,&ig3,&ig4,&swa,&lng,
+                     &dltf,&ubc,&xtra1,&xtra2,&xtra3);
+
+  if (ier < 0) return(0);
+  status = c_fst_match_parm(handle, datevalid, ni, nj, nk, ip1, ip2, ip3,
+                            typvar, nomvar, etiket, grtyp, ig1, ig2, ig3, ig4) ;
+//  fprintf(stderr,"c_fst_match_req/fstd status=%d\n",status);
+  return status ;
+}
+
+int C_fst_match_req(int handle)
+{
+  int ier;
+  int ni, nj, nk, dateo, deet, npas, ip1, ip2, ip3, ig1, ig2, ig3, ig4;
+  int nbits, swa, ubc, lng, dltf, datevalid, xtra1, xtra2, xtra3, datyp;
   char etiket[13]={' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','\0'};
   char typvar[3]={' ',' ','\0'};
   char nomvar[5]={' ',' ',' ',' ','\0'};
   char grtyp[2]={' ','\0'};
   int status;
   
-  return(1);
   if(package_not_initialized) c_requetes_init(NULL,NULL);
-  if (! Requests[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
-  ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,&nbits,&datyp,&ip1,
-                     &ip2,&ip3,typvar,nomvar,etiket,grtyp,&ig1,&ig2,
-                     &ig3,&ig4,&swa,&lng,&dltf,&ubc,&datevalid,&xtra2,&xtra3);
+  ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,
+                     &nbits,&datyp,&ip1,&ip2,&ip3,typvar,
+                     nomvar,etiket,grtyp,&ig1,&ig2,&ig3,&ig4,&swa,&lng,
+                     &dltf,&ubc,&xtra1,&xtra2,&xtra3);
+
   if (ier < 0) return(0);
-  status = c_fst_match_parm(handle, datevalid, deet, npas, ni, nj, nk, ip1, ip2, ip3,
+  status = c_fst_match_parm(handle, datevalid, ni, nj, nk, ip1, ip2, ip3,
                             typvar, nomvar, etiket, grtyp, ig1, ig2, ig3, ig4) ;
+//  fprintf(stderr,"C_fst_match_req status=%d\n",status);
   return status ;
 }
 
@@ -1185,6 +1240,19 @@ int f77name(f_select_suppl)(int *ni, int *nj, int *nk, int *ig1, int *ig2, int *
     return Xc_Select_suppl(bundle_nb, desire_exclure, *ni, *nj, *nk, *ig1, *ig2, *ig3, *ig4, *gtyp);
 }
 
+int Xf_Select_etiquette(int set_nb, int des_exc, char *etiq_list, int nelm, int flng)
+{
+  char **string_array;
+  int i,ier;
+  dbprint(stddebug,"Debug desire_etiquette lng=%d nelm=%d\n",flng,nelm);
+  string_array = fill_string_array(allocate_string_array(nelm),etiq_list,flng,nelm,0);
+  for (i=0; i < nelm; i++)
+      dbprint(stddebug,"Debug string_array[%d]-->%s<--\n",i,string_array[i]);
+  ier = Xc_Select_etiquette(set_nb, des_exc,string_array,nelm);
+  free_string_array(string_array);
+  return(ier);
+}
+
 int f77name(f_select_etiquette)(char *etiq_list, int *nelm, F2Cl flng)
 {
   char **string_array;
@@ -1198,6 +1266,19 @@ int f77name(f_select_etiquette)(char *etiq_list, int *nelm, F2Cl flng)
   return(ier);
 }
 
+int Xf_Select_nomvar(int set_nb, int des_exc, char *nomv_list, int nelm, int flng)
+{
+  char **string_array;
+  int i,ier;
+  dbprint(stddebug,"Debug desire_etiquette lng=%d nelm=%d\n",flng,nelm);
+  string_array = fill_string_array(allocate_string_array(nelm),nomv_list,flng,nelm,0);
+  for (i=0; i < nelm; i++)
+      dbprint(stddebug,"Debug string_array[%d]-->%s<--\n",i,string_array[i]);
+  ier = Xc_Select_nomvar(set_nb, des_exc,string_array,nelm);
+  free_string_array(string_array);
+  return(ier);
+}
+
 int f77name(f_select_nomvar)(char *nomv_list, int *nelm, F2Cl flng)
 {
   char **string_array;
@@ -1207,6 +1288,19 @@ int f77name(f_select_nomvar)(char *nomv_list, int *nelm, F2Cl flng)
   for (i=0; i < *nelm; i++)
       dbprint(stddebug,"Debug string_array[%d]-->%s<--\n",i,string_array[i]);
   ier = Xc_Select_nomvar(bundle_nb, desire_exclure,string_array,*nelm);
+  free_string_array(string_array);
+  return(ier);
+}
+
+int Xf_Select_typvar(int set_nb, int des_exc, char *typv_list, int nelm, int flng)
+{
+  char **string_array;
+  int i,ier;
+  dbprint(stddebug,"Debug desire_etiquette lng=%d nelm=%d\n",flng,nelm);
+  string_array = fill_string_array(allocate_string_array(nelm),typv_list,flng,nelm,0);
+  for (i=0; i < nelm; i++)
+      dbprint(stddebug,"Debug string_array[%d]-->%s<--\n",i,string_array[i]);
+  ier = Xc_Select_typvar(set_nb, des_exc,string_array,nelm);
   free_string_array(string_array);
   return(ier);
 }
@@ -1717,6 +1811,7 @@ c_main(int argc, char **argv)
   i = Xc_Select_nomvar(2,1,testnom,2);
   i = Xc_Select_typvar(2,1,testtyp,4);
   i = Xc_Select_ip1(2,1,ip1s_range,3);
+//  i = Xc_Select_ip1(2,1,ip1s_i,4);
   i = Xc_Select_ip2(2,1,ip2s,3);
   i = Xc_Select_date(2,1,dates_range1,5);
 
@@ -1730,6 +1825,14 @@ c_main(int argc, char **argv)
   i = Xc_Select_date(4,-1,dates_range3,2);
   i = C_select_groupset(2,5);
   WriteRequestTable(atoi(argv[1]),NULL);
+  
+//i=c_fst_match_parm(handle,  datevalid, ni, nj, nk,       ip1,       ip2,       ip3,typvar,nomvar,      etiket,grtyp,ig1,ig2,ig3,ig4)
+  i=c_fst_match_parm(-1    ,  313280000, 50, 51, 52,       500,        12,         0,   "P",  "TT",  "R2428V4N","X"  ,  0,  0,  0,  0);
+  fprintf(stderr,"match result = %d \n",i);
+  i=c_fst_match_parm(-1    ,  313280000, 50, 51, 52,  41394464,        12,         0,   "P",  "TT",  "R2428V4N","X"  ,  0,  0,  0,  0);
+  fprintf(stderr,"match result = %d \n",i);
+  i=c_fst_match_parm(-1    ,  313290800, 50, 51, 52,       750,       750,     77777,   "P",  "TT",  "R2428V4N","X"  ,  0,  0,  0,  0);
+  fprintf(stderr,"match result = %d \n",i);
   if(argc>narg){
     WriteRequestTable(0,argv[narg]);
     c_requetes_init(NULL,NULL);
