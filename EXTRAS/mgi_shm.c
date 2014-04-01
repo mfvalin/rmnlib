@@ -45,7 +45,6 @@ mgi_shm_buf *shm;
 char channel_filename[1024];
 int fd;
 int nints;
-int max_attach;
 
 if(argc < 2 || argc >3) {
   fprintf(stderr,"ERROR: there must be one or two arguments \n");
@@ -101,16 +100,16 @@ if(fd > 0) {                        /* channel restart file exists, read it into
 }
 
 sleep(1);
-max_attach=1000000;  /* deactivate feature on non linux systems */
+/* on non linux systems, it is not possible to attach a shared memory area that is marked for deletion */
 #if defined(linux)
 i = shmctl(to_watch,IPC_RMID,NULL);   /* immediately mark segment for removal if linux */
-max_attach = 2;
 #endif
 sleep(1);
 
 i = fork();
 if(i > 0) exit(0);  /* parent exits */
 if(i < 0) exit(1);  /* fork failed */
+  
 #if defined(DAEMONIZE)
 sid = setsid();  /* daemonize */
 if(sid < 0) exit(1) ;
@@ -118,15 +117,22 @@ i = fork();
 if(i > 0) exit(0);  /* parent exits */
 if(i < 0) exit(1);  /* fork failed */
 #endif
+
 while(1){
-  if(kill(pp,0)) break;    /* original parent no longer exists, time to quit */
-  usleep(sleep_duration);  /* 10 milliseconds */
+  if(kill(pp,0)) break;              /* original parent no longer exists, time to quit */
+  usleep(sleep_duration);            /* 10 milliseconds */
+
+#if defined(linux)  
   i = shmctl(to_watch,IPC_STAT,&shm_stat);
-  if(i == -1) exit(0);    /* segment no longer accessible, quit */
-  if(shm_stat.shm_nattch >= max_attach) {  /* segment attached by enough other processes */
-    break;                      /* job done, exit */
+  if(i == -1) exit(0);               /* segment no longer accessible, quit */
+    if(shm_stat.shm_nattch >= 2) {   /* segment attached by another process */
+    break;                           /* job done, exit */
   }
-  }  /* while */
-i = shmctl(to_watch,IPC_RMID,NULL);
+#else
+  i = shmdt(shm);                     /* do not keep the memory area attached, we do not want to prevent release */
+#endif
+
+}  /* while */
+i = shmctl(to_watch,IPC_RMID,NULL);   /* mark for removal if not already done */
 exit (0);
 }
