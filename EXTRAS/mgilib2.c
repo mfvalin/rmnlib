@@ -71,6 +71,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -94,15 +95,19 @@ static channel chn[MAX_CHANNELS];
 static int ichan = 0;
 static int init = 0;
 static int SIG_ACTIVE = 1;
+#ifdef NOT_USED
 static char PID_file[MAX_STR];
 static char *mgidir;
-static int *intBuffer; 
+#endif
+static int *intBuffer;
 
+#ifdef NOT_USED
 static void getmgidir ();
 static int makepidfile ();
 static void removepidfile ();
-static void strcopy (char *s, char *t, int charlen);
 static int validchan (int chan);
+static void strcopy (char *s, char *t, int charlen);
+#endif
 static int bwrite (int chan, void *buffer, int nelem, char *dtype);
 ftnword f77name (mgi_init) (char *channel_name, F2Cl lname);
 ftnword f77name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode);
@@ -137,7 +142,7 @@ void f77name (mgi_nosig) ()
   /* SIG_ACTIVE = 0; */
   fprintf(stderr,"MGI_NOSIG: deprecated call\n");
 }
-
+#ifdef NOTUSED
 /* to copy a string given by a fortran routine, 
    the space character is ignored, it is taken 
    here as the end of the string */
@@ -148,8 +153,24 @@ static void strcopy_( char *s1, char *s2, int lengths1, int lengths2 )
   while ( (*s1++ = *s2++) != ' ' && i++ < lengths2 );
   
 }
+#endif
 
 
+int check_ends(unsigned char *s1,unsigned char *s2, int s1length, int s2length, int i )
+{
+  if(*s2 == ' ' )
+  {
+    return (*(s1 - 1) - *(s2 - 1));
+  }
+  else
+  {
+    if(i == s2length)
+      return (*(s1 - 1) - *(s2 - 1));
+    else
+      return -1;
+  }
+}
+#ifdef NOTUSED
 /* to compare two strings given by a fortran routine, considering 
    the space character as the end of the string*/
 static int f_strcmp( unsigned char *s1, unsigned char *s2, int s1length, int s2length )
@@ -185,21 +206,7 @@ static int f_strcmp( unsigned char *s1, unsigned char *s2, int s1length, int s2l
   return (*s1 - *s2);
 
 }
-
-int check_ends( char *s1, char *s2, int s1length, int s2length, int i )
-{
-  if(*s2 == ' ' )
-    {
-      return (*(s1 - 1) - *(s2 - 1));
-    }
-  else
-    {
-      if(i == s2length)
-	    return (*(s1 - 1) - *(s2 - 1));
-      else
-	return -1;
-    }
-}
+#endif
 /***********************************************************************************************/
 
 
@@ -215,6 +222,7 @@ static void strcopy( char *s, char *t, int charlen )
   else *s++ = '\0';
 }
 
+#ifdef NOT_USED
 static int validchan( int chan )
      /* to validate the channel number; it must be greater than
 	zero and less than or equal to ICHAN*/
@@ -250,6 +258,7 @@ static void removepidfile()
   fprintf(stderr, "removing %s\n", PID_file );
   unlink( PID_file );
 }
+#endif
 
 static int bwrite ( int chan, void *buffer, int nelem, char *dtype )
      /* To fill the write buffer of initialized channel "chan" on the server */
@@ -287,7 +296,7 @@ static int bwrite ( int chan, void *buffer, int nelem, char *dtype )
 #ifdef DEBUG
   fprintf(stderr,"mgilib2::bwrite(), ==\n");
 #endif
-
+  nb = 0 ;
   if(*dtype == 'I' || *dtype == 'R')
     {
       nb = write_record(chn[chan].gchannel, (unsigned char *)buffer, nelem, sizeof(int));
@@ -557,6 +566,122 @@ int retry_connect( int chan )
   return chn[chan].gchannel; 
   
 }
+
+/* write into shared memory buffer, character version */
+static int shm_write_c(mgi_shm_buf *shm,void *buf,int nelem){
+  int in, out, limit, inplus;
+  int ntok=nelem;
+  unsigned char *str = (unsigned char *) buf;
+  unsigned int token;
+  
+  in = shm->in ; out = shm->out ; limit = shm->limit;
+  while(ntok > 0){
+    inplus = (in+1 > limit) ? 0 : in+1 ;
+    while(inplus == out) {       /* shared memory circular buffer is full */
+      shm->in = in;              /* update in pointer in shared memory */
+      usleep(1000);              /* sleep for 1 millisecond */
+      out = shm->out;
+    }
+    token = *str++ ;
+    token <<= 8 ; if(ntok >  2) token |= *str++ ;
+    token <<= 8 ; if(ntok >  1) token |= *str++ ;
+    token <<= 8 ; if(ntok >  0) token |= *str++ ;
+    ntok = ntok -4;
+    shm->data[in] = token;
+    in = inplus;
+  }
+  shm->in = in;  /* update in pointer in shared memory */
+  return(ntok);
+}
+
+/* write into shared memory buffer, integer/real/double/character version */
+static int shm_write(mgi_shm_buf *shm,void *buf,int nelem,int type){
+  int in, out, limit, inplus;
+  int ntok;
+  unsigned int *buffer = (unsigned int *) buf ;
+  
+  if(shm->write_status != 1) return(WRITE_ERROR) ; /* not properly setup to write */
+    
+  if(type == 'C') return ( shm_write_c(shm,buf,nelem) );                    /* characters */
+  if(type != 'I' && type != 'R' && type != 'D') return(WRITE_ERROR) ;       /* unsupported type */
+  ntok = nelem;
+  if(type == 'D') ntok = nelem*2 ;                 /* 8 byte tokens */
+
+  in = shm->in ; out = shm->out ; limit = shm->limit;
+  while(ntok > 0){
+    inplus = (in+1 > limit) ? 0 : in+1 ;
+    while(inplus == out) {       /* shared memory circular buffer is full */
+      shm->in = in;              /* update in pointer in shared memory */
+      usleep(1000);              /* sleep for 1 millisecond */
+      out = shm->out;
+    }
+    shm->data[in] = *buffer;
+    in = inplus;
+    ntok--;
+    buffer++;
+  }
+  shm->in = in;  /* update in pointer in shared memory */
+  return(ntok);
+}
+
+
+/* read from shared memory buffer, character version */
+static int shm_read_c(mgi_shm_buf *shm,void *buf,int nelem, int len){
+  int in, out, limit;
+  int ntok=nelem;
+  unsigned char *str = (unsigned char *) buf;
+  unsigned int token;
+  int pad = len - nelem;
+  
+  in = shm->in ; out = shm->out ; limit = shm->limit;
+  while(ntok > 0){
+    while(in == out) {           /* shared memory circular buffer is empty */
+      shm->out = out;            /* update out pointer in shared memory */
+      usleep(1000);              /* sleep for 1 millisecond */
+      in = shm->in;              /* update in pointer from shared memory */
+    }
+    token = shm->data[out] ;
+    if(ntok >  3) {*str++ = (token>>24)&0xFF ; *str++ = (token>>16)&0xFF ; *str++ = (token>>8)&0xFF ; *str++ = token&0xFF ; } ;
+    if(ntok == 3) {*str++ = (token>>24)&0xFF ; *str++ = (token>>16)&0xFF ; *str++ = (token>>8)&0xFF ; };
+    if(ntok == 2) {*str++ = (token>>24)&0xFF ; *str++ = (token>>16)&0xFF ; };
+    if(ntok == 1) {*str++ = (token>>24)&0xFF ; };
+    ntok = ntok -4;
+    out = (out+1 > limit) ? 0 : out+1;   /* bump out */
+  }
+  shm->out = out;  /* update out pointer in shared memory */
+  while(pad-- > 0) *str++ = ' ';
+  return(ntok);
+}
+
+/* read from shared memory buffer, integer/real/double/character version */
+static int shm_read(mgi_shm_buf *shm,void *buf,int nelem,int type, int len){
+  int in, out, limit;
+  int ntok;
+  unsigned int *buffer = (unsigned int *) buf ;
+  
+  if(shm->read_status != 1) return(READ_ERROR) ; /* not properly setup to read */
+    
+  if(type == 'C') return ( shm_read_c(shm,buf,nelem,len) );                    /* characters */
+  if(type != 'I' && type != 'R' && type != 'D') return(READ_ERROR) ;       /* unsupported type */
+  ntok = nelem;
+  if(type == 'D') ntok = nelem*2 ;                 /* 8 byte tokens */
+
+  in = shm->in ; out = shm->out ; limit = shm->limit;
+  while(ntok > 0){
+    while(in == out) {           /* shared memory circular buffer is empty */
+      shm->out = out;            /* update out pointer in shared memory */
+      usleep(1000);              /* sleep for 1 millisecond */
+      in = shm->in;              /* update in pointer from shared memory */
+    }
+    *buffer = shm->data[out] ;
+    out = (out+1 > limit) ? 0 : out+1;   /* bump out */
+    ntok--;
+    buffer++;
+  }
+  shm->out = out;  /* update out pointer in shared memory */
+  return(ntok);
+}
+
 ftnword f77name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, char *dtype, F2Cl ltype)
      /* to write elements from "buffer" into the specified channel
 	opened for WRITEMODE. It actually writes

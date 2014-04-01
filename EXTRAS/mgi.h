@@ -18,7 +18,7 @@ typedef struct
   int in;
   int out;
   int limit;
-  int data[1];
+  unsigned int data[1];
 } mgi_shm_buf;
 
 typedef struct 
