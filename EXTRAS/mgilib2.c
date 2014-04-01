@@ -343,7 +343,29 @@ ftnword f77name (mgi_clos) (ftnword *f_chan)
   char buf[1024];
   chan = (int) *f_chan;
 
-  if(chn[chan].gchannel != 0)
+  if(chn[chan].shmbuf != NULL) {  /* shared memory channel  */
+
+    if(chn[chan].mode == 'W'){   /* channel is open for write */
+      if(chn[chan].shmbuf->write_status == 1) {
+        chn[chan].shmbuf->write_status = -2;    /* mark as initialized but not open for write */
+      }else{
+        fprintf(stderr,"ERROR: inconsistent write status on channel %s\n",chn[chan].name);
+      }
+    }
+
+    if(chn[chan].mode == 'R'){   /* channel is open for read */
+      if(chn[chan].shmbuf->read_status  == 1) {
+        chn[chan].shmbuf->read_status  = -2;    /* mark as initialized but not open for read  */
+      }else{
+        fprintf(stderr,"ERROR: inconsistent read status on channel %s\n",chn[chan].name);
+      }
+    }
+
+    chn[chan].mode == ' ';      /* mark channel as no longer open */
+    return 0;
+  }
+
+  if(chn[chan].gchannel != 0)   /* TCP/IP channel */
     {
       snprintf(buf, 1023, "%s %s", "END", chn[chan].name);
       ier = send_command(buf);
@@ -364,13 +386,25 @@ ftnword f77name (mgi_term) ()
   /* close all channels */
   int chan, ier = -1;
 
-  /* if memory channel, the last one to "term" a channel dumps contents into appropriate file */
-  /* chn[chan].mode == 'W' / 'R' in this case */
-  /* $HOME/.gossip/SHM/chn[chan].name is the appropriate file */
-
   for (chan = 0; chan <= ichan; chan++)
     {
-      if(chn[chan].name && strcmp((char *)chn[chan].name, "") && chn[chan].gchannel > 0)
+      if(chn[chan].shmbuf != NULL) {  /* shared memory channel  */
+        /* get number of attaches, if == 1 i am last and will dump rest of buffer into resatart file */
+        if(chn[chan].shmbuf->write_status == -2 && chn[chan].shmbuf->read_status == -2) {  /* both close operations done */
+          if(chn[chan].shmbuf->in != chn[chan].shmbuf->out){                               /* buffer is not empty */
+            fprintf(stderr,"WARNING: (mgi_term) shared memory channel '%s' fully closed but not empty!\n", chn[chan].name);
+            /* open channel file for exclusive writing and dump buffer */
+          }else{
+            fprintf(stderr,"INFO: (mgi_term) shared memory channel '%s' fully closed\n", chn[chan].name);
+          }
+        }
+        ier = 0;
+        /* detach from channel */
+        chn[chan].shmbuf = NULL;    /* make it obvious taht process has detached */
+        continue;
+      }
+
+      if(chn[chan].name && strcmp((char *)chn[chan].name, "") && chn[chan].gchannel > 0)    /* TCP/IP channel */
 	{
 	  ier = send_command("END");
 	  fprintf(stderr,"MGI_TERM: subchannel \"%s\" has been closed!\n", chn[chan].name);
@@ -482,9 +516,8 @@ ftnword f77name (mgi_open) (ftnword *f_chan, char *mode, int lmode)
           chn[chan].gchannel = retry_connect( chan );
       } else {   /* it is  a shared memory channel, initialize it for write  */
         shm = chn[chan].shmbuf;
-        /* add error code if already connected for write or not ready for write */
-        /* id(shm->write_status != -1 ) ... */
-        shm->write_status = 1;  /* connected for write */
+        if(shm->write_status != -2) return CONNECTION_ERROR;  /* not initialized for write or already connected for write */
+        shm->write_status = 1;  /* mark as connected for write */
         chn[chan].gchannel = 123456 ;
         chn[chan].mode = 'W';
       }
@@ -499,9 +532,8 @@ ftnword f77name (mgi_open) (ftnword *f_chan, char *mode, int lmode)
           chn[chan].gchannel = retry_connect( chan );
       } else {   /* it is  a shared memory channel, initialize it for read */
         shm = chn[chan].shmbuf;
-        /* add error code if already connected for read or not ready for read */
-        /* id(shm->read_status != -1 ) ... */
-        shm->read_status = 1;  /* connected for read */
+        if(shm->read_status != -2) return CONNECTION_ERROR;  /* not initialized for write or already connected for write */
+        shm->read_status = 1;  /* mark as connected for read */
         chn[chan].gchannel = 123456 ;
         chn[chan].mode = 'R';
       }
