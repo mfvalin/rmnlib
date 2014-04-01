@@ -715,6 +715,13 @@ ftnword f77name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, ch
     }
 
   /* if shared memory channel (chn[chan].shmbuf != NULL) intercept here */
+  if(chn[chan].shmbuf != NULL) {
+    if(*dtype != 'C'){
+      return( shm_write(chn[chan].shmbuf,buffer,nelem                    ,*dtype) );
+    }else{
+      return( shm_write(chn[chan].shmbuf,buffer,(nelem<ltype)?nelem:ltype,*dtype) );
+    }
+  }
   /* call mgi_shm_write(chn[chan].shmbuf,buffer,nelem                    ,*dtype) (*dtype != 'C') */
   /* call mgi_shm_write(chn[chan].shmbuf,buffer,(nelem<ltype)?nelem:ltype,*dtype) (*dtype == 'C')  */
 
