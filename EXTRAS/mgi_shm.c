@@ -45,6 +45,7 @@ mgi_shm_buf *shm;
 char channel_filename[1024];
 int fd;
 int nints;
+int max_attach;
 
 if(argc < 2 || argc >3) {
   fprintf(stderr,"ERROR: there must be one or two arguments \n");
@@ -100,8 +101,10 @@ if(fd > 0) {                        /* channel restart file exists, read it into
 }
 
 sleep(1);
+max_attach=1000000;  /* deactivate feature on non linux systems */
 #if defined(linux)
 i = shmctl(to_watch,IPC_RMID,NULL);   /* immediately mark segment for removal if linux */
+max_attach = 2;
 #endif
 sleep(1);
 
@@ -120,7 +123,7 @@ while(1){
   usleep(sleep_duration);  /* 10 milliseconds */
   i = shmctl(to_watch,IPC_STAT,&shm_stat);
   if(i == -1) exit(0);    /* segment no longer accessible, quit */
-  if(shm_stat.shm_nattch >= 2) {  /* segment attached by somebody else */
+  if(shm_stat.shm_nattch >= max_attach) {  /* segment attached by enough other processes */
     break;                      /* job done, exit */
   }
   }  /* while */
