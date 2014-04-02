@@ -35,7 +35,7 @@ main(int argc, char **argv)
   write_status = shm->write_status;
   attach = shm_stat.shm_nattch;
 
-  while(1) {   /* loop until shared memory area disappears */
+  while(attach >1) {   /* loop until shared memory area released by all but me */
     usleep(1000);   /* 1 millisec sleep */
     if(-1 == shmctl(shmid,IPC_STAT,&shm_stat)) exit (0);  /* shared memory area has disappeared */
     /* TODO: add a time tag to get a good idea of traffic timing */
