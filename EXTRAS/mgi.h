@@ -23,16 +23,17 @@ typedef struct
 
 typedef struct 
 {
+  mgi_shm_buf *shmbuf;
+  int *buffer;
+  int pos;
+  int gchannel;
+  int shmid;
   int fd_data;
   int fd_sig;
   int msgno_W;
   int msgno_R;
   int nblks;
+  int timeout;
   char name[MAX_NAME];
   char mode;
-  int *buffer;
-  int pos;
-  int gchannel;
-  int shmid;
-  mgi_shm_buf *shmbuf;
 } channel;
