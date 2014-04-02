@@ -23,6 +23,8 @@ main(int argc, char **argv)
   if(shm == (void *) -1) exit (1);
   while(nrep-- > 0) {
     if(-1 == shmctl(shmid,IPC_STAT,&shm_stat)) exit (0);
+    /* TODO: add a time tag to get a good idea of traffic timing */
+    /* TODO: use a dynamic watcher that talks only when there are changes */
     fprintf(stderr,"size = %d, attach count = %d, creator=%d, last attach=%d ",
             (int)shm_stat.shm_segsz,(int)shm_stat.shm_nattch,shm_stat.shm_cpid,shm_stat.shm_lpid);
     fprintf(stderr,"first=%d, in=%d, out=%d, limit=%d, rs=%d, ws=%d\n",
