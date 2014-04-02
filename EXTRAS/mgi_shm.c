@@ -70,6 +70,14 @@ if(shm == (void *) -1) {
 }else{
   fprintf(stderr,"INFO: memory segment %d successfully attached\n",to_watch);
 }
+
+sleep(1);
+/* on non linux systems, it is not possible to attach a shared memory area that is marked for deletion */
+#if defined(linux)
+i = shmctl(to_watch,IPC_RMID,NULL);   /* immediately mark segment for removal if linux */
+#endif
+sleep(1);
+
 i = shmctl(to_watch,IPC_STAT,&shm_stat);
 shm_size = shm_stat.shm_segsz / 1024;
 shm_size_k = shm_size;
@@ -98,13 +106,6 @@ if(fd > 0) {                        /* channel restart file exists, read it into
   }
   close(fd);
 }
-
-sleep(1);
-/* on non linux systems, it is not possible to attach a shared memory area that is marked for deletion */
-#if defined(linux)
-i = shmctl(to_watch,IPC_RMID,NULL);   /* immediately mark segment for removal if linux */
-#endif
-sleep(1);
 
 i = fork();
 if(i > 0) exit(0);  /* parent exits */
