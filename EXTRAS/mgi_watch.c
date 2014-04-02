@@ -14,8 +14,11 @@ main(int argc, char **argv)
   size_t shm_size;
   int nrep = 100;
   int i;
+  int delay=2;
 
+  if(argc<2) exit(1);
   shmid = atoi(argv[1]);
+  if(argc>2) delay=atoi(argv[2]);
   shm = shmat(shmid, NULL, 0);
   if(shm == (void *) -1) exit (1);
   while(nrep-- > 0) {
@@ -24,6 +27,6 @@ main(int argc, char **argv)
             (int)shm_stat.shm_segsz,(int)shm_stat.shm_nattch,shm_stat.shm_cpid,shm_stat.shm_lpid);
     fprintf(stderr,"first=%d, in=%d, out=%d, limit=%d, rs=%d, ws=%d\n",
             shm->first,shm->in,shm->out,shm->limit,shm->read_status,shm->write_status);
-    sleep(2);
+    sleep(delay);
   }
 }
