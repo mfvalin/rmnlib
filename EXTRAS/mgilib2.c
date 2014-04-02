@@ -676,6 +676,7 @@ static int shm_write_c(mgi_shm_buf *shm,void *buf,int nelem,int timeout){
       out = shm->out;            /* update out pointer from shared memory */
       iter--;                    /* decrement timeout counter */
     }
+    if(iter <= 0) return(WRITE_TIMEOUT);
     token = *str++ ;
     token <<= 8 ; if(ntok >  2) token |= *str++ ;
     token <<= 8 ; if(ntok >  1) token |= *str++ ;
@@ -714,6 +715,7 @@ static int shm_write(mgi_shm_buf *shm,void *buf,int nelem,int type,int timeout){
       usleep(1000);              /* sleep for 1 millisecond */
       out = shm->out;            /* update out pointer from shared memory */
       iter--;                    /* decrement timeout counter */
+    if(iter <= 0) return(WRITE_TIMEOUT);
     }
     shm->data[in] = *buffer;
     in = inplus;
@@ -746,6 +748,7 @@ static int shm_read_c(mgi_shm_buf *shm,void *buf,int nelem, int len,int timeout)
       in = shm->in;              /* update in pointer from shared memory */
       iter--;                    /* decrement timeout counter */
     }
+    if(iter <= 0) return(READ_TIMEOUT);
     token = shm->data[out] ;
     if(ntok >  3) {*str++ = (token>>24)&0xFF ; *str++ = (token>>16)&0xFF ; *str++ = (token>>8)&0xFF ; *str++ = token&0xFF ; } ;
     if(ntok == 3) {*str++ = (token>>24)&0xFF ; *str++ = (token>>16)&0xFF ; *str++ = (token>>8)&0xFF ; };
@@ -786,6 +789,7 @@ static int shm_read(mgi_shm_buf *shm,void *buf,int nelem,int type, int len,int t
       in = shm->in;              /* update in pointer from shared memory */
       iter--;                    /* decrement timeout counter */
     }
+    if(iter <= 0) return(READ_TIMEOUT);
     *buffer = shm->data[out] ;
     out = (out+1 > limit) ? 0 : out+1;   /* bump out */
     ntok--;
