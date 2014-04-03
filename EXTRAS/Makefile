@@ -5,7 +5,7 @@ DISTDIR=..
 EXTRAS = fstd98.o DlInterface.o convert_ip123.o fst_missing.o register_dl_routines.o dlfcn.o convip_plus.o
 # EXTRAS2 : do not load yet
 EXTRAS2 = float_packer.o  c_zfstlib.o vmm.o excdes_new.o
-TESTS = test_z test_p test_f test_d test_c test_excdes
+TESTS = test_z test_p test_f test_ff test_d test_c test_excdes
 
 #RMNLIB = librmnbeta_14.819u.a
 #RMNLIB = librmn_014.826u.a
@@ -86,10 +86,11 @@ test_d: $(TEST_RMNLIB) libshared.so test_dlfcn.f90
 	s.f90 -o $@ test_dlfcn.f90 $(EXTRA_LOCAL) -ldl
 
 # missing data feature for standard files test
-test_f:	fstd98.c  if_fstd98.c fst_missing.c
-	s.cc -c -O 2 -DSELFTEST fstd98.c fst_missing.c
-	s.f90 -o $@ test_missing.f90 fstd98.o fst_missing.o $(EXTRA_LOCAL)
-	rm -f fstd98.o fst_missing.o
+test_f:	fst_missing.c
+	rm -f $@
+	s.cc -o $@ -O 2 -DSELFTEST fst_missing.c DlInterface.o
+#	s.f90 -o $@ test_missing.f90 fstd98.o fst_missing.o $(EXTRA_LOCAL)
+#	rm -f fstd98.o fst_missing.o
 
 test_ff: $(TEST_RMNLIB) test_missing.f90
 #	s.cc -c -O 2 fstd98.c fst_missing.c

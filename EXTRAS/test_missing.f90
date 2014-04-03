@@ -28,6 +28,7 @@ status= get_missing_value_flags(fm,im,uim,dm,sm,usm,bm,ubm)
 print 101,status,fm,dm,im,sm,bm,uim,usm,ubm
 ! 101 format(I2,2G14.5,I11,5I7,2G14.5)
 101 format(I2,2G14.5,I11,5I7,4G14.5)
+  dm = -1.0E+36
 call set_missing_value_flags(fm,im,uim,dm,sm,usm,bm,ubm)
 status= get_missing_value_flags(fm,im,uim,dm,sm,usm,bm,ubm)
 print 101,status,fm,dm,im,sm,bm,uim,usm,ubm
