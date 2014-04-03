@@ -86,7 +86,7 @@ test_d: $(TEST_RMNLIB) libshared.so test_dlfcn.f90
 	s.f90 -o $@ test_dlfcn.f90 $(EXTRA_LOCAL) -ldl
 
 # missing data feature for standard files test
-test_f:	fst_missing.c
+test_f:	fst_missing.c DlInterface.o
 	rm -f $@
 	s.cc -o $@ -O 2 -DSELFTEST fst_missing.c DlInterface.o
 #	s.f90 -o $@ test_missing.f90 fstd98.o fst_missing.o $(EXTRA_LOCAL)

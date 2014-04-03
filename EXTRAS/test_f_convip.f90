@@ -8,8 +8,10 @@ stop
 end
 !===============================================================================================
 subroutine convip_all_tests
-  use convert_ip123, only : test_value_to_string, test_convip_plus, value_to_string
+!  use convert_ip123, only : test_value_to_string, test_convip_plus, value_to_string
+  use ISO_C_BINDING
   implicit none
+  include 'convert_ip123.inc'
   character(len=15) :: string
   integer :: fmtcode
   print *,'========== convip_unit_tests =========='
