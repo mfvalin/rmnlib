@@ -70,15 +70,14 @@
           character(C_CHAR), dimension(*), intent(IN) :: typv_list
         end function Select_typvar
 
-!       int Xc_Select_suppl(int set_nb, int des_exc, int ni, int nj, int nk, int ig1, int ig2, int ig3, int ig4, char gtyp)
+!        int Xc_Select_suppl(int set_nb, int des_exc, int ni, int nj, int nk, int ig1, int ig2, int ig3, int ig4, char gtyp)
         function Select_suppl(set_nb, des_exc, ni, nj, nk,                     &
      &                        ig1, ig2, ig3, ig4, gtyp)                        &
      &           result (status) BIND(C,name='Xc_Select_suppl')
           use ISO_C_BINDING
           implicit none
           integer(C_INT) :: status
-          integer(C_INT), intent(IN), value :: set_nb, des_exc
-          integer(C_INT), intent(IN), value :: ni, nj, nk
+          integer(C_INT), intent(IN), value ::  set_nb, des_exc, ni, nj, nk
           integer(C_INT), intent(IN), value :: ig1, ig2, ig3, ig4
           character(C_CHAR), intent(IN), value :: gtyp
         end function Select_suppl

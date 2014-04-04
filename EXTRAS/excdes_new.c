@@ -93,7 +93,6 @@ typedef struct {
   char grdtyps;    /* "supplementary" criterion grid type, ' ' means do not use */
 } DesireExclure;
 
-//Desire_Exclure Requetes[MAX_requetes];
 static DesireExclure  Requests[MAX_requetes];
 static int package_not_initialized = 1;
 
@@ -543,6 +542,7 @@ int Xc_Select_suppl(int set_nb, int des_exc, int ni, int nj, int nk, int ig1, in
   Requests[set_nb].ig3s    = ig3;
   Requests[set_nb].ig4s    = ig4;
   Requests[set_nb].grdtyps = gtyp;
+  fprintf(stderr,"CRITSUP: ni=%d nj=%d nk=%d ig1=%d ig2=%d ig3=%d ig4=%d gtyp='%c'\n",ni,nj,nj,ig1,ig2,ig2,ig4,gtyp);
   return(0);
 error:
   Requests[set_nb].dates.in_use = UNUSED;
@@ -890,6 +890,7 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
   double diff_deb, diff_fin, delta8, remainder;
   char *desire_exclure;
   int translatable;
+  int supp_ok;       /* supplementary parameters match */
 
   if(package_not_initialized) {
     fprintf(stderr,"INFO: c_fst_match_parm, initializing request tables \n");
@@ -904,6 +905,7 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
   translatable = FstCanTranslateName(nomvar) ;
   date = datevalid;
 //  for (set_nb=first_R; set_nb <= last_R ; set_nb++) fprintf(stderr," %d",Requests[set_nb].in_use) ; fprintf(stderr,"\n");
+
   for (set_nb=first_R; (set_nb <= last_R) ; set_nb++) {
     if(Requests[set_nb].in_use == 0)continue ;
 
@@ -912,18 +914,18 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
     desire_exclure = (Requests[set_nb].exdes == DESIRE)  ? "desire" : "exclure";
 //fprintf(stderr,"matching request set %d\n",set_nb);
     Supplements:
-      if (Requests[set_nb].in_use_supp) {
-        amatch = 0;
-        if(Requests[set_nb].ig1s != ig1 && Requests[set_nb].ig1s != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig2s != ig2 && Requests[set_nb].ig2s != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig3s != ig3 && Requests[set_nb].ig3s != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig4s != ig2 && Requests[set_nb].ig4s != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].nis  !=  ni &&  Requests[set_nb].nis != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].njs  !=  nj &&  Requests[set_nb].njs != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].nks  !=  nk &&  Requests[set_nb].nks != -1) continue;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].grdtyps  !=  grtyp[0] && Requests[set_nb].grdtyps != ' ') continue;  /* requete non satisfaite pour criteres supplementaires */
-        amatch = 1;   /* requete satisfaite jusqu'ici */
+      supp_ok = 1;
+      if (Requests[set_nb].in_use_supp) {   /* les criteres supplementires sont globaux */
+        if(Requests[set_nb].ig1s != ig1 && Requests[set_nb].ig1s != -1) supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig2s != ig2 && Requests[set_nb].ig2s != -1) supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig3s != ig3 && Requests[set_nb].ig3s != -1) supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].ig4s != ig2 && Requests[set_nb].ig4s != -1) supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].nis  !=  ni &&  Requests[set_nb].nis != -1) supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].njs  !=  nj &&  Requests[set_nb].njs != -1) supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].nks  !=  nk &&  Requests[set_nb].nks != -1) supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
+        if(Requests[set_nb].grdtyps  !=  grtyp[0] && Requests[set_nb].grdtyps != ' ') supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
       }
+      amatch = supp_ok;   /* requete satisfaite jusqu'ici si criteres supplementaires actifs et OK */
     Etiquettes:
       if (Requests[set_nb].etiquettes.in_use) {
         amatch = 0;
@@ -1237,6 +1239,7 @@ int f77name(f_select_date)(int *date_list, int *nelm)
 
 int f77name(f_select_suppl)(int *ni, int *nj, int *nk, int *ig1, int *ig2, int *ig3, int *ig4, char *gtyp, F2Cl flng)
 {
+fprintf(stderr,"f_select_suppl: ni=%d nj=%d nk=%d ig1=%d ig2=%d ig3=%d ig4=%d gtyp='%c'\n",*ni,*nj,*nj,*ig1,*ig2,*ig3,*ig4,*gtyp);
     return Xc_Select_suppl(bundle_nb, desire_exclure, *ni, *nj, *nk, *ig1, *ig2, *ig3, *ig4, *gtyp);
 }
 
@@ -1429,16 +1432,15 @@ void c_requetes_init(char *requetes_filename, char *debug_filename)
     stddebug = fopen("/dev/null","w");
 
   for (i=0; i<MAX_requetes; i++) {
-    for (j=0; j<MAX_Nlist; j++) {
-      Requests[i].nis = 0;
-      Requests[i].njs = 0;
-      Requests[i].nks = 0;
-      Requests[i].ig1s = 0;
-      Requests[i].ig2s = 0;
-      Requests[i].ig3s = 0;
-      Requests[i].ig4s = 0;
-      Requests[i].grdtyps = ' ';
-    }
+    Requests[i].in_use_supp = UNUSED;
+    Requests[i].nis = 0;
+    Requests[i].njs = 0;
+    Requests[i].nks = 0;
+    Requests[i].ig1s = 0;
+    Requests[i].ig2s = 0;
+    Requests[i].ig3s = 0;
+    Requests[i].ig4s = 0;
+    Requests[i].grdtyps = ' ';
     C_requetes_reset(i,0,0,0,0,0,0,0);
   }
 
@@ -1845,7 +1847,7 @@ c_main(int argc, char **argv)
 
   c_requetes_init(NULL,NULL);
   i = Xc_Select_ip1(1,1,ip1s_i,4);
-  i = Xc_Select_suppl(1, 1, -1, -1, -1, -1, -1, -1, -1, 'Z');
+  i = Xc_Select_suppl(-1, -1, -1, -1, -1, -1, -1, 'Z');
   i = Xc_Select_date(1,1,dates_range,3);
   i = C_select_groupset(0,1);
   WriteRequestTable(atoi(argv[1]),NULL);
