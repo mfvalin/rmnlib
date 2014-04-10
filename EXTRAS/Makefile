@@ -13,6 +13,7 @@ BASE_RMNLIB := rmn_014
 NEW_RMNLIB := rmnbeta_015
 TEST_RMNLIB := Locallib/$(EC_ARCH)/lib$(NEW_RMNLIB).a
 EXTRA_LOCAL := -ILocalinclude/$(EC_ARCH) -LLocallib/$(EC_ARCH) -l$(NEW_RMNLIB)
+EXTRA_LOCAL_R := -ILocalinclude/$(EC_ARCH) -LLocallib/$(EC_ARCH) -l$(BASE_RMNLIB)
 all:	obj
 
 # dynamic loader interface
@@ -56,8 +57,10 @@ convip_plus.o:	convip_plus.f90 convert_ip123.f90
 
 $(TEST_RMNLIB): $(EXTRAS) $(EXTRAS2)
 	mkdir -p Locallib/$(EC_ARCH)/
-	s.locate --lib $(BASE_RMNLIB) && cp $$(s.locate --lib $(BASE_RMNLIB)) $(TEST_RMNLIB)
+#	s.locate --lib $(BASE_RMNLIB) && cp $$(s.locate --lib $(BASE_RMNLIB)) $(TEST_RMNLIB)
+	cp Locallib/$(EC_ARCH)/lib$(BASE_RMNLIB).a $(TEST_RMNLIB)
 	mkdir -p Localinclude/$(EC_ARCH)/
+	touch dummy.mod dummy.inc
 	cp *.mod *.inc Localinclude/$(EC_ARCH)/
 	cp convert_ip.h Localinclude/
 	ar d $(TEST_RMNLIB) excdes.o
@@ -96,7 +99,9 @@ test_ff: $(TEST_RMNLIB) test_missing.f90
 #	s.cc -c -O 2 fstd98.c fst_missing.c
 	echo "call test_missing_values ; stop ; end" >test_missing_main.f90
 	s.f90 -o $@ test_missing_main.f90 test_missing.f90 $(EXTRA_LOCAL)
+	s.f90 -o $@_R test_missing_main.f90 test_missing.f90 $(EXTRA_LOCAL_R)
 	rm test_missing_main.f90
+	rm -f missing.fst
 
 test_excdes: $(TEST_RMNLIB) test_excdes.f90 excdes_new.c
 	s.cc -c excdes_new.c -DTEST -Dc_main=c_main_
@@ -120,7 +125,7 @@ obj: $(EXTRAS) $(EXTRAS2)
 #	rm -f *.o *.mod
 
 clean:
-	rm -f *.o *.so *.mod $(TESTS) a.out
+	rm -f *.o *.so *.mod $(TESTS) a.out missing.fst
 
 distclean: clean
 	rm -rf Locallib Localinclude
