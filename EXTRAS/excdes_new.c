@@ -35,7 +35,18 @@
 char **fill_string_array(char **string_array, char *farray, int nc, int ns, int rmblanks);
 char **allocate_string_array(int ns);
 void c_requetes_init(char *f1,char *f2);
-
+void RequetesInit()
+{
+  c_requetes_init(NULL,NULL);
+}
+#pragma weak f_requetes_init__=f_requetes_init
+#pragma weak f_requetes_init_=f_requetes_init
+void f_requetes_init__();
+void f_requetes_init_();
+void f_requetes_init()
+{
+  RequetesInit();
+}
 #ifdef NOTUSED
 enum cquoica {unused,entier, reel, deb_fin_entier, deb_fin_reel, deb_fin_entier_delta,
               deb_fin_reel_delta} parametre;
@@ -73,6 +84,7 @@ typedef struct {
   char pdata[MAX_Nlist][13];
 } DE_char;
 typedef struct {
+  int hit;   /* hit count for this request (number of times it was satisfied) */
   int in_use;
   int in_use_supp;
   int exdes;
@@ -108,7 +120,7 @@ void WriteRequestTable(int use_header, char *filename)
   char *sep="\n      ";
   FILE *outfile = NULL;
 
-  if(package_not_initialized) c_requetes_init(NULL,NULL);
+  if(package_not_initialized) RequetesInit();
   if(filename) {
     outfile = fopen(filename,"w");
     use_header = 0;  /* disregard use_header if filename is not NULL */
@@ -185,7 +197,7 @@ void DumpRequestTable()
  */
 static int ValidateRequestForSet(int set_nb, int des_exc, int nelm, int nelm_lt, char *msg)
 {
-  if(package_not_initialized) c_requetes_init(NULL,NULL);
+  if(package_not_initialized) RequetesInit();
 
   if (set_nb > MAX_requetes) {
     fprintf(stderr,"error: C_select_%s set_nb=%d > MAX_requetes=%d\n",msg,set_nb,MAX_requetes);
@@ -386,6 +398,10 @@ int Xc_Select_date(int set_nb, int des_exc, int *date_list, int nelm)
 {
   int i, range=0;
   int valid, delta=0;
+  union {
+    int i;
+    float f;
+  }i_or_f;
 
   valid = ValidateRequestForSet(set_nb, des_exc, nelm, 1, "date");
   if(valid < 0) goto error ;
@@ -410,8 +426,11 @@ int Xc_Select_date(int set_nb, int des_exc, int *date_list, int nelm)
       if(i != 3) goto error ;                             /* must be date1 @ date2 delta hours */
       Requests[set_nb].dates.in_use = DELTA;
       Requests[set_nb].dates.nelm = 3;
-      Requests[set_nb].dates.data[2] = date_list[i+1];
-      Requests[set_nb].dates.delta = date_list[i+1];
+      i_or_f.i = date_list[i+1];
+      if(i_or_f.i & 0x7F800000) i_or_f.i = i_or_f.f+0.5;  /* real value is in seconds and gets rounded */
+      else i_or_f.i = i_or_f.i * 3600;                    /* integer value converted to seconds */
+      Requests[set_nb].dates.data[2] = i_or_f.i;
+      Requests[set_nb].dates.delta = i_or_f.i;
     }
     if(date_list[i]==READLX_RANGE) {   /* @  keyword   */
       range++;
@@ -603,6 +622,10 @@ int ReadRequestTable(char *filename)
   int rvd; /* range, value, delta */
   int dex ; /* desire / exclure */
   int status;
+  union {
+    int i;
+    float f;
+  }i_or_f;
 
   status = 0;
   if(filename != NULL) input=fopen(filename,"r");
@@ -654,7 +677,8 @@ int ReadRequestTable(char *filename)
     }
     if(rvd == DELTA) {
       nvalues=5;
-      a[4]=a[2];
+      i_or_f.f = a[2];    /* already in seconds, send as a float */
+      a[4]=i_or_f.i;
       a[3]=READLX_DELTA;
       a[2]=a[1];
       a[1]=READLX_RANGE;
@@ -748,7 +772,7 @@ int ReadRequestTable(char *filename)
  *****************************************************************************/
 int C_select_groupset(int first_set_nb, int last_set_nb)
 {
-  if(package_not_initialized) c_requetes_init(NULL,NULL);
+  if(package_not_initialized) RequetesInit();
   if ((first_set_nb > MAX_requetes) || (last_set_nb > MAX_requetes) || (first_set_nb > last_set_nb)) {
     fprintf(stderr,"ERROR: C_select_groupset first_set_nb=%d, last_set_nb=%d, MAX_requetes=%d\n",
             first_set_nb,last_set_nb,MAX_requetes);
@@ -770,7 +794,7 @@ return 0; /*CHC/NRC*/
 int C_filtre_desire()
 {
   
-  if(package_not_initialized) c_requetes_init(NULL,NULL);
+  if(package_not_initialized) RequetesInit();
   bundle_nb++;
   desire_exclure = 1;
   if (bundle_nb > MAX_requetes) {
@@ -792,7 +816,7 @@ return 0; /*CHC/NRC*/
 int C_filtre_exclure()
 {
   
-  if(package_not_initialized) c_requetes_init(NULL,NULL);
+  if(package_not_initialized) RequetesInit();
   bundle_nb++;
   desire_exclure = 0;
   if (bundle_nb > MAX_requetes) {
@@ -894,7 +918,7 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
 
   if(package_not_initialized) {
     fprintf(stderr,"INFO: c_fst_match_parm, initializing request tables \n");
-    c_requetes_init(NULL,NULL);
+    RequetesInit();
   }
 //  if (! Requests[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
 
@@ -1078,6 +1102,7 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
     Fin:
       if (amatch == 1) {
         dbprint(stddebug,"Debug C_fst_match_req fin requete %s satisfaite, handle=%d \n",desire_exclure,handle);
+        Requests[set_nb].hit++ ;                                    /* add one to this request's hit count */
         return((Requests[set_nb].exdes == DESIRE) ? set_nb+1 : 0 );  /* requete desire satisfaite */
       }      
     /* Next:                  verifier le prochain desire/exclure */
@@ -1122,7 +1147,7 @@ int c_fst_match_req(int handle)
   char grtyp[2]={' ','\0'};
   int status;
 //  return(1);
-  if(package_not_initialized) c_requetes_init(NULL,NULL);
+  if(package_not_initialized) RequetesInit();
   ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,
                      &nbits,&datyp,&ip1,&ip2,&ip3,typvar,
                      nomvar,etiket,grtyp,&ig1,&ig2,&ig3,&ig4,&swa,&lng,
@@ -1146,7 +1171,7 @@ int C_fst_match_req(int handle)
   char grtyp[2]={' ','\0'};
   int status;
   
-  if(package_not_initialized) c_requetes_init(NULL,NULL);
+  if(package_not_initialized) RequetesInit();
   ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,
                      &nbits,&datyp,&ip1,&ip2,&ip3,typvar,
                      nomvar,etiket,grtyp,&ig1,&ig2,&ig3,&ig4,&swa,&lng,
@@ -1367,6 +1392,7 @@ int C_requetes_reset(int set_nb, int nomvars, int typvars, int etikets, int date
   }
 
   Requests[set_nb].in_use = UNUSED;
+  Requests[set_nb].hit = 0;
   Requests[set_nb].in_use_supp = UNUSED;
   Requests[set_nb].exdes = -1;
   if (nomvars != -1) {
@@ -1411,6 +1437,15 @@ int C_requetes_reset(int set_nb, int nomvars, int typvars, int etikets, int date
     for (j=0; j < MAX_Nlist; j++)
        Requests[set_nb].ip3s.data[j]=0;
   }
+  Requests[set_nb].in_use_supp = UNUSED;
+  Requests[set_nb].nis = 0;
+  Requests[set_nb].njs = 0;
+  Requests[set_nb].nks = 0;
+  Requests[set_nb].ig1s = 0;
+  Requests[set_nb].ig2s = 0;
+  Requests[set_nb].ig3s = 0;
+  Requests[set_nb].ig4s = 0;
+  Requests[set_nb].grdtyps = ' ';
 
   return(0);
 }
@@ -1431,16 +1466,11 @@ void c_requetes_init(char *requetes_filename, char *debug_filename)
   else
     stddebug = fopen("/dev/null","w");
 
+  first_R = 0;
+  last_R = MAX_requetes-1;
+  bundle_nb = -1;
+  desire_exclure = 1;
   for (i=0; i<MAX_requetes; i++) {
-    Requests[i].in_use_supp = UNUSED;
-    Requests[i].nis = 0;
-    Requests[i].njs = 0;
-    Requests[i].nks = 0;
-    Requests[i].ig1s = 0;
-    Requests[i].ig2s = 0;
-    Requests[i].ig3s = 0;
-    Requests[i].ig4s = 0;
-    Requests[i].grdtyps = ' ';
     C_requetes_reset(i,0,0,0,0,0,0,0);
   }
 
@@ -1450,7 +1480,6 @@ void c_requetes_init(char *requetes_filename, char *debug_filename)
   fprintf(stderr,"request table initialized \n");
   package_not_initialized = 0;
 }
-
 /*****************************************************************************
  *                      D I R E C T I V E S _ I P 1 2 3                      *
  *                                                                           *
@@ -1781,6 +1810,10 @@ return 0;
 c_main(int argc, char **argv)
 {
 
+  union {
+    int i;
+    float f;
+  }i_or_f;
   int i,j;
   float heures;
   int ip1s_i[] = { 400,500,600,750 };
@@ -1796,18 +1829,30 @@ c_main(int argc, char **argv)
   int dates_range1[] = {313280000, READLX_RANGE, 313290800, READLX_DELTA, 12};
   int dates_range2[] = {313280000, READLX_RANGE};
   int dates_range3[] = {READLX_RANGE, 313290800};
+  int dates_range4[] = {313280000, READLX_RANGE, 313290800, READLX_DELTA, 12};
 
   char *testeti[] = { "Etiquette #1", "R2428V4N", "Etiquet #3" };
   char *testnom[2] = { "TT", "GZ" };
   char *testtyp[4] = { "P", "V1", "V2", "V3" };
   int narg = 2;
 
+  i_or_f.f = 5399.6;
+  dates_range1[4] = i_or_f.i;
+
   dbprint(stddebug,"Debug debut \n");
   dbprint(stddebug,"Debug testeti=%s %s %s \n",testeti[0],testeti[1],testeti[2]);
   dbprint(stddebug,"Debug testeti=%s %s %s \n",testeti[0],testeti[1],testeti[2]);
   dbprint(stddebug,"Debug testnom=%s %s \n",testnom[0],testnom[1]);
   dbprint(stddebug,"Debug testtyp=%s %s %s %s \n",testtyp[0],testtyp[1],testtyp[2],testtyp[3]);
-//  c_requetes_init(NULL,NULL);
+  RequetesInit();
+
+  i = Xc_Select_etiquette(5,1,testeti,3);
+  i = Xc_Select_nomvar(5,1,testnom,2);
+  i = Xc_Select_typvar(5,1,testtyp,4);
+  i = Xc_Select_ip1(5,1,ip1s_range,3);
+//  i = Xc_Select_ip1(1,1,ip1s_i,4);
+  i = Xc_Select_ip2(5,1,ip2s,3);
+  i = Xc_Select_date(5,1,dates_range4,5);
 
   i = Xc_Select_etiquette(2,1,testeti,3);
   i = Xc_Select_nomvar(2,1,testnom,2);
@@ -1837,7 +1882,7 @@ c_main(int argc, char **argv)
   fprintf(stderr,"match result = %d \n",i);
   if(argc>narg){
     WriteRequestTable(0,argv[narg]);
-    c_requetes_init(NULL,NULL);
+    RequetesInit();
     ReadRequestTable(argv[narg]);
     fprintf(stdout,"=========== Reading Back table===========\n");
     WriteRequestTable(1,NULL);
@@ -1845,7 +1890,7 @@ c_main(int argc, char **argv)
   narg++ ;
   fprintf(stdout,"\n=========================================\n\n");
 
-  c_requetes_init(NULL,NULL);
+  RequetesInit();
   i = Xc_Select_ip1(1,1,ip1s_i,4);
   i = Xc_Select_suppl(-1, -1, -1, -1, -1, -1, -1, 'Z');
   i = Xc_Select_date(1,1,dates_range,3);
@@ -1853,7 +1898,7 @@ c_main(int argc, char **argv)
   WriteRequestTable(atoi(argv[1]),NULL);
   if(argc>narg){
     WriteRequestTable(0,argv[narg]);
-    c_requetes_init(NULL,NULL);
+    RequetesInit();
     ReadRequestTable(argv[narg]);
     fprintf(stdout,"=========== Reading Back table===========\n");
     WriteRequestTable(1,NULL);
