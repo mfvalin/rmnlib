@@ -419,7 +419,7 @@ int Xc_Select_date(int set_nb, int des_exc, int *date_list, int nelm)
   Requests[set_nb].dates.nelm = nelm;      /* irrelevant if we have a range of dates */
   for (i=0; i<nelm; i++) {
     Requests[set_nb].dates.data[i] = date_list[i];
-    if(date_list[i]==READLX_DELTA) {                 /* DELTA keyword */
+    if(date_list[i] == READLX_DELTA) {                 /* DELTA keyword */
       delta++;
       if(delta > 1 || range == 0 ) goto error ;           /* more than one delta keyword or delta encountered before @  */
       if(i >= nelm-1) goto error ;                        /* no value follows delta */
@@ -432,13 +432,13 @@ int Xc_Select_date(int set_nb, int des_exc, int *date_list, int nelm)
       Requests[set_nb].dates.data[2] = i_or_f.i;
       Requests[set_nb].dates.delta = i_or_f.i;
     }
-    if(date_list[i]==READLX_RANGE) {   /* @  keyword   */
+    if(date_list[i] == READLX_RANGE) {   /* @  keyword   */
       range++;
       if(range>1 || i>1) goto error ;           /* more than one @ keyword or @ keyword too far in line */
-      if(i > 1) goto error ;                    /*  @ cannot be found beyond position 2 */
+//      if(i > 1) goto error ;                    /*  @ cannot be found beyond position 2 */
       Requests[set_nb].dates.in_use = RANGE ;
 //      if(i==0) Requests[set_nb].dates.data[0] = 0;              /* @ date .... */
-      if(i==1 && nelm>3) {                                            /* date @ date  or date @ delta */
+      if(i==1 && nelm>2) {                                            /* date @ date  or date @ delta */
         Requests[set_nb].dates.data[1] = date_list[2] ;
       }
       Requests[set_nb].dates.nelm = 2;
@@ -561,7 +561,7 @@ int Xc_Select_suppl(int set_nb, int des_exc, int ni, int nj, int nk, int ig1, in
   Requests[set_nb].ig3s    = ig3;
   Requests[set_nb].ig4s    = ig4;
   Requests[set_nb].grdtyps = gtyp;
-  fprintf(stderr,"CRITSUP: ni=%d nj=%d nk=%d ig1=%d ig2=%d ig3=%d ig4=%d gtyp='%c'\n",ni,nj,nj,ig1,ig2,ig2,ig4,gtyp);
+//  fprintf(stderr,"CRITSUP: ni=%d nj=%d nk=%d ig1=%d ig2=%d ig3=%d ig4=%d gtyp='%c'\n",ni,nj,nj,ig1,ig2,ig2,ig4,gtyp);
   return(0);
 error:
   Requests[set_nb].dates.in_use = UNUSED;
@@ -938,18 +938,17 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
     desire_exclure = (Requests[set_nb].exdes == DESIRE)  ? "desire" : "exclure";
 //fprintf(stderr,"matching request set %d\n",set_nb);
     Supplements:
-      supp_ok = 1;
       if (Requests[set_nb].in_use_supp) {   /* les criteres supplementires sont globaux */
-        if(Requests[set_nb].ig1s != ig1 && Requests[set_nb].ig1s != -1) supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig2s != ig2 && Requests[set_nb].ig2s != -1) supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig3s != ig3 && Requests[set_nb].ig3s != -1) supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].ig4s != ig2 && Requests[set_nb].ig4s != -1) supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].nis  !=  ni &&  Requests[set_nb].nis != -1) supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].njs  !=  nj &&  Requests[set_nb].njs != -1) supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].nks  !=  nk &&  Requests[set_nb].nks != -1) supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
-        if(Requests[set_nb].grdtyps  !=  grtyp[0] && Requests[set_nb].grdtyps != ' ') supp_ok = 0;  /* requete non satisfaite pour criteres supplementaires */
+        if( (Requests[set_nb].ig1s != ig1 && Requests[set_nb].ig1s != -1) 
+        ||  (Requests[set_nb].ig2s != ig2 && Requests[set_nb].ig2s != -1)
+        ||  (Requests[set_nb].ig3s != ig3 && Requests[set_nb].ig3s != -1)
+        ||  (Requests[set_nb].ig4s != ig2 && Requests[set_nb].ig4s != -1)
+        ||  (Requests[set_nb].nis  !=  ni &&  Requests[set_nb].nis != -1)
+        ||  (Requests[set_nb].njs  !=  nj &&  Requests[set_nb].njs != -1)
+        ||  (Requests[set_nb].nks  !=  nk &&  Requests[set_nb].nks != -1)
+        ||  (Requests[set_nb].grdtyps  !=  grtyp[0] && Requests[set_nb].grdtyps != ' ') ) continue;  /* requete non satisfaite pour criteres supplementaires */
       }
-      amatch = supp_ok;   /* requete satisfaite jusqu'ici si criteres supplementaires actifs et OK */
+      amatch = 1;   /* requete satisfaite jusqu'ici si criteres supplementaires actifs et OK */
     Etiquettes:
       if (Requests[set_nb].etiquettes.in_use) {
         amatch = 0;
@@ -1043,10 +1042,8 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
               fin = date;
             else
               fin = Requests[set_nb].dates.data[1];
-/***************************************************************/
-/* delta devrait etre en secondes, va falloir corriger le code */
-/***************************************************************/
             delta8 = Requests[set_nb].dates.delta;
+            delta8 /= 3600.0;  /* put delta in hours */
             dbprint(stddebug,"Debug C_fst_match_req verifie dates debut=%d fin=%d delta=%f\n",debut,fin,delta8);
             f77name(difdatr)(&date,&debut,&diff_deb);
             f77name(difdatr)(&date,&fin,&diff_fin);
@@ -1064,7 +1061,7 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
             fprintf(stderr,"error: C_fst_match_req invalid Requests[%d].dates.in_use=%d\n",
                   set_nb,Requests[set_nb].dates.in_use);
             return(0);
-            break;
+            break;     /* this never gets executed */
 
           } /* end switch */
       }
@@ -1151,7 +1148,7 @@ int c_fst_match_req(int handle)
   ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,
                      &nbits,&datyp,&ip1,&ip2,&ip3,typvar,
                      nomvar,etiket,grtyp,&ig1,&ig2,&ig3,&ig4,&swa,&lng,
-                     &dltf,&ubc,&xtra1,&xtra2,&xtra3);
+                     &dltf,&ubc,&datevalid,&xtra2,&xtra3);
 
   if (ier < 0) return(0);
   status = c_fst_match_parm(handle, datevalid, ni, nj, nk, ip1, ip2, ip3,
@@ -1175,7 +1172,7 @@ int C_fst_match_req(int handle)
   ier = c_fstprm(handle,&dateo,&deet,&npas,&ni,&nj,&nk,
                      &nbits,&datyp,&ip1,&ip2,&ip3,typvar,
                      nomvar,etiket,grtyp,&ig1,&ig2,&ig3,&ig4,&swa,&lng,
-                     &dltf,&ubc,&xtra1,&xtra2,&xtra3);
+                     &dltf,&ubc,&datevalid,&xtra2,&xtra3);
 
   if (ier < 0) return(0);
   status = c_fst_match_parm(handle, datevalid, ni, nj, nk, ip1, ip2, ip3,
@@ -1473,13 +1470,18 @@ void c_requetes_init(char *requetes_filename, char *debug_filename)
   for (i=0; i<MAX_requetes; i++) {
     C_requetes_reset(i,0,0,0,0,0,0,0);
   }
-
+#ifdef NO_LONGER_USED
   /* requetes_filename = getenv("FST_FILTER_FILE"); */
   if (requetes_filename != NULL)
     ier = C_requetes_read_file(requetes_filename);
+#endif
   fprintf(stderr,"request table initialized \n");
   package_not_initialized = 0;
 }
+
+/*****************************************   start of deprecated code *****************************************/
+#ifdef NO_LONGER_USED
+
 /*****************************************************************************
  *                      D I R E C T I V E S _ I P 1 2 3                      *
  *                                                                           *
@@ -1804,6 +1806,9 @@ return 0;
 
 	return 0; /*CHC/NRC*/
 }
+
+#endif
+/*****************************************   end of deprecated code *****************************************/
 #if defined (TEST)
 //void f77name(c_main)(int *handle)
 //c_main(int argc, char **argv)

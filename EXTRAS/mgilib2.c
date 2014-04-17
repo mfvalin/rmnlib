@@ -545,7 +545,7 @@ ftnword f77name (mgi_init) (char *channel_name, F2Cl lname)
  * 
  * status  : channel number if valid channel number, error code otherwise
  ********************************************************************************************/
-ftnword f77name (mgi_open) (ftnword *f_chan, char *mode, int lmode)
+ftnword f77name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
      /* to open a channel in mode "mode"; where mode can be:
 	'R' for reading
 	'W' for writing
