@@ -126,7 +126,7 @@ while(1){
 #if defined(linux)  
   i = shmctl(to_watch,IPC_STAT,&shm_stat);
   if(i == -1) exit(0);               /* segment no longer accessible, quit */
-    if(shm_stat.shm_nattch >= 2) {   /* segment attached by another process */
+    if(shm_stat.shm_nattch >= 3) {   /* segment attached by 2 other processes */
     break;                           /* job done, exit */
   }
 #else

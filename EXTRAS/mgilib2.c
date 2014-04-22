@@ -85,7 +85,7 @@
 #include <gossip.h>
 
 /* error codes header file */
-#include "cgossip.h"
+#include <cgossip.h>
 
 #define  CLOSE      -5
 #define  TIMEOUT    -5
@@ -659,7 +659,7 @@ int retry_connect( int chan )
  * write into shared memory buffer, character version
  ********************************************************************************************/
 static int shm_write_c(mgi_shm_buf *shm,void *buf,int nelem,int timeout){
-  int in, out, limit, inplus;
+  volatile int in, out, limit, inplus;
   int ntok=nelem;
   unsigned char *str = (unsigned char *) buf;
   unsigned int token;
@@ -693,7 +693,7 @@ static int shm_write_c(mgi_shm_buf *shm,void *buf,int nelem,int timeout){
  * write into shared memory buffer, integer/real/double/character version
  ********************************************************************************************/
 static int shm_write(mgi_shm_buf *shm,void *buf,int nelem,int type,int timeout){
-  int in, out, limit, inplus;
+  volatile int in, out, limit, inplus;
   int ntok;
   unsigned int *buffer = (unsigned int *) buf ;
   int maxiter = timeout*1000 ; /* 1000 iterations is one second */
@@ -725,13 +725,14 @@ static int shm_write(mgi_shm_buf *shm,void *buf,int nelem,int type,int timeout){
   shm->in = in;  /* update in pointer in shared memory */
   return(ntok*sizeof(unsigned int));
 }
-
-
+int ShmWriteBuf(mgi_shm_buf *shm,void *buf,int nelem,int type,int timeout){
+  return( shm_write(shm,buf,nelem,type,timeout) );
+}
 /********************************************************************************************
  * read from shared memory buffer, character version
  ********************************************************************************************/
 static int shm_read_c(mgi_shm_buf *shm,void *buf,int nelem, int len,int timeout){
-  int in, out, limit;
+  volatile int in, out, limit;
   int ntok=nelem;
   unsigned char *str = (unsigned char *) buf;
   unsigned int token;
@@ -766,8 +767,8 @@ static int shm_read_c(mgi_shm_buf *shm,void *buf,int nelem, int len,int timeout)
  * read from shared memory buffer, integer/real/double/character version
  ********************************************************************************************/
 static int shm_read(mgi_shm_buf *shm,void *buf,int nelem,int type, int len,int timeout){
-  int in, out, limit;
-  int ntok, factor;
+  volatile int in, out, limit;
+  int ntok, factor=1;
   unsigned int *buffer = (unsigned int *) buf ;
   int maxiter = timeout*1000 ; /* 1000 iterations is one second */
   int iter;
@@ -776,7 +777,6 @@ static int shm_read(mgi_shm_buf *shm,void *buf,int nelem,int type, int len,int t
     
   if(type == 'C') return ( shm_read_c(shm,buf,nelem,len,timeout) );        /* characters */
   if(type != 'I' && type != 'R' && type != 'D') return(READ_ERROR) ;       /* unsupported type */
-  ntok = nelem;
   if(type == 'D') factor =2 ;                 /* 8 byte tokens */
   ntok = nelem * factor;
 
@@ -798,7 +798,9 @@ static int shm_read(mgi_shm_buf *shm,void *buf,int nelem,int type, int len,int t
   shm->out = out;  /* update out pointer in shared memory */
   return(nelem*factor);
 }
-
+int ShmReadBuf(mgi_shm_buf *shm,void *buf,int nelem,int type, int len,int timeout){
+  return( shm_read(shm,buf,nelem,type,len,timeout) );
+}
 /********************************************************************************************
  * status = mgi_write(channel,buffer,nelem,dtype)
  * channel   : channel number obtained from mgi_init

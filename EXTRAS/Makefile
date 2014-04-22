@@ -4,7 +4,7 @@ DISTDIR=..
 # EXTRAS  : load in local library
 EXTRAS = fstd98.o DlInterface.o convert_ip123.o fst_missing.o register_dl_routines.o dlfcn.o convip_plus.o
 # EXTRAS2 : do not load yet
-EXTRAS2 = float_packer.o  c_zfstlib.o vmm.o excdes_new.o
+EXTRAS2 = float_packer.o  c_zfstlib.o vmm.o excdes_new.o mgilib2.o
 TESTS = test_z test_p test_f test_ff test_d test_c test_excdes
 
 #RMNLIB = librmnbeta_14.819u.a
@@ -17,6 +17,9 @@ EXTRA_LOCAL_R := -ILocalinclude/$(EC_ARCH) -LLocallib/$(EC_ARCH) -l$(BASE_RMNLIB
 all:	obj
 
 # dynamic loader interface
+mgilib2.o:	mgilib2.c
+	s.cc -c mgilib2.c
+
 DlInterface.o:	DlInterface.c
 	s.cc -c DlInterface.c
 
@@ -120,6 +123,9 @@ test_z:	c_zfstlib.c
 test_c:	$(TEST_RMNLIB) test_c_convip.c test_f_convip.f90
 	s.cc -c test_c_convip.c
 	s.f90 -o $@ test_f_convip.f90 test_c_convip.o $(EXTRA_LOCAL)
+
+mgi_test: $(TEST_RMNLIB) mgi_test.c
+	s.cc -o $@  mgi_test.c $(EXTRA_LOCAL)
 
 obj: $(EXTRAS) $(EXTRAS2)
 #	rm -f *.o *.mod
