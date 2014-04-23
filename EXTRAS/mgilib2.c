@@ -473,7 +473,9 @@ ftnword f77_name (mgi_init) (char *channel_name, F2Cl lname)
 {
   int chan;
   char env_var_name[1024];
+  char shm_fil_name[1024];
   char *env_var_value;
+  FILE *FD;
 
   if (init == 0)
     {
@@ -514,14 +516,27 @@ ftnword f77_name (mgi_init) (char *channel_name, F2Cl lname)
       chn[chan].gchannel = 0;
       chn[chan].shmid = -1;   /* set shared memory id to unused */
       chn[chan].shmbuf = NULL;
+      chn[chan].buffer = NULL;
 
       snprintf(env_var_name,sizeof(env_var_name)-1,"SHM_%s",chn[chan].name);
       env_var_name[sizeof(env_var_name)-1]='\0';
       env_var_value = getenv(env_var_name);
       if(env_var_value != NULL) {                /* it is a shared memory channel */
         chn[chan].shmid = atoi(env_var_value);   /* get shared memory segment ID */
+      }else{  /* look for a channel id file */
+        snprintf(shm_fil_name,sizeof(shm_fil_name),"%s/.gossip/SHM/%s.id",getenv("HOME"),chn[chan].name);
+        FD=fopen(shm_fil_name,"w");
+        if(FD != NULL){
+          fscanf(FD,"%d",&chn[chan].shmid);  /* get shared memory segment ID */
+          fclose(FD);
+        }
+      }
+      if(chn[chan].shmid != -1) {                /* it is a shared memory channel */
         chn[chan].shmbuf = shmat(chn[chan].shmid, NULL, 0);
-        if(chn[chan].shmbuf == (void *) -1) chn[chan].shmbuf = NULL;  /* cannot attach shared memory segment */
+        if(chn[chan].shmbuf == (void *) -1) { /* cannot attach shared memory segment */
+          fprintf(stderr,"ERROR: (mgi_init)  channel '%s': Cannot attach shared memory segment %d\n",chn[chan].name,chn[chan].shmid);
+          return INIT_ERROR;
+        }
         /* chn[chan].shmbuf->limit must not be 0 if memory segment was properly initialized at creation  */
       }
 
@@ -572,6 +587,7 @@ ftnword f77_name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
         if( chn[chan].gchannel < 0 )
           chn[chan].gchannel = retry_connect( chan );
       } else {   /* it is  a shared memory channel, initialize it for write  */
+fprintf(stderr,"DEBUG W \n");
         shm = chn[chan].shmbuf;
         if(shm->write_status != -2) return CONNECTION_ERROR;  /* not initialized for write or already connected for write */
         shm->write_status = 1;  /* mark as connected for write */
@@ -589,6 +605,7 @@ ftnword f77_name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
         if( chn[chan].gchannel < 0 )
           chn[chan].gchannel = retry_connect( chan );
       } else {   /* it is  a shared memory channel, initialize it for read */
+        fprintf(stderr,"DEBUG W \n");
         shm = chn[chan].shmbuf;
         if(shm->read_status != -2) return CONNECTION_ERROR;  /* not initialized for write or already connected for write */
         shm->read_status = 1;  /* mark as connected for read */

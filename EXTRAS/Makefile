@@ -127,6 +127,15 @@ test_c:	$(TEST_RMNLIB) test_c_convip.c test_f_convip.f90
 mgi_test: $(TEST_RMNLIB) mgi_test.c
 	s.cc -o $@  mgi_test.c $(EXTRA_LOCAL)
 
+mgi_shm: $(TEST_RMNLIB) mgi_shm.c
+	s.cc -o $@  mgi_shm.c
+
+mgi_watch: $(TEST_RMNLIB) mgi_watch.c
+	s.cc -o $@  mgi_watch.c
+
+f_mgi_test: $(TEST_RMNLIB) f_mgi_test.f90
+	s.f90 -o $@  f_mgi_test.f90 $(EXTRA_LOCAL)
+
 obj: $(EXTRAS) $(EXTRAS2)
 #	rm -f *.o *.mod
 

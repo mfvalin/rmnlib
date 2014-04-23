@@ -44,6 +44,7 @@ int shm_size_k;
 mgi_shm_buf *shm;
 char channel_filename[1024];
 int fd;
+FILE *FD;
 int nints;
 
 if(argc < 2 || argc >3) {
@@ -54,10 +55,23 @@ if(argc < 2 || argc >3) {
 }
 
 to_create=atoi(argv[1]);
+FD=NULL;
+if(argc == 3){
+  snprintf(channel_filename,sizeof(channel_filename),"%s/.gossip/SHM/%s.id",getenv("HOME"),argv[2]);
+  FD=fopen(channel_filename,"w");
+  if(FD==NULL){
+    fprintf(stderr,"ERROR: cannot open %s\n",channel_filename);
+    exit(1);
+  }
+}
 to_watch=shmget(IPC_PRIVATE,to_create*1024,0600);
 if(to_watch == -1) {
   fprintf(stderr,"ERROR: shared memory segment creation failed\n");
   exit(1);
+}
+if(FD != NULL){
+  fprintf(FD,"%d",to_watch);
+  fclose(FD);
 }
 fprintf(stdout,"%d\n",to_watch);
 fflush(stdout);
@@ -71,12 +85,12 @@ if(shm == (void *) -1) {
   fprintf(stderr,"INFO: memory segment %d successfully attached\n",to_watch);
 }
 
-sleep(1);
+usleep(50000);  /* 50 milliseconds */
 /* on non linux systems, it is not possible to attach a shared memory area that is marked for deletion */
 #if defined(linux)
 i = shmctl(to_watch,IPC_RMID,NULL);   /* immediately mark segment for removal if linux */
 #endif
-sleep(1);
+usleep(50000);  /* 50 milliseconds */
 
 i = shmctl(to_watch,IPC_STAT,&shm_stat);
 shm_size = shm_stat.shm_segsz / 1024;

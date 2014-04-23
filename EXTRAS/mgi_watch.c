@@ -60,7 +60,7 @@ main(int argc, char **argv)
       rtime /= 1000000.;
       fprintf(stderr,"%12.3f: size = %d, attach count = %d, creator=%d, last attach=%d ",rtime,
               (int)shm_stat.shm_segsz,(int)shm_stat.shm_nattch,shm_stat.shm_cpid,shm_stat.shm_lpid);
-      fprintf(stderr,"%12.3f: first=%d, in=%d, out=%d, limit=%d, rs=%d, ws=%d\n",rtime,
+      fprintf(stderr," first=%d, in=%d, out=%d, limit=%d, rs=%d, ws=%d\n",
               shm->first,shm->in,shm->out,shm->limit,shm->read_status,shm->write_status);
     }
     in = shm->in;
