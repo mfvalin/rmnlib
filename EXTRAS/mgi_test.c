@@ -31,6 +31,7 @@ main(int argc, char **argv)
   int delay=1;
   int errors;
   int status;
+  int channel;
 
   if(argc<4) {
     usage(argv[0]);
@@ -45,6 +46,7 @@ main(int argc, char **argv)
   }
   if(mode == 'R') mgi_mode = "expecting";
   else  mgi_mode = "sending";
+
   scenario=fopen(argv[3],"r");
   if(scenario == NULL) {
     fprintf(stderr," %s: cannot open file %s\n",argv[0],argv[3]);
@@ -55,9 +57,17 @@ main(int argc, char **argv)
     fprintf(stderr," %s: cannot attach shared memory area %d\n",argv[0],shmid);
     exit (1);
   }
-  if(mode == 'W')shm->write_status = 1;
-  if(mode == 'R')shm->read_status = 1;
-     while(fgets(line,sizeof(line)-1,scenario) != NULL) {  /* read scenario file */
+  channel = C_mgi_init("test");
+  fprintf(stderr,"channel %d successfully initialized\n",channel);
+  if(mode == 'W') {
+    C_mgi_open (channel, 'W');
+    shm->write_status = 1;
+  }
+  if(mode == 'R') {
+    C_mgi_open (channel, 'R');
+    shm->read_status = 1;
+  }
+    while(fgets(line,sizeof(line)-1,scenario) != NULL) {  /* read scenario file */
     if(mode == 'W') sleep(delay);    /* make sure that reader will have to wait */
     ptr = &line[0];
     while(*ptr == '\'') ptr++;
@@ -73,7 +83,7 @@ main(int argc, char **argv)
           fprintf(stderr,"\n");
         }
         if(mode == 'R'){
-          fprintf(stderr,"found %d I words in buffer\n",shm->in-shm->out);
+//          fprintf(stderr,"found %d I words in buffer\n",shm->in-shm->out);
           status = ShmReadBuf(shm,ibuf2,ni,'I',ni,10);
           fprintf(stderr,"Read status = %d\n",status);
           if(status == READ_TIMEOUT) {
@@ -84,7 +94,8 @@ main(int argc, char **argv)
           for(i=0;i<ni;i++) { if(ibuf[i] != ibuf2[i]) { fprintf(stderr,"I=%d, expected %d, got %d\n",i,ibuf[i],ibuf2[i]); errors++; } }
           fprintf(stderr,"INFO: errors=%d\n",errors);
         }else{
-          ShmWriteBuf(shm,ibuf,ni,'I',10);
+          status = ShmWriteBuf(shm,ibuf,ni,'I',10);
+          fprintf(stderr,"Write status = %d\n",status);
         }
         break;
       case 'R':
@@ -95,13 +106,15 @@ main(int argc, char **argv)
           for(i=0;i<nf;i++) { fbuf[i] = f0 + i * fdelta ; fprintf(stderr," %f",fbuf[i]); }
           fprintf(stderr,"\n");
           if(mode == 'R'){
-            fprintf(stderr,"found %d R words in buffer\n",shm->in-shm->out);
+//            fprintf(stderr,"found %d R words in buffer\n",shm->in-shm->out);
             status = ShmReadBuf(shm,fbuf2,nf,'R',nf,10);
+            fprintf(stderr,"Read status = %d\n",status);
             errors = 0;
             for(i=0;i<nf;i++) { if(fbuf[i] != fbuf2[i]) { fprintf(stderr,"I=%d, expected %f, got %f\n",i,fbuf[i],fbuf2[i]); errors++; } }
             fprintf(stderr,"INFO: errors=%d\n",errors);
           }else{
-            ShmWriteBuf(shm,fbuf,nf,'R',10);
+            status = ShmWriteBuf(shm,fbuf,nf,'R',10);
+            fprintf(stderr,"Write status = %d\n",status);
           }
         }
         break;
@@ -113,13 +126,15 @@ main(int argc, char **argv)
           for(i=0;i<nd;i++) { dbuf[i] = d0 + i * ddelta ; fprintf(stderr," %lf",dbuf[i]); }
           fprintf(stderr,"\n");
           if(mode == 'R'){
-            fprintf(stderr,"found %d D words in buffer\n",(shm->in-shm->out)/2);
+//            fprintf(stderr,"found %d D words in buffer\n",(shm->in-shm->out)/2);
             status = ShmReadBuf(shm,dbuf2,nd,'D',nd,10);
+            fprintf(stderr,"Read status = %d\n",status);
             errors = 0;
             for(i=0;i<nf;i++) { if(dbuf[i] != dbuf2[i]) { fprintf(stderr,"I=%d, expected %f, got %f\n",i,dbuf[i],dbuf2[i]); errors++; } }
             fprintf(stderr,"INFO: errors=%d\n",errors);
           }else{
-            ShmWriteBuf(shm,dbuf,nd,'D',10);
+            status = ShmWriteBuf(shm,dbuf,nd,'D',10);
+            fprintf(stderr,"Write status = %d\n",status);
           }
         }
         break;
@@ -127,4 +142,8 @@ main(int argc, char **argv)
         break;
     }
   }
+  fprintf(stderr,"preparing to close shared memory channel %d \n",channel);
+  C_mgi_clos(channel);
+  fprintf(stderr,"preparing to terminate all shared memory channels %d \n",channel);
+  C_mgi_term();
 }

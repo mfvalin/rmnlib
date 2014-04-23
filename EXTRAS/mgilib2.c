@@ -111,13 +111,13 @@ static int validchan (int chan);
 static void strcopy (char *s, char *t, int charlen);
 #endif
 
-ftnword f77name (mgi_init) (char *channel_name, F2Cl lname);
-ftnword f77name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode);
-ftnword f77name (mgi_read) (ftnword *f_chan, void *data, ftnword *f_nelm, char *dtype, F2Cl ltype);
-ftnword f77name (mgi_write) (ftnword *f_chan, void *data, ftnword *f_nelm, char *dtype, F2Cl ltype);
-ftnword f77name (mgi_clos) (ftnword *f_chan);
-ftnword f77name (mgi_term) ();
-void f77name (mgi_set_timeout) (ftnword *chan, ftnword *timeout);
+ftnword f77_name (mgi_init) (char *channel_name, F2Cl lname);
+ftnword f77_name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode);
+ftnword f77_name (mgi_read) (ftnword *f_chan, void *data, ftnword *f_nelm, char *dtype, F2Cl ltype);
+ftnword f77_name (mgi_write) (ftnword *f_chan, void *data, ftnword *f_nelm, char *dtype, F2Cl ltype);
+ftnword f77_name (mgi_clos) (ftnword *f_chan);
+ftnword f77_name (mgi_term) ();
+void f77_name (mgi_set_timeout) (ftnword *chan, ftnword *timeout);
 
 extern int connect_to_subchannel_by_name (char *channel, char *subchannel, char *mode);
 extern int GET_ack_nack (int socket, char *message);
@@ -136,8 +136,8 @@ extern int retry_connect(int chan);
 extern int get_timeout_signal(int gchannel);
 extern int signal_timeout(int gchannel);
 
-//ftnword f77name (mgi_read_oob) ();   /* read out of band */
-//ftnword f77name (mgi_write_oob) ();   /* write out of band */
+//ftnword f77_name (mgi_read_oob) ();   /* read out of band */
+//ftnword f77_name (mgi_write_oob) ();   /* write out of band */
 
 /***********************************************************************************************/
 
@@ -157,7 +157,7 @@ static int validchan( int chan )
 }
 /***********************************************************************************************/
 
-void f77name (mgi_set_timeout) (ftnword *chan, ftnword *timeout)
+void f77_name (mgi_set_timeout) (ftnword *chan, ftnword *timeout)
 {
   int channel = *chan;
   if(validchan(channel) != 0) return; /* invalid channel */
@@ -183,7 +183,7 @@ static void strcopy( char *s, char *t, int charlen )
 /*********************************************************************************************/
 #ifdef NOTUSED
 
-void f77name (mgi_nosig) ()
+void f77_name (mgi_nosig) ()
      /* to disable the signals between filepipes */
 {
   /* SIG_ACTIVE = 0; */
@@ -369,7 +369,7 @@ static int bwrite ( int chan, void *buffer, int nelem, char *dtype )
  * status = mgi_clos(channel_number)
  * status == 0 : no error
  ********************************************************************************************/
-ftnword f77name (mgi_clos) (ftnword *f_chan)
+ftnword f77_name (mgi_clos) (ftnword *f_chan)
 {
   int ier = 0, chan;
   char buf[1024];
@@ -383,7 +383,7 @@ ftnword f77name (mgi_clos) (ftnword *f_chan)
       if(chn[chan].shmbuf->write_status == 1) {
         chn[chan].shmbuf->write_status = -2;    /* mark as initialized but not open for write */
       }else{
-        fprintf(stderr,"ERROR: (mgi_clos) inconsistent write status on channel '%s'\n",chn[chan].name);
+        fprintf(stderr,"ERROR: (mgi_clos) inconsistent write status on shm channel '%s'\n",chn[chan].name);
       }
     }
 
@@ -391,13 +391,13 @@ ftnword f77name (mgi_clos) (ftnword *f_chan)
       if(chn[chan].shmbuf->read_status  == 1) {
         chn[chan].shmbuf->read_status  = -2;    /* mark as initialized but not open for read  */
       }else{
-        fprintf(stderr,"ERROR: (mgi_clos) inconsistent read status on channel '%s'\n",chn[chan].name);
+        fprintf(stderr,"ERROR: (mgi_clos) inconsistent read status on shm channel '%s'\n",chn[chan].name);
       }
     }
-    fprintf(stderr,"INFO: (mgi_clos) memory channel '%s' is closed \n", chn[chan].name);
+    fprintf(stderr,"INFO: (mgi_clos) shared memory channel '%s' is closed \n", chn[chan].name);
     chn[chan].mode = ' ';      /* mark channel as no longer open */
     return 0;
-  }
+  }  /* shared memory channel  */
 
   if(chn[chan].gchannel != 0)   /* TCP/IP channel */
     {
@@ -414,12 +414,15 @@ ftnword f77name (mgi_clos) (ftnword *f_chan)
   return ier;
   
 }
-
+int C_mgi_clos (int c_chan){
+  ftnword f_chan=c_chan;
+  return (f77_name (mgi_clos) (&f_chan)) ;
+}
 /********************************************************************************************
  * close all channels, detach from shared memory if shared memory channel
  * return value: 0 if no error, != 0 if error
  ********************************************************************************************/
-ftnword f77name (mgi_term) ()
+ftnword f77_name (mgi_term) ()
 {
   int chan, ier = -1;
 
@@ -429,12 +432,11 @@ ftnword f77name (mgi_term) ()
         /* get number of attaches, if == 1 i am last and will dump rest of buffer into resatart file */
         if(chn[chan].shmbuf->write_status == -2 && chn[chan].shmbuf->read_status == -2) {  /* both close operations done */
           if(chn[chan].shmbuf->in != chn[chan].shmbuf->out){                               /* buffer is not empty */
-            fprintf(stderr,"WARNING: (mgi_term) shared memory channel '%s' fully closed but not empty\n", chn[chan].name);
+            fprintf(stderr,"WARNING: (mgi_term) shared memory channel '%s' is not empty\n", chn[chan].name);
             /* open channel file for exclusive writing and dump buffer */
-          }else{
-            fprintf(stderr,"INFO: (mgi_term) shared memory channel '%s' fully closed\n", chn[chan].name);
           }
         }
+        fprintf(stderr,"INFO: (mgi_term) shared memory channel '%s' fully closed\n", chn[chan].name);
         ier = 0;
         ier = shmdt(chn[chan].shmbuf) ; /* detach from shared memory */
         chn[chan].shmbuf = NULL;        /* make it obvious that process has detached */
@@ -456,14 +458,16 @@ ftnword f77name (mgi_term) ()
 
   return ier;
 }
-
+int C_mgi_term(){
+  return( f77_name (mgi_term) () );
+}
 /********************************************************************************************
  * channel = mgi_init(channel_name)
  * channel_name : Fortran string
  * channel : channel number ( < 0 if error)
  * 
  ********************************************************************************************/
-ftnword f77name (mgi_init) (char *channel_name, F2Cl lname)
+ftnword f77_name (mgi_init) (char *channel_name, F2Cl lname)
      /* To initialize a channel given a channel_name.
 	It will return a number to represent this channel (1 to MAX_CHANNELS-1 */
 {
@@ -500,10 +504,6 @@ ftnword f77name (mgi_init) (char *channel_name, F2Cl lname)
         return INIT_ERROR;   /* return -1; */
       }
       chn[chan].fd_data = -1;
-      if (SIG_ACTIVE)
-	{
-          fprintf(stderr,"INFO: (mgi_init) Opening channel: '%s' \n", chn[chan].name);
-	}
     
       /* initialize channel */
       chn[chan].msgno_W = 0;
@@ -515,7 +515,7 @@ ftnword f77name (mgi_init) (char *channel_name, F2Cl lname)
       chn[chan].shmid = -1;   /* set shared memory id to unused */
       chn[chan].shmbuf = NULL;
 
-      snprintf(env_var_name,sizeof(env_var_name),"SHM_%s",chn[chan].name);
+      snprintf(env_var_name,sizeof(env_var_name)-1,"SHM_%s",chn[chan].name);
       env_var_name[sizeof(env_var_name)-1]='\0';
       env_var_value = getenv(env_var_name);
       if(env_var_value != NULL) {                /* it is a shared memory channel */
@@ -525,7 +525,11 @@ ftnword f77name (mgi_init) (char *channel_name, F2Cl lname)
         /* chn[chan].shmbuf->limit must not be 0 if memory segment was properly initialized at creation  */
       }
 
-    if ((intBuffer = (int *) malloc(BUFSIZE * sizeof(int))) == NULL)
+      if (SIG_ACTIVE)
+      {
+        fprintf(stderr,"INFO: (mgi_init) Initializing %s channel: '%s' \n", (chn[chan].shmbuf == NULL) ? "TCP/IP" : "shared memory" , chn[chan].name);
+      }
+      if ((intBuffer = (int *) malloc(BUFSIZE * sizeof(int))) == NULL)
       {
         fprintf(stderr,"ERROR: (mgi_init)  channel '%s': Cannot allocate memory for intBuffer\n",chn[chan].name);
         return INIT_ERROR;
@@ -536,7 +540,10 @@ ftnword f77name (mgi_init) (char *channel_name, F2Cl lname)
 
   return(chan);
 }
-
+int C_mgi_init (char *channel_name){
+  F2Cl lname = strlen(channel_name);
+  return (f77_name (mgi_init) (channel_name, lname)) ;
+}
 /********************************************************************************************
  * open a previously initialized channel (mgi_init) for read/write/store
  * status = mgi_open(channel,mode)
@@ -545,7 +552,7 @@ ftnword f77name (mgi_init) (char *channel_name, F2Cl lname)
  * 
  * status  : channel number if valid channel number, error code otherwise
  ********************************************************************************************/
-ftnword f77name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
+ftnword f77_name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
      /* to open a channel in mode "mode"; where mode can be:
 	'R' for reading
 	'W' for writing
@@ -559,7 +566,7 @@ ftnword f77name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
   if(validchan(chan) != 0) return(CONNECTION_ERROR); /* invalid channel */
   if (*mode == 'W') 
     {
-      if(chn[chan].shmbuf != NULL) {   /* not a shared memory channel */
+      if(chn[chan].shmbuf == NULL) {   /* not a shared memory channel */
         chn[chan].gchannel = connect_to_subchannel_by_name( get_gossip_dir(0), chn[chan].name, "write" );
 
         if( chn[chan].gchannel < 0 )
@@ -576,7 +583,7 @@ ftnword f77name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
     }
   else if (*mode == 'R') 
     {
-      if(chn[chan].shmbuf != NULL) {   /* not a shared memory channel */
+      if(chn[chan].shmbuf == NULL) {   /* not a shared memory channel */
         chn[chan].gchannel = connect_to_subchannel_by_name( get_gossip_dir(0), chn[chan].name, "read" );
 
         if( chn[chan].gchannel < 0 )
@@ -608,9 +615,18 @@ ftnword f77name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
   /* initialize timeout table */
   init_client_table( chn[chan].gchannel );
 
+  if (SIG_ACTIVE)
+  {
+    fprintf(stderr,"INFO: (mgi_open) Opening channel: '%s' , mode = '%c'\n", chn[chan].name, *mode) ;
+  }
   return chan;
 }
-
+int C_mgi_open (int c_chan, char c_mode){
+  F2Cl lmode=1;
+  ftnword f_chan=c_chan;
+  char mode=c_mode;
+  return( f77_name (mgi_open) (&f_chan, &mode, lmode) );
+}
 
 /********************************************************************************************
  * connection helpers
@@ -621,7 +637,7 @@ ftnword f77name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
 /* else use user value                    */
 
 int USER_TRY_CONNECT = 10;
-void f77name (mgi_set_retry_connect) (ftnword *try_nbr)
+void f77_name (mgi_set_retry_connect) (ftnword *try_nbr)
 {
   printf( "INFO: (mgi_open) setting try to connect USER_TRY_CONNECT: '%d' times\n", (int) *try_nbr );
   if((int) *try_nbr > 0 && (int) *try_nbr < 10)
@@ -810,7 +826,7 @@ int ShmReadBuf(mgi_shm_buf *shm,void *buf,int nelem,int type, int len,int timeou
  *
  * status    : number of bytes not written or -1 if invalid channel number
  ********************************************************************************************/
-ftnword f77name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, char *dtype, F2Cl ltype)
+ftnword f77_name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, char *dtype, F2Cl ltype)
      /* to write elements from "buffer" into the specified channel
 	opened for WRITEMODE. It actually writes
 	
@@ -934,7 +950,12 @@ ftnword f77name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, ch
 
   return nb;
 }
-
+int C_mgi_write (ftnword *f_chan, void *buffer, int c_nelem, char c_dtype){
+  F2Cl ltype=1;
+  char dtype=c_dtype;
+  ftnword f_nelem=c_nelem;
+  return( f77_name (mgi_write) (f_chan, buffer, &f_nelem, &dtype, ltype) );
+}
 /********************************************************************************************
  * status = mgi_read(channel,buffer,nelem,dtype)
  * channel   : channel number obtained from mgi_init
@@ -944,7 +965,7 @@ ftnword f77name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, ch
  *
  * status    : number of bytes read or negative error code 
  ********************************************************************************************/
-ftnword f77name (mgi_read) (ftnword *f_chan, void *buffer, ftnword *f_nelem, char *dtype, F2Cl ltype)
+ftnword f77_name (mgi_read) (ftnword *f_chan, void *buffer, ftnword *f_nelem, char *dtype, F2Cl ltype)
 
      /* to read elements directly from the data file related to the 
 	specified channel into "buffer". The channel must be opened for 
@@ -1156,5 +1177,11 @@ ftnword f77name (mgi_read) (ftnword *f_chan, void *buffer, ftnword *f_nelem, cha
 
   return ier;
 }
-
+int C_mgi_read (int c_chan, void *buffer, int c_nelem, char c_dtype){
+  ftnword f_chan=c_chan;
+  ftnword f_nelem=c_nelem;
+  F2Cl ltype=1;
+  char dtype=c_dtype;
+  return( f77_name (mgi_read) (&f_chan, buffer, &f_nelem, &dtype, ltype) );
+}
 
