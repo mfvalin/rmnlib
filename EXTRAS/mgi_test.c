@@ -10,7 +10,7 @@
 #include <mgi.h>
 
 void usage(char *pgm) {
-  fprintf(stderr,"usage: %s shared_memory_id R|W scenario_file\n",pgm);
+  fprintf(stderr,"usage: %s shared_memory_id|channel_name R|W scenario_file\n",pgm);
 }
 
 main(int argc, char **argv)
@@ -32,12 +32,30 @@ main(int argc, char **argv)
   int errors;
   int status;
   int channel;
-
+  char channel_filename[1024];
+  FILE *FD;
+  
   if(argc<4) {
     usage(argv[0]);
     exit(1);
   }
   shmid = atoi(argv[1]);
+  if(shmid <= 0){   /* channel name ? */
+    snprintf(channel_filename,sizeof(channel_filename),"%s/.gossip/SHM/%s.id",getenv("HOME"),argv[1]);
+    fprintf(stderr,"INFO: opening %s\n",channel_filename);
+    FD=fopen(channel_filename,"r");
+    if(FD==NULL){
+      fprintf(stderr,"ERROR: cannot open %s\n",channel_filename);
+      exit(1);
+    }
+    i=fscanf(FD,"%d",&shmid);
+    fclose(FD);
+    if(i<1 || shmid==0){
+      fprintf(stderr,"ERROR: shared memory id unreadable for channel %s\n",channel_filename);
+      exit(1);
+    }
+  }
+  fprintf(stderr,"INFO: shared memory id : %d\n",shmid);
   mode = *argv[2];   /*  R = reader mode, W = writer mode */
   if(mode != 'R' && mode != 'W') {
     fprintf(stderr," %s: invalid mode %c\n",argv[0],*argv[2]);
@@ -56,6 +74,12 @@ main(int argc, char **argv)
   if(shm == (void *) -1) {
     fprintf(stderr," %s: cannot attach shared memory area %d\n",argv[0],shmid);
     exit (1);
+  }
+  if(mode == 'W') {
+    shm->write_status = -2;    /* reinitialize to inactive state */
+  }
+  if(mode == 'R') {
+    shm->read_status = -2;    /* reinitialize to inactive state */
   }
   channel = C_mgi_init("test");
   fprintf(stderr,"channel %d successfully initialized\n",channel);

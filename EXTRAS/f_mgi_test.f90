@@ -12,21 +12,24 @@ program f_mgi_test
 
   integer, parameter :: MAXVAL=100
   integer status
-  integer, external :: mgi_open, mgi_init, mgi_clos, mgi_term, mgi_erad, mgi_write
+  integer, external :: mgi_open, mgi_init, mgi_clos, mgi_term, mgi_read, mgi_write
   integer, external :: iargc
   character(len=1) :: what, testmode
-  character(len=1024) :: string, testfile
+  character(len=1024) :: string, testfile, string2
   real :: start, end, delta
-  integer, dimension(MAXVAL) :: is
-  real, dimension(MAXVAL) :: fs
-  real*8, dimension(MAXVAL) :: ds
+  integer, dimension(MAXVAL) :: is, is2
+  real, dimension(MAXVAL) :: fs, fs2
+  real*8, dimension(MAXVAL) :: ds, ds2
   integer :: iostat, nval, i, shmemid, nargs, channel
+  character(len=128)channel_name
 
   nargs = iargc()
   if(nargs >= 1) then
     call getarg(1,string)
-    read(string,*)shmemid   ! memory segment id
-    print *,' memory segment id=',shmemid
+!    read(string,*)shmemid   ! memory segment id
+!    print *,' memory segment id=',shmemid
+    channel_name=trim(string)
+    print *,'shared memory channel = ',trim(channel_name)
   endif
   if(nargs >= 2) then
     call getarg(2,string)
@@ -49,10 +52,15 @@ program f_mgi_test
   print *,'status=',status
   call sleep_a_bit(1)
 
+  print *,'List of error codes'
+  do i = -1,-11,-1
+    call print_mgi_error(i)
+  enddo
   open(unit=10,file=trim(testfile),form='FORMATTED')
   read(10,*,iostat=iostat)what
   do while(iostat == 0)
     backspace(10)
+    call sleep_a_bit(1)
     if(what .ne. 'C') then
       read(10,*)what,start,end,delta
       print *,'"'//what//'",',start,end,delta
@@ -63,20 +71,56 @@ program f_mgi_test
           is(i)=nint(start+(i-1)*delta)
         enddo
         print *,is(1:nval)
+        if(testmode == 'R') then
+          status = mgi_read(channel,is2,nval,what)
+          if(status <= 0) print *,'ERROR: read error, status=',status
+          if(.not. all(is(1:nval)==is2(1:nval))) print *,'ERROR: did not read what was expected (I)'
+          if( all(is(1:nval)==is2(1:nval))) print *,'INFO: read what was expected (I)'
+        else
+          status = mgi_write(channel,is,nval,what)
+          if(status /= 0) print *,'ERROR: write error, status=',status
+        endif
       case('R')
         do i=1,nval
           fs(i)=start+(i-1)*delta
         enddo
         print *,fs(1:nval)
+        if(testmode == 'R') then
+          status = mgi_read(channel,fs2,nval,what)
+          if(status <= 0) print *,'ERROR: read error, status=',status
+          if(.not. all(fs(1:nval)==fs2(1:nval))) print *,'ERROR: did not read what was expected (R)'
+          if( all(fs(1:nval)==fs2(1:nval))) print *,'INFO: read what was expected (R)'
+        else
+          status = mgi_write(channel,fs,nval,what)
+          if(status /= 0) print *,'ERROR: write error, status=',status
+        endif
       case('D')
         do i=1,nval
           ds(i)=start+(i-1)*delta
         enddo
         print *,ds(1:nval)
+        if(testmode == 'R') then
+          status = mgi_read(channel,ds2,nval,what)
+          if(status <= 0) print *,'ERROR: read error, status=',status
+          if(.not. all(ds(1:nval)==ds2(1:nval))) print *,'ERROR: did not read what was expected (D)'
+          if( all(ds(1:nval)==ds2(1:nval))) print *,'INFO: read what was expected (D)'
+        else
+          status = mgi_write(channel,ds,nval,what)
+          if(status /= 0) print *,'ERROR: write error, status=',status
+        endif
       end select
     else
       read(10,*)what,string
       print *,'"'//what//'",','"'//trim(string)//'"'
+      if(testmode == 'R') then
+          status = mgi_read(channel,string2,len(trim(string)),what)
+          if(status <= 0) print *,'ERROR: read error, status=',status
+          if(trim(string) == trim(string2)) print *,'INFO: read what was expected (C)'
+          if(trim(string) /= trim(string2)) print *,'ERROR: expected "'//trim(string)//'"'//' READ back : "'//trim(string2)//'"'
+      else
+          status = mgi_write(channel,trim(string),len(trim(string)),what)
+          if(status /= 0) print *,'ERROR: write error, status=',status
+      endif
     endif
     read(10,*,iostat=iostat)what
   enddo

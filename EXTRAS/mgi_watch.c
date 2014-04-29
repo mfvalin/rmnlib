@@ -22,9 +22,28 @@ main(int argc, char **argv)
   long long time0;
   long long time1;
   double rtime;
+  char channel_filename[1024];
+  FILE *FD;
 
-  if(argc<2) exit(1);
+  if(argc<2) {
+    fprintf(stderr,"usage: mgi_watch shared_memory_id|mgi_channel_name [delay]\n");
+    exit(1);
+  }
   shmid = atoi(argv[1]);
+  if(shmid == 0){   /* channel name ? */
+    snprintf(channel_filename,sizeof(channel_filename),"%s/.gossip/SHM/%s.id",getenv("HOME"),argv[1]);
+    FD=fopen(channel_filename,"r");
+    if(FD==NULL){
+      fprintf(stderr,"ERROR: cannot open %s\n",channel_filename);
+      exit(1);
+    }
+    i=fscanf(FD,"%d",&shmid);
+    fclose(FD);
+    if(i<1 || shmid==0){
+      fprintf(stderr,"ERROR: shared memory id unreadable for channel %s\n",channel_filename);
+      exit(1);
+    }
+  }
   if(argc>2) delay=atoi(argv[2]);
 
   shm = shmat(shmid, NULL, 0);

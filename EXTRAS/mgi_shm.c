@@ -58,6 +58,7 @@ to_create=atoi(argv[1]);
 FD=NULL;
 if(argc == 3){
   snprintf(channel_filename,sizeof(channel_filename),"%s/.gossip/SHM/%s.id",getenv("HOME"),argv[2]);
+  unlink(channel_filename);   /* remove previously existing file, ignore errors */
   FD=fopen(channel_filename,"w");
   if(FD==NULL){
     fprintf(stderr,"ERROR: cannot open %s\n",channel_filename);
