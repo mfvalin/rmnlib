@@ -1,6 +1,7 @@
 /* RMNLIB - Library of useful routines for C and FORTRAN programming
  * Copyright (C) 1975-2001  Division de Recherche en Prevision Numerique
  *                          Environnement Canada
+ * Copyright (C) 2014       ESCER center, UQAM
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -66,6 +67,36 @@
    equivalent of an integer/float in C or integer/real*4 in FORTRAN.
    In other words, you will lose some precision with the 64-bit
    compilation unless real*8 is used.
+
+   Revision: March/April 2014, M.Valin, UQAM
+
+   A new capability has been added without altering the API for
+   MGI_INIT / MGI_OPEN / MGI_WRITE / MGI_READ / MGI_CLOS / MGI_TERM
+   shared memory (shmget / shmat ...) can now be used as a communication
+   medium when both ends of the "channel" reside on the same host
+   the "shared memory channel" related files will be found inside the
+   $HOME/.gossip/SHM directory ($HOME/.gossip for the TCP/IP mode).
+   When using the shared memory mode, the gossip library goes unused
+   and could even be stubbed.
+   Contrary to TCP/IP channels, there is NO LOSS OF PRECISION when sending
+   real*8 / double data.
+   Some code simplification has been done.
+   Error messages have been slightly reworked.
+   
+   new entry point:
+   -PrintMgiError (C) 
+   -print_mgi_error(Fortran) 
+           print the text associated with an error code on the standard error 
+           file descriptor
+   
+   new programs:
+   -mgi_shmem (C) is used to create the shared memory area associated with 
+           a "shared memory channel".
+   -mgi_watch (C) can be used to monitor "shared memory channel" activity.
+   -mgi_test (C) is used to test a "shared memory channel" using the C API
+           and a scenario file.
+   -f_mgi_test (Fortran) is used to test a "shared memory channel" using the 
+           Fortran API and a scenario file.
 
 */
 
