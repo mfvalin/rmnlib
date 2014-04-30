@@ -32,7 +32,7 @@ void usage(char *pgm) {
   fprintf(stderr,"usage: %s shared_memory_id|channel_name R|W scenario_file\n",pgm);
 }
 
-main(int argc, char **argv)
+int mgi_test(int argc, char **argv)
 {
   int shmid;
   mgi_shm_buf *shm;
@@ -189,4 +189,5 @@ main(int argc, char **argv)
   C_mgi_clos(channel);
   fprintf(stderr,"preparing to terminate all shared memory channels %d \n",channel);
   C_mgi_term();
+  return(0);
 }

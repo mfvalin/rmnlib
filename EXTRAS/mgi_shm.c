@@ -48,7 +48,7 @@ The program will wait 20 milliseconds between checks of parent process existence
 #define EXIT_FAILURE 1  
   
 /* unused as yet borrowed code */
-int main(int argc, char **argv){
+int mgi_shm(int argc, char **argv){
 int i;
 pid_t pp=getppid();  /* get pid of my parent */
 #if defined(DAEMONIZE)

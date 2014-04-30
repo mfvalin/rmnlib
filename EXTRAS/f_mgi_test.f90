@@ -32,7 +32,6 @@ program f_mgi_test
   integer, parameter :: MAXVAL=100
   integer status
   integer, external :: mgi_open, mgi_init, mgi_clos, mgi_term, mgi_read, mgi_write
-  integer, external :: iargc
   character(len=1) :: what, testmode
   character(len=1024) :: string, testfile, string2
   real :: start, end, delta
@@ -42,11 +41,10 @@ program f_mgi_test
   integer :: iostat, nval, i, shmemid, nargs, channel
   character(len=128)channel_name
 
-  nargs = iargc()
+  nargs = command_argument_count()
   if(nargs >= 1) then
-    call getarg(1,string)
-!    read(string,*)shmemid   ! memory segment id
-!    print *,' memory segment id=',shmemid
+!    call getarg(1,string)
+    call get_command_argument(1, string)
     channel_name=trim(string)
     print *,'shared memory channel = ',trim(channel_name)
   endif

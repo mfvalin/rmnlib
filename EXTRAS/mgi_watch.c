@@ -26,7 +26,7 @@
 #include <mgi.h>
 #include <sys/time.h>
 
-main(int argc, char **argv)
+int mgi_watch(int argc, char **argv)
 {
   int shmid;
   mgi_shm_buf *shm;
@@ -107,4 +107,5 @@ main(int argc, char **argv)
     write_status = shm->write_status;
     attach = shm_stat.shm_nattch;
   }
+  return(0);
 }
