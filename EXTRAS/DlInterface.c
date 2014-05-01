@@ -1,3 +1,4 @@
+#include <DlInterface.h>
 #include <stdlib.h>
 #include <dlfcn.h>
 /*
@@ -11,38 +12,44 @@
 */
 #define ERR_NOT_ACTIVE "ERROR: this is the dummy dynamic loader\n"
 
-static void *(*P_DlOpen)(const char *,int) = NULL;
-static void *(*P_DlSym)(void *,const char *) = NULL;
-static int (*P_DlClose)(void *) = NULL;
-static char *(*P_DlError)(void) = NULL;
-
+static void *_DlOpen_(const char *filename, int flag)
+{
+  return(NULL);
+}
+static void *(*P_DlOpen)(const char *,int) = _DlOpen_;
 void *DlOpen(const char *filename, int flag)
 {
-if(P_DlOpen != NULL)
   return((*P_DlOpen)(filename,flag));
-else
+}
+
+void *_DlSym_(void *handle, const char *symbol)
+{
   return(NULL);
 }
+static void *(*P_DlSym)(void *,const char *) = _DlSym_;
 void *DlSym(void *handle, const char *symbol)
 {
-if(P_DlSym != NULL)
   return ((*P_DlSym)(handle,symbol));
-else
-  return(NULL);
 }
-char *DlError(void)
+
+char *_DlError_(void)
 {
-if(P_DlError != NULL)
-  return ((*P_DlError)());
-else
   return(ERR_NOT_ACTIVE);
 }
+static char *(*P_DlError)(void) = _DlError_;
+char *DlError(void)
+{
+  return ((*P_DlError)());
+}
+
+int _DlClose_(void *handle)
+{
+  return(-1);
+}
+static int (*P_DlClose)(void *) = NULL;
 int DlClose(void *handle)
 {
-if(P_DlClose != NULL)
   return ((*P_DlClose)(handle));
-else
-  return(-1);
 }
 
 void DlRegister(void *open, void *sym, void *error, void *close)

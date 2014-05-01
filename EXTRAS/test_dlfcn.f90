@@ -10,6 +10,7 @@ PROGRAM DLFCN_Test
    TYPE(C_FUNPTR) :: funptr=C_NULL_FUNPTR
    INTEGER(C_INT) :: status
    integer :: iname
+   real*8 :: one
 
    ! The dynamic subroutine has a simple interface:
    ABSTRACT INTERFACE
@@ -33,6 +34,7 @@ PROGRAM DLFCN_Test
       WRITE(*,*) "Error in dlopen: ", C_F_STRING(DL_Error())
       STOP
    END IF
+   one = 1.0_c_double
    do iname=1,3
 
    if(iname==1) sub_name='MySub1'
@@ -48,7 +50,8 @@ PROGRAM DLFCN_Test
    ! Now convert the C function pointer to a Fortran procedure pointer
    CALL C_F_PROCPOINTER(CPTR=funptr, FPTR=dll_sub)
    ! Finally, invoke the dynamically-linked subroutine:
-   CALL dll_sub(1.0_c_double)
+   CALL dll_sub(one)
+   one = one + .001
 
    enddo
    
