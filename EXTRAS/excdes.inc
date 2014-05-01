@@ -1,5 +1,6 @@
         integer, parameter :: EXCDES_DESIRE = 1
         integer, parameter :: EXCDES_EXCLURE = -1
+        integer, parameter :: MAX_REQUETES = 20
 
       interface
 !       int Xc_Select_ip1/2/3(int set_nb, int des_exc, void *iplist, int nelm)
@@ -93,5 +94,14 @@
           integer(C_INT) :: status
           integer(C_INT), intent(IN), value :: handle
         end function fst_match_req
+
+!       int C_requetes_reset(int set_nb, int nomvars, int typvars, int etikets, int dates, int ip1s, int ip2s, int ip3s)
+        function f_requetes_reset(set_nb,nomvars,typvars,etikets,dates,ip1s,ip2s,ip3s) result(status) BIND(C,name='C_requetes_reset')
+          use ISO_C_BINDING
+          implicit none
+          integer(C_INT) :: status
+          integer(C_INT), intent(IN), value :: set_nb,nomvars,typvars,etikets,dates,ip1s,ip2s,ip3s
+        end function f_requetes_reset
+
       end interface
 
