@@ -199,26 +199,26 @@ static int ValidateRequestForSet(int set_nb, int des_exc, int nelm, int nelm_lt,
 {
   if(package_not_initialized) RequetesInit();
 
-  if (set_nb > MAX_requetes) {
-    fprintf(stderr,"error: C_select_%s set_nb=%d > MAX_requetes=%d\n",msg,set_nb,MAX_requetes);
+  if (set_nb > MAX_requetes-1) {
+    fprintf(stderr,"ERROR: (C_select_%s) set_nb=%d > MAX_requetes-1=%d\n",msg,set_nb,MAX_requetes-1);
     return(-1);
   }
 
   if (nelm > MAX_Nlist) {
-    fprintf(stderr,"error: C_select_%s nelm=%d > limit=%d\n",msg,nelm,MAX_Nlist);
+    fprintf(stderr,"ERROR: (C_select_%s) nelm=%d > limit=%d\n",msg,nelm,MAX_Nlist);
     return(-2);
   }
 
   if (nelm <= 0) {
     if (nelm != nelm_lt) {   /* if nelm <= 0, it must be equal to nelm_lt */
-      fprintf(stderr,"error: C_select_%s nelm invalid = %d\n",msg,nelm);
+      fprintf(stderr,"ERROR: (C_select_%s) nelm invalid = %d\n",msg,nelm);
       return(-3);
     }
   }
 
   if ((Requests[set_nb].in_use) && (((des_exc == 1) ? DESIRE : EXCLURE) != Requests[set_nb].exdes)) {
-    fprintf(stderr,"C_select_%s error: des_exc value differs from previous call for set number=%d\n",msg,set_nb);
-    fprintf(stderr,"expected %s, got %s \n",(Requests[set_nb].exdes==DESIRE) ? "desire":"exclure",(des_exc == 1) ? "desire":"exclure");
+    fprintf(stderr,"ERROR: (C_select_%s) des_exc value differs from previous call for set number=%d\n",msg,set_nb);
+    fprintf(stderr,"        expected %s, got %s \n",(Requests[set_nb].exdes==DESIRE) ? "desire":"exclure",(des_exc == 1) ? "desire":"exclure");
     return(-4);
   }
 
@@ -630,7 +630,7 @@ int ReadRequestTable(char *filename)
   status = 0;
   if(filename != NULL) input=fopen(filename,"r");
   if(input == NULL) {
-    fprintf(stderr,"ERROR: cannot open directive file '%s'\n",filename);
+    fprintf(stderr,"ERROR: (ReadRequestTable) cannot open directive file '%s'\n",filename);
     return(-1);
   }
   readnext:
@@ -685,6 +685,7 @@ int ReadRequestTable(char *filename)
     }
     status = Xc_Select_date(dirset,dex,a,nvalues);
     if(status != 0) {
+      fprintf(stderr,"ERROR: (ReadRequestTable) bad value(s) in date");
       for (i=0;i<nvalues;i++) {
         fprintf(stderr," %d",a[i]);
       }
@@ -706,6 +707,7 @@ int ReadRequestTable(char *filename)
     if(s2[2]=='2') status = Xc_Select_ip2(dirset,dex,a,nvalues);
     if(s2[2]=='3') status = Xc_Select_ip3(dirset,dex,a,nvalues);
     if(status != 0) {
+      fprintf(stderr,"ERROR: (ReadRequestTable) bad value(s) in ip1/ip2/ip3");
       for (i=0;i<nvalues;i++) {
         fprintf(stderr," %d",a[i]);
       }
@@ -721,6 +723,7 @@ int ReadRequestTable(char *filename)
     gtyp=*cptr;
     status = Xc_Select_suppl(dirset,dex,a[0],a[1],a[2],a[3],a[4],a[5],a[6],gtyp);
     if(status != 0) {
+      fprintf(stderr,"ERROR: (ReadRequestTable) bad value(s) in supplementary criteria");
       for (i=0;i<8;i++) {
         fprintf(stderr," %d",a[i]);
       }
@@ -739,18 +742,19 @@ int ReadRequestTable(char *filename)
     if(s2[0] == 'T') status = Xc_Select_typvar(dirset,dex,sarp,nvalues) ;
     if(s2[0] == 'E') status = Xc_Select_etiquette(dirset,dex,sarp,nvalues) ;
     if(status != 0) {
+      fprintf(stderr,"ERROR: (ReadRequestTable) bad value(s) in nomvar/typvar/etiekt");
       for (i=0;i<nvalues;i++) {
         fprintf(stderr," '%s'",sar[i]);
       }
       fprintf(stderr,"\n");
     }
   }else{
-    fprintf(stderr,"ERROR: unrecognized type s2='%s' in directive file\n",s2);
+    fprintf(stderr,"ERROR: (ReadRequestTable) unrecognized type s2='%s' in directive file\n",s2);
     status = -1;
   }
   if(status != 0) {
     fclose(input);
-    fprintf(stderr,"ERROR: status=%d in ReadRequestTable\n",status);
+    fprintf(stderr,"ERROR: (ReadRequestTable) status=%d \n",status);
     return -1;
   }
   goto readnext;
@@ -773,9 +777,9 @@ int ReadRequestTable(char *filename)
 int C_select_groupset(int first_set_nb, int last_set_nb)
 {
   if(package_not_initialized) RequetesInit();
-  if ((first_set_nb > MAX_requetes) || (last_set_nb > MAX_requetes) || (first_set_nb > last_set_nb)) {
-    fprintf(stderr,"ERROR: C_select_groupset first_set_nb=%d, last_set_nb=%d, MAX_requetes=%d\n",
-            first_set_nb,last_set_nb,MAX_requetes);
+  if ((first_set_nb > MAX_requetes-1) || (last_set_nb > MAX_requetes-1) || (first_set_nb > last_set_nb)) {
+    fprintf(stderr,"ERROR: (C_select_groupset) first_set_nb=%d, last_set_nb=%d, MAX allowed=%d\n",
+            first_set_nb,last_set_nb,MAX_requetes-1);
     return(-1);
   }
   first_R = first_set_nb;
@@ -797,8 +801,8 @@ int C_filtre_desire()
   if(package_not_initialized) RequetesInit();
   bundle_nb++;
   desire_exclure = 1;
-  if (bundle_nb > MAX_requetes) {
-    fprintf(stderr,"ERROR: C_filtre_desire nb=%d > MAX desire/exclure =%d\n",bundle_nb,MAX_requetes);
+  if (bundle_nb > MAX_requetes-1) {
+    fprintf(stderr,"ERROR: C_filtre_desire nb=%d > MAX desire/exclure =%d\n",bundle_nb,MAX_requetes-1);
     return(-1);
   }
   printf("desire bundle_nb = %d, desire_exclure = %d\n",bundle_nb,desire_exclure);
@@ -819,8 +823,8 @@ int C_filtre_exclure()
   if(package_not_initialized) RequetesInit();
   bundle_nb++;
   desire_exclure = 0;
-  if (bundle_nb > MAX_requetes) {
-    fprintf(stderr,"ERROR: C_filtre_exclure nb=%d > MAX desire/exclure =%d\n",bundle_nb,MAX_requetes);
+  if (bundle_nb > MAX_requetes-1) {
+    fprintf(stderr,"ERROR: C_filtre_exclure nb=%d > MAX desire/exclure =%d\n",bundle_nb,MAX_requetes-1);
     return(-1);
   }
   printf("exclure bundle_nb = %d, desire_exclure = %d\n",bundle_nb,desire_exclure);
@@ -1058,7 +1062,7 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
             break;   /* requete satisfaite jusqu'ici */
 
           default:
-            fprintf(stderr,"error: C_fst_match_req invalid Requests[%d].dates.in_use=%d\n",
+            fprintf(stderr,"ERROR: (C_fst_match_req) invalid Requests[%d].dates.in_use=%d\n",
                   set_nb,Requests[set_nb].dates.in_use);
             return(0);
             break;     /* this never gets executed */
@@ -1261,7 +1265,7 @@ int f77name(f_select_date)(int *date_list, int *nelm)
 
 int f77name(f_select_suppl)(int *ni, int *nj, int *nk, int *ig1, int *ig2, int *ig3, int *ig4, char *gtyp, F2Cl flng)
 {
-fprintf(stderr,"f_select_suppl: ni=%d nj=%d nk=%d ig1=%d ig2=%d ig3=%d ig4=%d gtyp='%c'\n",*ni,*nj,*nj,*ig1,*ig2,*ig3,*ig4,*gtyp);
+//fprintf(stderr,"f_select_suppl: ni=%d nj=%d nk=%d ig1=%d ig2=%d ig3=%d ig4=%d gtyp='%c'\n",*ni,*nj,*nj,*ig1,*ig2,*ig3,*ig4,*gtyp);
     return Xc_Select_suppl(bundle_nb, desire_exclure, *ni, *nj, *nk, *ig1, *ig2, *ig3, *ig4, *gtyp);
 }
 
@@ -1383,8 +1387,8 @@ int C_requetes_reset(int set_nb, int nomvars, int typvars, int etikets, int date
 {
   int j;
 
-  if (set_nb > MAX_requetes) {
-    fprintf(stderr,"error: C_requetes_reset set_nb=%d > MAX_requetes=%d\n",set_nb,MAX_requetes);
+  if (set_nb > MAX_requetes-1) {
+    fprintf(stderr,"ERROR: (C_requetes_reset) set_nb=%d > MAX allowed=%d\n",set_nb,MAX_requetes-1);
     return(-1);
   }
 
@@ -1475,7 +1479,7 @@ void c_requetes_init(char *requetes_filename, char *debug_filename)
   if (requetes_filename != NULL)
     ier = C_requetes_read_file(requetes_filename);
 #endif
-  fprintf(stderr,"request table initialized \n");
+  fprintf(stderr,"INFO: (c_requetes_init) request table initialized \n");
   package_not_initialized = 0;
 }
 
