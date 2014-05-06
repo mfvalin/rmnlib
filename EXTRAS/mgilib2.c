@@ -20,10 +20,10 @@
  */
 
 /* MGILIB.C
-   
-   Functions written for programs that run in "parallel" and need 
+
+   Functions written for programs that run in "parallel" and need
    to exchange information simultaneously. MGI stands for Model Gossip
-   Interface. Each program using these functions will have to compile 
+   Interface. Each program using these functions will have to compile
    with this library. There are 6 functions:
 
    MGI_INIT
@@ -58,7 +58,7 @@
    file after it is closed.
 
    MGI_TERM
-   to delete the PID file that was created in the beginning and 
+   to delete the PID file that was created in the beginning and
    to release all the memory allocated dynamically. It closes all
    the filepipes therefore, breaking all the pipe connections with
    the other programs.
@@ -82,20 +82,20 @@
    real*8 / double data.
    Some code simplification has been done.
    Error messages have been slightly reworked.
-   
+
    new entry point:
-   -PrintMgiError (C) 
-   -print_mgi_error(Fortran) 
-           print the text associated with an error code on the standard error 
+   -PrintMgiError (C)
+   -print_mgi_error(Fortran)
+           print the text associated with an error code on the standard error
            file descriptor
-   
+
    new programs:
-   -mgi_shmem (C) is used to create the shared memory area associated with 
+   -mgi_shmem (C) is used to create the shared memory area associated with
            a "shared memory channel".
    -mgi_watch (C) can be used to monitor "shared memory channel" activity.
    -mgi_test (C) is used to test a "shared memory channel" using the C API
            and a scenario file.
-   -f_mgi_test (Fortran) is used to test a "shared memory channel" using the 
+   -f_mgi_test (Fortran) is used to test a "shared memory channel" using the
            Fortran API and a scenario file.
 
 */
@@ -109,7 +109,7 @@
 #include <rpnmacros.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/time.h> 
+#include <sys/time.h>
 #include <string.h>
 #include <ctype.h>
 #include "mgi.h"
@@ -200,17 +200,17 @@ extern int signal_timeout(int gchannel);
 /***********************************************************************************************/
 
 static int validchan( int chan )
-/* 
+/*
  *   validate the channel number
  *   must be greater than zero and less than or equal to ICHAN
  *   channel must be active (TCP/IP or shared memory)
  */
-   
+
 {
   if(chan < 0 || chan >= MAX_CHANNELS) return (CONNECTION_ERROR);   /* a priori invalid channel number */
   if ( chn[chan].buffer != NULL )      return ( 0);   /* TCP/IP channel */
   if ( chn[chan].shmbuf != NULL )      return ( 0);   /* shared memory channel */
-   
+
   return(-1);
 }
 /***********************************************************************************************/
@@ -229,7 +229,7 @@ static void strcopy( char *s, char *t, int charlen )
  *        character at the end of the true (charlen) length of the string */
 {
   int i;
-  
+
   i = 0;
   while ( (*s++ = *t++) != ' ' && i++ < charlen);
   if (*s-- == ' ') *s = '\0';
@@ -247,15 +247,15 @@ void f77_name (mgi_nosig) ()
   /* SIG_ACTIVE = 0; */
   fprintf(stderr,"MGI_NOSIG: deprecated call\n");
 }
-/* to copy a string given by a fortran routine, 
-   the space character is ignored, it is taken 
+/* to copy a string given by a fortran routine,
+   the space character is ignored, it is taken
    here as the end of the string */
-static void strcopy_( char *s1, char *s2, int lengths1, int lengths2 )    
+static void strcopy_( char *s1, char *s2, int lengths1, int lengths2 )
 {
   int i = 0;
 
   while ( (*s1++ = *s2++) != ' ' && i++ < lengths2 );
-  
+
 }
 
 int check_ends(unsigned char *s1,unsigned char *s2, int s1length, int s2length, int i )
@@ -273,13 +273,13 @@ int check_ends(unsigned char *s1,unsigned char *s2, int s1length, int s2length, 
   }
 }
 
-/* to compare two strings given by a fortran routine, considering 
+/* to compare two strings given by a fortran routine, considering
    the space character as the end of the string*/
 static int f_strcmp( unsigned char *s1, unsigned char *s2, int s1length, int s2length )
 {
-  int i = 0;	 
+  int i = 0;
   int length;
-  
+
   if(s1length <= s2length)
     length = s1length;
   else
@@ -292,12 +292,12 @@ static int f_strcmp( unsigned char *s1, unsigned char *s2, int s1length, int s2l
       i++;
     }
 
-  
+
   if(*s1 == ' ')
     {
       fprintf(stderr, "mgilib2::f_strcmp(), before return if(*s1 == ' '), s1 => %s\n ", s1);
       return check_ends(s1, s2, s1length, s2length, i);
-     
+
     }
   else if(*s2 == ' ')
     {
@@ -355,22 +355,22 @@ static int bwrite ( int chan, void *buffer, int nelem, char *dtype )
 
   FD_ZERO(&wfds);
   FD_SET(chn[chan].gchannel, &wfds);
-  
+
   tv.tv_sec = get_stream_timeout(chn[chan].gchannel);
   tv.tv_usec = 0;
-    
+
   if (select(chn[chan].gchannel + 1, NULL, &wfds, NULL, &tv))
     {
       ier = send_command_to_server(chn[chan].gchannel, "WRITE");
-      
+
     }
   else
     {
       /* return ier = signal_timeout(chn[chan].gchannel); */
       return WRITE_TIMEOUT;
     }
-  
- 
+
+
   if(ier < 0 )
     {
       fprintf(stderr,"ERROR: (bwrite) unable to send write command\n");
@@ -391,24 +391,24 @@ static int bwrite ( int chan, void *buffer, int nelem, char *dtype )
     {
       nb = write_record(chn[chan].gchannel, (char *)buffer, nelem, sizeof(double));
     }
-  
+
   else if(*dtype == 'C')
     {
       nb = write_record(chn[chan].gchannel, buffer, nelem, 1);
     }
-  
+
   /* get_ack_nack(chn[chan].gchannel); */
-    
+
   FD_ZERO(&rfds);
   FD_SET(chn[chan].gchannel, &rfds);
-  
+
   tv.tv_sec = get_stream_timeout(chn[chan].gchannel);
   tv.tv_usec = 0;
-  
+
   if (select(chn[chan].gchannel + 1, &rfds, NULL, NULL, &tv))
     {
       get_ack_nack(chn[chan].gchannel);
-      
+
     }
   else
     {
@@ -432,24 +432,32 @@ ftnword f77_name (mgi_clos) (ftnword *f_chan)
   int ier = 0, chan;
   char buf[1024];
   chan = (int) *f_chan;
+  int force=0;
+
+  if(chan > 1000){
+    chan -=1000;
+    force = 1;
+  }
 
   if(validchan(chan) != 0) return(CONNECTION_ERROR); /* invalid channel */
 
   if(chn[chan].shmbuf != NULL) {  /* shared memory channel  */
 
     if(chn[chan].mode == 'W'){   /* channel is open for write */
-      if(chn[chan].shmbuf->write_status == 1) {
-        chn[chan].shmbuf->write_status = -2;    /* mark as initialized but not open for write */
+      if(chn[chan].shmbuf->write_status == MGI_SHM_ACTIVE) {
+        chn[chan].shmbuf->write_status = MGI_SHM_IDLE;    /* mark as initialized but not open for write */
       }else{
         fprintf(stderr,"ERROR: (mgi_clos) inconsistent write status on shm channel '%s'\n",chn[chan].name);
+        if(force) chn[chan].shmbuf->write_status = MGI_SHM_IDLE;
       }
     }
 
     if(chn[chan].mode == 'R'){   /* channel is open for read */
-      if(chn[chan].shmbuf->read_status  == 1) {
-        chn[chan].shmbuf->read_status  = -2;    /* mark as initialized but not open for read  */
+      if(chn[chan].shmbuf->read_status  == MGI_SHM_ACTIVE) {
+        chn[chan].shmbuf->read_status  = MGI_SHM_IDLE;    /* mark as initialized but not open for read  */
       }else{
         fprintf(stderr,"ERROR: (mgi_clos) inconsistent read status on shm channel '%s'\n",chn[chan].name);
+        if(force) chn[chan].shmbuf->read_status = MGI_SHM_IDLE;
       }
     }
     fprintf(stderr,"INFO: (mgi_clos) shared memory channel '%s' is closed \n", chn[chan].name);
@@ -463,14 +471,14 @@ ftnword f77_name (mgi_clos) (ftnword *f_chan)
       ier = send_command(buf);
       fprintf(stderr,"INFO: (mgi_clos) subchannel '%s' is closed \n", chn[chan].name);
     }
-  
+
    if(chn[chan].buffer)
     {
       free(chn[chan].buffer);
       chn[chan].buffer = NULL;
-    }  
+    }
   return ier;
-  
+
 }
 int C_mgi_clos (int c_chan){
   ftnword f_chan=c_chan;
@@ -488,7 +496,7 @@ ftnword f77_name (mgi_term) ()
     {
       if(chn[chan].shmbuf != NULL) {  /* shared memory channel  */
         /* get number of attaches, if == 1 i am last and will dump rest of buffer into resatart file */
-        if(chn[chan].shmbuf->write_status == -2 && chn[chan].shmbuf->read_status == -2) {  /* both close operations done */
+        if(chn[chan].shmbuf->write_status == MGI_SHM_IDLE && chn[chan].shmbuf->read_status == MGI_SHM_IDLE) {  /* both close operations done */
           if(chn[chan].shmbuf->in != chn[chan].shmbuf->out){                               /* buffer is not empty */
             fprintf(stderr,"WARNING: (mgi_term) shared memory channel '%s' is not empty\n", chn[chan].name);
             /* open channel file for exclusive writing and dump buffer */
@@ -505,7 +513,7 @@ ftnword f77_name (mgi_term) ()
 	{
 	  ier = send_command("END");
           fprintf(stderr,"INFO: (mgi_term) subchannel '%s' fully closed\n", chn[chan].name);
-	  
+
 	  if(chn[chan].buffer)
 	    {
 	      free(chn[chan].buffer);
@@ -523,13 +531,13 @@ int C_mgi_term(){
  * channel = mgi_init(channel_name)
  * channel_name : Fortran string
  * channel : channel number ( < 0 if error)
- * 
+ *
  ********************************************************************************************/
 ftnword f77_name (mgi_init) (char *channel_name, F2Cl lname)
      /* To initialize a channel given a channel_name.
 	It will return a number to represent this channel (1 to MAX_CHANNELS-1 */
 {
-  int chan;
+  int chan, items;
   char env_var_name[1024];
   char shm_fil_name[1024];
   char *env_var_value;
@@ -541,7 +549,7 @@ ftnword f77_name (mgi_init) (char *channel_name, F2Cl lname)
     }
 
 #ifdef DEBUG
-  fprintf(stderr,"MGI_INIT ** \n"); 
+  fprintf(stderr,"MGI_INIT ** \n");
 #endif
   ichan++;
   if (ichan >= MAX_CHANNELS)
@@ -558,13 +566,13 @@ ftnword f77_name (mgi_init) (char *channel_name, F2Cl lname)
       {
 	strcopy(chn[chan].name, channel_name, lname);
       }
-      else 
+      else
       {
         fprintf(stderr,"ERROR: (mgi_init) Length of channel name > %d chars.\n",MAX_NAME-1);
         return INIT_ERROR;   /* return -1; */
       }
       chn[chan].fd_data = -1;
-    
+
       /* initialize channel */
       chn[chan].msgno_W = 0;
       chn[chan].msgno_R = 0;
@@ -585,7 +593,11 @@ ftnword f77_name (mgi_init) (char *channel_name, F2Cl lname)
         snprintf(shm_fil_name,sizeof(shm_fil_name),"%s/.gossip/SHM/%s.id",getenv("HOME"),chn[chan].name);
         FD=fopen(shm_fil_name,"r");
         if(FD != NULL){
-          fscanf(FD,"%d",&chn[chan].shmid);  /* get shared memory segment ID */
+          items = fscanf(FD,"%d",&chn[chan].shmid);  /* get shared memory segment ID */
+          if(items != 1) {
+            fprintf(stderr,"ERROR: (mgi_init) invalid shared memory channel id \n");
+            return INIT_ERROR;
+          }
           fclose(FD);
         }
       }
@@ -622,7 +634,7 @@ int C_mgi_init (char *channel_name){
  * status = mgi_open(channel,mode)
  * channel : channel number obtained from mgi_init
  * mode    : 'R', 'W', 'S'
- * 
+ *
  * status  : channel number if valid channel number, error code otherwise
  ********************************************************************************************/
 ftnword f77_name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
@@ -635,9 +647,14 @@ ftnword f77_name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
   int chan;
   chan = (int) *f_chan;
   mgi_shm_buf *shm;
+  int force=0;
 
+  if(chan > 1000){
+    chan -=1000;
+    force = 1;
+  }
   if(validchan(chan) != 0) return(CONNECTION_ERROR); /* invalid channel */
-  if (*mode == 'W') 
+  if (*mode == 'W')
     {
       if(chn[chan].shmbuf == NULL) {   /* not a shared memory channel */
         chn[chan].gchannel = connect_to_subchannel_by_name( get_gossip_dir(0), chn[chan].name, "write" );
@@ -646,15 +663,15 @@ ftnword f77_name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
           chn[chan].gchannel = retry_connect( chan );
       } else {   /* it is  a shared memory channel, initialize it for write  */
         shm = chn[chan].shmbuf;
-        if(shm->write_status != -2) return CONNECTION_ERROR;  /* not initialized for write or already connected for write */
-        shm->write_status = 1;  /* mark as connected for write */
+        if(shm->write_status != MGI_SHM_IDLE && force == 0) return CONNECTION_ERROR;  /* not initialized for write or already connected for write */
+        shm->write_status = MGI_SHM_ACTIVE;  /* mark as connected for write */
         chn[chan].gchannel = 100000+chan ;   /* fake fd */
         chn[chan].mode = 'W';
         chn[chan].timeout =  get_client_timeout(chn[chan].gchannel);     /* get timeout value for this channel */
       }
 
     }
-  else if (*mode == 'R') 
+  else if (*mode == 'R')
     {
       if(chn[chan].shmbuf == NULL) {   /* not a shared memory channel */
         chn[chan].gchannel = connect_to_subchannel_by_name( get_gossip_dir(0), chn[chan].name, "read" );
@@ -663,14 +680,14 @@ ftnword f77_name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
           chn[chan].gchannel = retry_connect( chan );
       } else {   /* it is  a shared memory channel, initialize it for read */
         shm = chn[chan].shmbuf;
-        if(shm->read_status != -2) return CONNECTION_ERROR;  /* not initialized for write or already connected for write */
-        shm->read_status = 1;  /* mark as connected for read */
+        if(shm->read_status != MGI_SHM_IDLE && force == 0) return CONNECTION_ERROR;  /* not initialized for write or already connected for write */
+        shm->read_status = MGI_SHM_ACTIVE;  /* mark as connected for read */
         chn[chan].gchannel = 100000+chan ;   /* fake fd */
         chn[chan].mode = 'R';
         chn[chan].timeout =  get_client_timeout(chn[chan].gchannel);     /* get timeout value for this channel */
       }
     }
-  else if (*mode == 'S') 
+  else if (*mode == 'S')
     { /* store mode (for restart files) */
       chn[chan].mode = 'S';
       chn[chan].nblks = 0;
@@ -682,7 +699,7 @@ ftnword f77_name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
     {
       fprintf(stderr, "ERROR: (mgi_open) Connection Failed, the Server may be down \n" );
       /* exit(-1); */
-      return CONNECTION_ERROR; 
+      return CONNECTION_ERROR;
     }
 
   /* initialize timeout table */
@@ -719,7 +736,7 @@ void f77_name (mgi_set_retry_connect) (ftnword *try_nbr)
 
 int mgi_get_retry_connect(int chan)
 {
-  
+
   return USER_TRY_CONNECT;
 
 }
@@ -740,8 +757,8 @@ int retry_connect( int chan )
       chn[chan].gchannel = connect_to_subchannel_by_name( get_gossip_dir(0), chn[chan].name, "write" );
       ping_ord--;
     }
-  return chn[chan].gchannel; 
-  
+  return chn[chan].gchannel;
+
 }
 
 /********************************************************************************************
@@ -754,7 +771,7 @@ static int shm_write_c(mgi_shm_buf *shm,void *buf,int nelem,int timeout){
   unsigned int token;
   int maxiter = timeout*1000 ; /* 1000 iterations is one second */
   int iter;
-  
+
   in = shm->in ; out = shm->out ; limit = shm->limit;
   while(ntok > 0){
     inplus = (in+1 > limit) ? 0 : in+1 ;
@@ -788,9 +805,9 @@ static int shm_write(mgi_shm_buf *shm,void *buf,int nelem,int type,int timeout){
   unsigned int *buffer = (unsigned int *) buf ;
   int maxiter = timeout*1000 ; /* 1000 iterations is one second */
   int iter;
-  
-  if(shm->write_status != 1) return(WRITE_ERROR) ; /* not properly setup to write */
-    
+
+  if(shm->write_status != MGI_SHM_ACTIVE) return(WRITE_ERROR) ; /* not properly setup to write */
+
   if(type == 'C') return ( shm_write_c(shm,buf,nelem,timeout) );                    /* characters */
   if(type != 'I' && type != 'R' && type != 'D') return(WRITE_ERROR) ;       /* unsupported type */
   ntok = nelem;
@@ -829,7 +846,7 @@ static int shm_read_c(mgi_shm_buf *shm,void *buf,int nelem, int len,int timeout)
   int pad = len - nelem;
   int maxiter = timeout*1000 ; /* 1000 iterations is one second */
   int iter;
-  
+
   in = shm->in ; out = shm->out ; limit = shm->limit;
   while(ntok > 0){
     iter = maxiter;
@@ -863,9 +880,9 @@ static int shm_read(mgi_shm_buf *shm,void *buf,int nelem,int type, int len,int t
   unsigned int *buffer = (unsigned int *) buf ;
   int maxiter = timeout*1000 ; /* 1000 iterations is one second */
   int iter;
-  
-  if(shm->read_status != 1) return(READ_ERROR) ; /* not properly setup to read */
-    
+
+  if(shm->read_status != MGI_SHM_ACTIVE) return(READ_ERROR) ; /* not properly setup to read */
+
   if(type == 'C') return ( shm_read_c(shm,buf,nelem,len,timeout) );        /* characters */
   if(type != 'I' && type != 'R' && type != 'D') return(READ_ERROR) ;       /* unsupported type */
   if(type == 'D') factor =2 ;                 /* 8 byte tokens */
@@ -904,7 +921,7 @@ int ShmReadBuf(mgi_shm_buf *shm,void *buf,int nelem,int type, int len,int timeou
 ftnword f77_name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, char *dtype, F2Cl ltype)
      /* to write elements from "buffer" into the specified channel
 	opened for WRITEMODE. It actually writes
-	
+
 	The following data types (dtype) are accepted:
 	'C': character
 	'I': integer
@@ -921,7 +938,7 @@ ftnword f77_name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, c
   chan = (int) *f_chan;
   nelem = (int) *f_nelem;
   char *tmpstr;
-  
+
   if(validchan(chan) != 0) return(CONNECTION_ERROR); /* invalid channel */
 
   if( nelem <= 0 )
@@ -975,10 +992,10 @@ ftnword f77_name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, c
     }
 
 
-  else if (*dtype == 'I' || *dtype == 'R' || *dtype == 'D' ) 
+  else if (*dtype == 'I' || *dtype == 'R' || *dtype == 'D' )
     {
       chn[chan].nblks++;
-      
+
 #ifdef DEBUG
       fprintf(stderr,"MGI_WRITE: data type = %c, elts Nbr = %d, subchannel = %s\n", dtype[0], nelem, chn[chan].name);
       fprintf(stderr,"MGI_WRITE: data type = %s\n", dtype);
@@ -992,7 +1009,7 @@ ftnword f77_name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, c
 	}
     }
 
-  else 
+  else
     {
       fprintf(stderr,"ERROR: (mgi_write) channel '%s': Unknown data type: %c\n", chn[chan].name, *dtype);
       return WRITE_TYPE_ERROR;
@@ -1033,12 +1050,12 @@ int C_mgi_write (ftnword *f_chan, void *buffer, int c_nelem, char c_dtype){
  * nelem     : number of data pieces
  * dtype     : dta type 'C', 'I', 'R', 'D'
  *
- * status    : number of bytes read or negative error code 
+ * status    : number of bytes read or negative error code
  ********************************************************************************************/
 ftnword f77_name (mgi_read) (ftnword *f_chan, void *buffer, ftnword *f_nelem, char *dtype, F2Cl ltype)
 
-     /* to read elements directly from the data file related to the 
-	specified channel into "buffer". The channel must be opened for 
+     /* to read elements directly from the data file related to the
+	specified channel into "buffer". The channel must be opened for
 	READMODE only.
 	The following data types (dtype) are accepted:
 	'C': character
@@ -1053,7 +1070,7 @@ ftnword f77_name (mgi_read) (ftnword *f_chan, void *buffer, ftnword *f_nelem, ch
   char typ;
   int timeout;
   int status;
-  
+
   chan = (int) *f_chan;
   nelem = (int) *f_nelem;
 
@@ -1093,12 +1110,12 @@ ftnword f77_name (mgi_read) (ftnword *f_chan, void *buffer, ftnword *f_nelem, ch
       fprintf(stderr,"ERROR: (mgi_read) unable to send write command for channel: '%s'\n", chn[chan].name);
       return SEND_COMMAND_ERROR;
     }
-  
+
   if (*dtype == 'I')
     { /* integer */
-  
+
 //      fprintf(stderr, "MGI_READ: 'Integer', elts Nbr = %d, channel = '%s'\n", nelem, chn[chan].name);
-  
+
       buffer = (int *)read_record( chn[chan].gchannel, (int *)buffer, &nelem, nelem, sizeof(int) );
 
       if(buffer != NULL)
@@ -1123,11 +1140,11 @@ ftnword f77_name (mgi_read) (ftnword *f_chan, void *buffer, ftnword *f_nelem, ch
 
   else if (*dtype == 'R')
     { /* float */
-      
+
 //      fprintf(stderr, "MGI_READ: 'Real', elts Nbr = %d, channel = '%s'\n", nelem, chn[chan].name);
 
       buffer = (float *)read_record(chn[chan].gchannel, (float *)buffer, &nelem, nelem, sizeof(int));
-      
+
       if(buffer != NULL)
 	{
 	  get_ack_nack(chn[chan].gchannel);
@@ -1174,29 +1191,29 @@ ftnword f77_name (mgi_read) (ftnword *f_chan, void *buffer, ftnword *f_nelem, ch
 	    }
  	}
      }
-  
+
   else if (*dtype == 'C')
     { /* character */
       int i;
       char *temp = (char *)buffer;
 
-      for(i = 0; i < ltype ; i++ ) 
+      for(i = 0; i < ltype ; i++ )
 	{
 	  temp[i] = ' ';
 	}
 
       buffer = (char *)read_record(chn[chan].gchannel, (char *)buffer, &nelem, nelem, sizeof(char));
 
-      for(i = nelem+1 ; i < ltype ; i++ ) 
+      for(i = nelem+1 ; i < ltype ; i++ )
 	{
 	  temp[i] = ' ';
 	}
-      
+
       if(buffer != NULL)
 	{
 	  get_ack_nack(chn[chan].gchannel);
 	  return  nelem;
-	} 
+	}
       else
 	{
 	  if( get_timeout_signal( chn[chan].gchannel ) )
@@ -1211,7 +1228,7 @@ ftnword f77_name (mgi_read) (ftnword *f_chan, void *buffer, ftnword *f_nelem, ch
 	    }
 	}
     }
-  
+
   else
     {
       fprintf(stderr,"ERROR: (mgi_read) channel '%s': Unknown data type: %c\n", chn[chan].name, *dtype);

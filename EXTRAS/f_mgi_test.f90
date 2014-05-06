@@ -61,15 +61,22 @@ program f_mgi_test
   if(nargs >= 4) then
   endif
 
-  channel = mgi_init("test")
+  channel = mgi_init(trim(channel_name))
   print *,'channel=',channel
   call sleep_a_bit(1)
+  if(trim(testfile) == 'none') channel=channel+1000    ! force open
   if(testmode=='R') status = mgi_open(channel,'R')
   if(testmode=='W') status = mgi_open(channel,'W')
   print *,'status=',status
+  if(trim(testfile) == 'none') goto 777
+  if(status < 0) then
+    call print_mgi_error(status)
+    print *,'ERROR: cannot open channel ',trim(channel_name)
+    stop
+  endif
   call sleep_a_bit(1)
 
-  print *,'List of error codes'
+  print *,'===== List of error codes ====='
   do i = -1,-11,-1
     call print_mgi_error(i)
   enddo
@@ -142,6 +149,7 @@ program f_mgi_test
     read(10,*,iostat=iostat)what
   enddo
   close(unit=10)
+777 continue   ! the end
   call sleep_a_bit(1)
   status = mgi_clos(channel)
   call sleep_a_bit(1)

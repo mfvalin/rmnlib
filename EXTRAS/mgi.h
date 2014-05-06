@@ -1,4 +1,7 @@
 /* mgi.h */
+#ifndef MGI_INCLUDE_ONCE
+
+#define MGI_INCLUDE_ONCE
 
 #define MAX_CHANNELS 24
 #define MAX_NAME 125
@@ -9,6 +12,9 @@
 #define FALSE            0
 #define TRUE        !FALSE
 #endif
+
+#define MGI_SHM_IDLE -2
+#define MGI_SHM_ACTIVE 1
 
 typedef struct
 {
@@ -21,7 +27,7 @@ typedef struct
   unsigned int data[1];
 } mgi_shm_buf;
 
-typedef struct 
+typedef struct
 {
   mgi_shm_buf *shmbuf;
   int *buffer;
@@ -37,3 +43,4 @@ typedef struct
   char name[MAX_NAME];
   char mode;
 } channel;
+#endif
