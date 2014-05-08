@@ -12,8 +12,8 @@ TESTS = test_z test_p test_f test_ff test_d test_c test_excdes
 BASE_RMNLIB := rmn_014
 NEW_RMNLIB := rmnbeta_015
 TEST_RMNLIB := Locallib/$(EC_ARCH)/lib$(NEW_RMNLIB).a
-EXTRA_LOCAL := -ILocalinclude/$(EC_ARCH) -LLocallib/$(EC_ARCH) -l$(NEW_RMNLIB)
-EXTRA_LOCAL_R := -ILocalinclude/$(EC_ARCH) -LLocallib/$(EC_ARCH) -l$(BASE_RMNLIB)
+EXTRA_LOCAL := -ILocalinclude -ILocalinclude/$(EC_ARCH) -LLocallib/$(EC_ARCH) -l$(NEW_RMNLIB)
+EXTRA_LOCAL_R := -ILocalinclude -ILocalinclude/$(EC_ARCH) -LLocallib/$(EC_ARCH) -l$(BASE_RMNLIB)
 all:	obj
 
 # dynamic loader interface
@@ -76,7 +76,8 @@ $(TEST_RMNLIB): $(EXTRAS) $(EXTRAS2)
 	cp Locallib/$(EC_ARCH)/lib$(BASE_RMNLIB).a $(TEST_RMNLIB)
 	mkdir -p Localinclude/$(EC_ARCH)/
 	touch dummy.mod dummy.inc
-	cp *.mod *.inc Localinclude/$(EC_ARCH)/
+	cp *.mod Localinclude/$(EC_ARCH)/
+	cp *.inc Localinclude/
 	cp convert_ip.h Localinclude/
 #	ar d $(TEST_RMNLIB) excdes.o
 	ar rcv $(TEST_RMNLIB) $(EXTRAS) $(EXTRAS2)
