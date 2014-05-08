@@ -120,6 +120,9 @@ test_excdes: $(TEST_RMNLIB) test_excdes.f90 excdes_new.c
 	s.f90 test_excdes.f90 excdes_new.o $(EXTRA_LOCAL) -o $@
 	rm -f excdes_new.o
 
+test_dlfcn: test_dlfcn.f90 $(TEST_RMNLIB)
+	s.f90 -o $@ test_dlfcn.f90 $(EXTRA_LOCAL)
+
 # F type floating point packer test
 test_p:	float_packer.c
 	s.cc -o $@ -O 3 -DTEST_PACK $< -lm
