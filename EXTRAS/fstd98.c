@@ -2378,7 +2378,7 @@ int c_fstouv(int iun, char *options)
     premiere_fois = 0;
 /*    printf("DEBUG++ fstouv appel a c_env_var_cracker\n"); */
     c_env_var_cracker("FST_OPTIONS", c_fst_env_var, "C");    /* obtain options from environment variable */ 
-    c_requetes_init(requetes_filename,debug_filename);
+    C_requetes_init(requetes_filename,debug_filename);
     ier = init_ip_vals();  
   }
   i = fnom_index(iun);

@@ -34,10 +34,10 @@
 
 char **fill_string_array(char **string_array, char *farray, int nc, int ns, int rmblanks);
 char **allocate_string_array(int ns);
-void c_requetes_init(char *f1,char *f2);
+void C_requetes_init(char *f1,char *f2);
 void RequetesInit()
 {
-  c_requetes_init(NULL,NULL);
+  C_requetes_init(NULL,NULL);
 }
 #pragma weak f_requetes_init__=f_requetes_init
 #pragma weak f_requetes_init_=f_requetes_init
@@ -907,7 +907,7 @@ static int match_ip(int in_use, int nelm, int *data, int ip1, int translatable)
  *      ce qui a ete obtenu de fstprm pour handle                            *
  *                                                                           *
  *****************************************************************************/
-int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
+int C_fstmatch_parm(int handle, int datevalid, int ni, int nj, int nk,
                      int ip1, int ip2, int ip3, char *typvar, char *nomvar, char *etiket,
                      char *grtyp, int ig1, int ig2, int ig3, int ig4)
 {
@@ -921,7 +921,7 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
   int supp_ok;       /* supplementary parameters match */
 
   if(package_not_initialized) {
-    fprintf(stderr,"INFO: c_fst_match_parm, initializing request tables \n");
+    fprintf(stderr,"INFO: C_fstmatch_parm, initializing request tables \n");
     RequetesInit();
   }
 //  if (! Requests[first_R].in_use) return(1);        /* aucune requete desire ou exclure */
@@ -1137,7 +1137,7 @@ int c_fst_match_parm(int handle, int datevalid, int ni, int nj, int nk,
  *  IN  handle     handle de l'enregistrement a valider                      *
  *                                                                           *
  *****************************************************************************/
-int c_fst_match_req(int handle)
+int C_fstmatch_req(int handle)
 {
   int ier;
   int ni, nj, nk, dateo, deet, npas, ip1, ip2, ip3, ig1, ig2, ig3, ig4;
@@ -1155,9 +1155,9 @@ int c_fst_match_req(int handle)
                      &dltf,&ubc,&datevalid,&xtra2,&xtra3);
 
   if (ier < 0) return(0);
-  status = c_fst_match_parm(handle, datevalid, ni, nj, nk, ip1, ip2, ip3,
+  status = C_fstmatch_parm(handle, datevalid, ni, nj, nk, ip1, ip2, ip3,
                             typvar, nomvar, etiket, grtyp, ig1, ig2, ig3, ig4) ;
-//  fprintf(stderr,"c_fst_match_req/fstd status=%d\n",status);
+//  fprintf(stderr,"C_fstmatch_req/fstd status=%d\n",status);
   return status ;
 }
 
@@ -1179,7 +1179,7 @@ int C_fst_match_req(int handle)
                      &dltf,&ubc,&datevalid,&xtra2,&xtra3);
 
   if (ier < 0) return(0);
-  status = c_fst_match_parm(handle, datevalid, ni, nj, nk, ip1, ip2, ip3,
+  status = C_fstmatch_parm(handle, datevalid, ni, nj, nk, ip1, ip2, ip3,
                             typvar, nomvar, etiket, grtyp, ig1, ig2, ig3, ig4) ;
 //  fprintf(stderr,"C_fst_match_req status=%d\n",status);
   return status ;
@@ -1361,7 +1361,7 @@ int f77name(f_filtre_exclure)()
   
 int f77name(f_fst_match_req)(int *handle)
 {
-  return(c_fst_match_req(*handle));
+  return(C_fstmatch_req(*handle));
 }
 
 /*****************************************************************************
@@ -1457,7 +1457,7 @@ int C_requetes_reset(int set_nb, int nomvars, int typvars, int etikets, int date
  *   Initialiser le package de requetes                                      *
  *                                                                           *
  *****************************************************************************/
-void c_requetes_init(char *requetes_filename, char *debug_filename)
+void C_requetes_init(char *requetes_filename, char *debug_filename)
 {
   int i,j,ier;
 
@@ -1479,7 +1479,7 @@ void c_requetes_init(char *requetes_filename, char *debug_filename)
   if (requetes_filename != NULL)
     ier = C_requetes_read_file(requetes_filename);
 #endif
-  fprintf(stderr,"INFO: (c_requetes_init) request table initialized \n");
+  fprintf(stderr,"INFO: (C_requetes_init) request table initialized \n");
   package_not_initialized = 0;
 }
 
@@ -1789,7 +1789,7 @@ return 0;
 
   fp = fopen(requetes_file,"r");
   if (fp == (FILE *) NULL) {
-    fprintf(stderr,"c_requetes_read_file error opening file %s\n",requetes_file);
+    fprintf(stderr,"C_requetes_read_file error opening file %s\n",requetes_file);
     fprintf(stderr,"filter file ignored\n");
     return(-1);
     }
@@ -1882,12 +1882,12 @@ c_main(int argc, char **argv)
   i = C_select_groupset(2,5);
   WriteRequestTable(atoi(argv[1]),NULL);
   
-//i=c_fst_match_parm(handle,  datevalid, ni, nj, nk,       ip1,       ip2,       ip3,typvar,nomvar,      etiket,grtyp,ig1,ig2,ig3,ig4)
-  i=c_fst_match_parm(-1    ,  313280000, 50, 51, 52,       500,        12,         0,   "P",  "TT",  "R2428V4N","X"  ,  0,  0,  0,  0);
+//i=C_fstmatch_parm(handle,  datevalid, ni, nj, nk,       ip1,       ip2,       ip3,typvar,nomvar,      etiket,grtyp,ig1,ig2,ig3,ig4)
+  i=C_fstmatch_parm(-1    ,  313280000, 50, 51, 52,       500,        12,         0,   "P",  "TT",  "R2428V4N","X"  ,  0,  0,  0,  0);
   fprintf(stderr,"match result = %d \n",i);
-  i=c_fst_match_parm(-1    ,  313280000, 50, 51, 52,  41394464,        12,         0,   "P",  "TT",  "R2428V4N","X"  ,  0,  0,  0,  0);
+  i=C_fstmatch_parm(-1    ,  313280000, 50, 51, 52,  41394464,        12,         0,   "P",  "TT",  "R2428V4N","X"  ,  0,  0,  0,  0);
   fprintf(stderr,"match result = %d \n",i);
-  i=c_fst_match_parm(-1    ,  313290800, 50, 51, 52,       750,       750,     77777,   "P",  "TT",  "R2428V4N","X"  ,  0,  0,  0,  0);
+  i=C_fstmatch_parm(-1    ,  313290800, 50, 51, 52,       750,       750,     77777,   "P",  "TT",  "R2428V4N","X"  ,  0,  0,  0,  0);
   fprintf(stderr,"match result = %d \n",i);
   if(argc>narg){
     WriteRequestTable(0,argv[narg]);
@@ -1921,8 +1921,8 @@ c_main(int argc, char **argv)
 //  i = Xc_Select_date(1,1,dates_range,-2);
 /*  heures=0.0;
   i = Xc_Select_date(1,1,dates_range,-2,heures);*/
- /* j = C_fst_match_req(1,*handle);*/
-//  j = C_fst_match_req(*handle);
+ /* j = C_fstmatch_req(1,*handle);*/
+//  j = C_fstmatch_req(*handle);
 
 }
 #endif

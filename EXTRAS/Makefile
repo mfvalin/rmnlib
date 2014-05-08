@@ -2,7 +2,7 @@
 DISTDIR=..
 # extras with respect to RPN's version of rmnlib (14)
 # EXTRAS  : load in local library
-EXTRAS = fstd98.o DlInterface.o convert_ip123.o fst_missing.o register_dl_routines.o dlfcn.o convip_plus.o
+EXTRAS = fstd98.o DlInterface.o convert_ip123.o fst_missing.o register_dl_routines.o dlfcn.o convip_plus.o xdf98.o
 # EXTRAS2 : do not load yet
 EXTRAS2 = float_packer.o  c_zfstlib.o vmm.o excdes_new.o mgilib2.o mgi_watch.o mgi_test.o mgi_shm.o
 TESTS = test_z test_p test_f test_ff test_d test_c test_excdes
@@ -57,6 +57,9 @@ float_packer.o: float_packer.c
 fst_missing.o: fst_missing.c
 	s.cc -c -O 2 fst_missing.c
 
+xdf98.o: xdf98.c
+	s.cc -c -O 2 xdf98.c
+
 fstd98.o: fstd98.c  if_fstd98.c
 	s.cc -c -O 2 fstd98.c
 
@@ -75,7 +78,7 @@ $(TEST_RMNLIB): $(EXTRAS) $(EXTRAS2)
 	touch dummy.mod dummy.inc
 	cp *.mod *.inc Localinclude/$(EC_ARCH)/
 	cp convert_ip.h Localinclude/
-	ar d $(TEST_RMNLIB) excdes.o
+#	ar d $(TEST_RMNLIB) excdes.o
 	ar rcv $(TEST_RMNLIB) $(EXTRAS) $(EXTRAS2)
 
 
