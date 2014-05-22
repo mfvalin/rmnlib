@@ -17,7 +17,7 @@
 ! * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ! * Boston, MA 02111-1307, USA.
 ! */
-!****P* rmnlib/convert_ip123
+!****P* rmnlib/convert_ip123_int
 ! SYNOPSIS
 module convert_ip123_int
 use ISO_C_BINDING
