@@ -24,7 +24,7 @@
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 wordint f77name(ezgprm)(wordint *gdid, char *grtyp, wordint *ni, wordint *nj,
-             wordint *ig1, wordint *ig2, wordint *ig3, wordint *ig4, wordint lengrtyp)
+             wordint *ig1, wordint *ig2, wordint *ig3, wordint *ig4, F2Cl lengrtyp)
 {
   int i;
   wordint icode;

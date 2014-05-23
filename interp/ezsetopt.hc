@@ -26,10 +26,11 @@ extern int f77name(longueur)(char *string, int stringlength);
 
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-wordint f77name(ezsetopt)(char *option, char *value, wordint lenoption, wordint lenvalue)
+wordint f77name(ezsetopt)(char *option, char *value, F2Cl llenoption, F2Cl llenvalue)
 {
    wordint i, icode;
    wordint longueur_option, longueur_value;
+   wordint lenoption=llenoption, lenvalue=llenvalue;
 
    char local_opt[32], local_val[32];
    longueur_option = f77name(longueur)(option, lenoption);

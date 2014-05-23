@@ -21,19 +21,20 @@
 #include "ezscint.h"
 #include "ez_funcdef.h"
 
-wordint f77name(ezsetfval)(char *option, ftnfloat *fvalue, wordint lenoption);
-wordint f77name(ezsetval)(char *option, ftnfloat *fvalue, wordint lenoption);
-wordint f77name(ezsetival)(char *option, wordint *ivalue, wordint lenoption);
+wordint f77name(ezsetfval)(char *option, ftnfloat *fvalue, F2Cl lenoption);
+wordint f77name(ezsetval)(char *option, ftnfloat *fvalue, F2Cl lenoption);
+wordint f77name(ezsetival)(char *option, wordint *ivalue, F2Cl lenoption);
 wordint c_ezsetfval(char *option, ftnfloat fvalue);
 wordint c_ezsetval(char *option, ftnfloat fvalue);
 wordint c_ezsetival(char *option, wordint ivalue);
 
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-wordint f77name(ezsetfval)(char *option, ftnfloat *fvalue, wordint lenoption)
+wordint f77name(ezsetfval)(char *option, ftnfloat *fvalue, F2Cl llenoption)
    {
    wordint i, icode;
    wordint longueur_option, longueur_value;
+   wordint lenoption=llenoption;
 
    char local_opt[32];
 
@@ -50,15 +51,16 @@ wordint f77name(ezsetfval)(char *option, ftnfloat *fvalue, wordint lenoption)
    return icode;
 }
 
-wordint f77name(ezsetval)(char *option, ftnfloat *fvalue, wordint lenoption)
+wordint f77name(ezsetval)(char *option, ftnfloat *fvalue, F2Cl lenoption)
    {
    return f77name(ezsetfval)(option, fvalue, lenoption);
    }
 
-wordint f77name(ezsetival)(char *option, wordint *ivalue, wordint lenoption)
+wordint f77name(ezsetival)(char *option, wordint *ivalue, F2Cl llenoption)
 {
    wordint i, icode;
    wordint longueur_option, longueur_value;
+   wordint lenoption=llenoption;
 
    char local_opt[32];
 

@@ -62,11 +62,7 @@
 !
 !-------------------------------------------------------------
 !
-
-      real r(3,3),ri(3,3)
-
-      common /qqqmrot/ r,ri
-
+#include "qqqmrot.cdk"
 !
 
       integer i,j,ier

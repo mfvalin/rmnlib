@@ -24,7 +24,7 @@
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 wordint f77name(ezqkdef)(wordint *ni, wordint *nj, char *grtyp, 
-                    wordint *ig1, wordint *ig2, wordint *ig3, wordint *ig4, wordint *iunit, wordint lengrtyp)
+                    wordint *ig1, wordint *ig2, wordint *ig3, wordint *ig4, wordint *iunit, F2Cl lengrtyp)
 {
    wordint icode;
    char cgrtyp[2];

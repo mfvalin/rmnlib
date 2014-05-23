@@ -25,7 +25,7 @@
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 wordint f77name(ezgdef)(wordint *ni, wordint *nj, char *grtyp, char *grref, 
 			wordint *ig1, wordint *ig2, wordint *ig3, wordint *ig4, 
-			ftnfloat *ax, ftnfloat *ay, wordint lengrtyp, wordint lengrref)
+			ftnfloat *ax, ftnfloat *ay, F2Cl lengrtyp, F2Cl lengrref)
 {
   wordint icode;
   char lgrtyp[2],lgrref[2];

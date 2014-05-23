@@ -22,10 +22,11 @@
 #include "ez_funcdef.h"
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-wordint f77name(ezgetval)(char *option, ftnfloat *fvalue, wordint lenoption)
+wordint f77name(ezgetval)(char *option, ftnfloat *fvalue, F2Cl llenoption)
 {
    wordint icode;
    char local_opt[32];
+   wordint lenoption=llenoption;
 
    ftnstrclean(option,lenoption);
    strncpy(local_opt, option, lenoption);
@@ -36,10 +37,11 @@ wordint f77name(ezgetval)(char *option, ftnfloat *fvalue, wordint lenoption)
    return icode;
 }
 
-wordint f77name(ezgetival)(char *option, wordint *ivalue, wordint lenoption)
+wordint f77name(ezgetival)(char *option, wordint *ivalue, F2Cl llenoption)
 {
    wordint icode;
    char local_opt[32];
+   wordint lenoption=llenoption;
 
    ftnstrclean(option,lenoption);
    strncpy(local_opt, option, lenoption);

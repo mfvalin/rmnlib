@@ -1,6 +1,6 @@
 #include <rpnmacros.h>
-#include <ezscint.h>
-#include <ez_funcdef.h>
+#include "ezscint.h"
+#include "ez_funcdef.h"
 
 int c_ez_addgrid(int grid_index, _Grille *newgr)
   {
