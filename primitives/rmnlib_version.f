@@ -14,8 +14,8 @@
 *
         version = 
      %  "  RMNLIB  -  Release:"//
-     %  "  (Rev 821)"//
-     %  " Linux 64 bit 2013/11/14 16:28:36"
+     %  " rmn_014_rc2b (Rev 821b)"//
+     %  " Linux_x86-64/intel13sp1 Wed 20 Nov 2013 02:31:58 PM EST"
 	if (prnt) print *,version
 	return
 	end
