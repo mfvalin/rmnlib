@@ -19,7 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h> 
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ipc.h>
@@ -53,7 +53,7 @@ int mgi_test(int argc, char **argv)
   int channel;
   char channel_filename[1024];
   FILE *FD;
-  
+
   if(argc<4) {
     usage(argv[0]);
     exit(1);

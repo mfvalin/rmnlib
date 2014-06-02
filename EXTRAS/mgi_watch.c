@@ -124,7 +124,6 @@ int mgi_watch(int argc, char **argv)
       goto exit;
     }
     if(-1 == shmctl(shmid,IPC_STAT,&shm_stat)) exit (0);  /* shared memory area has disappeared */
-    /* TODO: add a time tag to get a good idea of traffic timing */
     if(in != shm->in || out != shm->out || read_status != shm->read_status || write_status != shm->write_status || attach != shm_stat.shm_nattch){
       gettimeofday(&timetag,NULL);
       time1 = timetag.tv_sec;
