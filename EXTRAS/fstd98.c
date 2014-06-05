@@ -88,7 +88,7 @@ void DecodeMissingValue(void *field,int nvalues,int datatype,int is_byte,int is_
  *  M. Lepine - M. Valin                                                     *
  *  Revised version based on XDF internal file structure.                    *
  *  Revised feb 2014, revisited ip translation and IP printing.              *
- *        print_std_parms, convip_plus, kinds                                *
+ *        print_std_parms, ConvipPlus, kinds                                 *
  *                                                                           *
  *                                                                           *
  *****************************************************************************/
@@ -106,7 +106,7 @@ void DecodeMissingValue(void *field,int nvalues,int datatype,int is_byte,int is_
  *                                                                           *
  *****************************************************************************/
 
-static void convip_plus(int *ip_new,float *level, int *kind, int *mode,char *s, int *flag)
+static void ConvipPlus(int *ip_new,float *level, int *kind, int *mode)
 {
   ConvertIp(ip_new,level,kind,*mode);  /* ignore s and flag that are not used anyway */
 }
@@ -2377,7 +2377,7 @@ int c_fstouv(int iun, char *options)
   if (premiere_fois) {
     premiere_fois = 0;
 /*    printf("DEBUG++ fstouv appel a c_env_var_cracker\n"); */
-    c_env_var_cracker("FST_OPTIONS", c_fst_env_var, "C");    /* obtain options from environment variable */ 
+    c_env_var_cracker("FST_OPTIONS", c_fst_env_var, "C");    /* obtain options from environment variable */
     C_requetes_init(requetes_filename,debug_filename);
     ier = init_ip_vals();  
   }
@@ -2399,7 +2399,7 @@ int c_fstouv(int iun, char *options)
     else
       ier = c_xdfopn(iun,"R-W",(word_2 *) &stdfkeys,16,(word_2 *) &stdf_info_keys,2,appl);
   else      
-    if (((iwko=f77name(wkoffit)(FGFDT[i].file_name,strlen(FGFDT[i].file_name))) == -2) &&
+    if (((iwko=c_wkoffit(FGFDT[i].file_name,strlen(FGFDT[i].file_name))) == -2) &&
        (! FGFDT[i].attr.old)) {
       ier = c_xdfopn(iun,"CREATE",(word_2 *) &stdfkeys,16,(word_2 *) &stdf_info_keys,2,appl); 
       }
@@ -3090,7 +3090,7 @@ int c_ip1_all(float level, int kind)
   flag = 0;
   
   mode = 2;
-  convip_plus(&ip_new,&level,&kind,&mode,s,&flag);
+  ConvipPlus(&ip_new,&level,&kind,&mode);
   ips_tab[0][ip_nb[0]] = ip_new;
   ip_nb[0]++;
   if (ip_nb[0] >= Max_Ipvals) {
@@ -3100,7 +3100,7 @@ int c_ip1_all(float level, int kind)
 
   mode = 3;
   if (kind < 4) 
-    convip_plus(&ip_old,&level,&kind,&mode,s,&flag);
+    ConvipPlus(&ip_old,&level,&kind,&mode);
   else
     ip_old = -9999;     /* no valid value for oldtype */
   ips_tab[0][ip_nb[0]] = ip_old;
@@ -3138,7 +3138,7 @@ int c_ip2_all(float level, int kind)
   flag = 0;
   
   mode = 2;
-  convip_plus(&ip_new,&level,&kind,&mode,s,&flag);
+  ConvipPlus(&ip_new,&level,&kind,&mode);
   ips_tab[1][ip_nb[1]] = ip_new;
   ip_nb[1]++;
   if (ip_nb[1] >= Max_Ipvals) {
@@ -3148,7 +3148,7 @@ int c_ip2_all(float level, int kind)
 
   mode = 3;
   if (kind < 4) 
-    convip_plus(&ip_old,&level,&kind,&mode,s,&flag);
+    ConvipPlus(&ip_old,&level,&kind,&mode);
   else
     ip_old = -9999;     /* no valid value for oldtype */
   ips_tab[1][ip_nb[1]] = ip_old;
@@ -3185,7 +3185,7 @@ int c_ip3_all(float level, int kind)
   flag = 0;
   
   mode = 2;
-  convip_plus(&ip_new,&level,&kind,&mode,s,&flag);
+  ConvipPlus(&ip_new,&level,&kind,&mode);
   ips_tab[2][ip_nb[2]] = ip_new;
   ip_nb[2]++;
   if (ip_nb[2] >= Max_Ipvals) {
@@ -3195,7 +3195,7 @@ int c_ip3_all(float level, int kind)
 
   mode = 3;
   if (kind < 4) 
-    convip_plus(&ip_old,&level,&kind,&mode,s,&flag);
+    ConvipPlus(&ip_old,&level,&kind,&mode);
   else
     ip_old = -9999;     /* no valid value for oldtype */
   ips_tab[2][ip_nb[2]] = ip_old;
@@ -3231,7 +3231,7 @@ int c_ip1_val(float level, int kind)
   flag = 0;
   
   mode = 2;
-  convip_plus(&ip_new,&level,&kind,&mode,s,&flag);
+  ConvipPlus(&ip_new,&level,&kind,&mode);
   ips_tab[0][ip_nb[0]] = ip_new;
   ip_nb[0]++;
   if (ip_nb[0] >= Max_Ipvals) {
@@ -3264,7 +3264,7 @@ int c_ip2_val(float level, int kind)
   flag = 0;
   
   mode = 2;
-  convip_plus(&ip_new,&level,&kind,&mode,s,&flag);
+  ConvipPlus(&ip_new,&level,&kind,&mode);
   ips_tab[1][ip_nb[1]] = ip_new;
   ip_nb[1]++;
   if (ip_nb[1] >= Max_Ipvals) {
@@ -3297,7 +3297,7 @@ int c_ip3_val(float level, int kind)
   flag = 0;
   
   mode = 2;
-  convip_plus(&ip_new,&level,&kind,&mode,s,&flag);
+  ConvipPlus(&ip_new,&level,&kind,&mode);
   ips_tab[2][ip_nb[2]] = ip_new;
   ip_nb[2]++;
   if (ip_nb[2] >= Max_Ipvals) {

@@ -63,7 +63,7 @@ $(TEST_RMNLIB): $(EXTRAS) $(EXTRAS2)
 	touch dummy.mod dummy.inc
 	cp *.mod Localinclude/$(EC_ARCH)/
 	cp *.inc Localinclude/
-	cp convert_ip.h Localinclude/
+#	cp convert_ip.h Localinclude/
 #	ar d $(TEST_RMNLIB) excdes.o
 	ar rcv $(TEST_RMNLIB) $(EXTRAS) $(EXTRAS2)
 
@@ -147,7 +147,7 @@ obj: $(EXTRAS) $(EXTRAS2)
 #	rm -f *.o *.mod
 
 clean:
-	rm -f *.o *.so *.mod $(TESTS) a.out missing.fst
+	rm -f *.o *.so *.mod $(TESTS) a.out missing.fst attach_shm  mgi_shm mgi_watch
 
 distclean: clean
 	rm -rf Locallib Localinclude

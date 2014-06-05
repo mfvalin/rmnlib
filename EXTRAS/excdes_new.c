@@ -1881,7 +1881,7 @@ c_main(int argc, char **argv)
   i = Xc_Select_date(4,-1,dates_range3,2);
   i = C_select_groupset(2,5);
   WriteRequestTable(atoi(argv[1]),NULL);
-  
+
 //i=C_fstmatch_parm(handle,  datevalid, ni, nj, nk,       ip1,       ip2,       ip3,typvar,nomvar,      etiket,grtyp,ig1,ig2,ig3,ig4)
   i=C_fstmatch_parm(-1    ,  313280000, 50, 51, 52,       500,        12,         0,   "P",  "TT",  "R2428V4N","X"  ,  0,  0,  0,  0);
   fprintf(stderr,"match result = %d \n",i);
@@ -1901,7 +1901,7 @@ c_main(int argc, char **argv)
 
   RequetesInit();
   i = Xc_Select_ip1(1,1,ip1s_i,4);
-  i = Xc_Select_suppl(-1, -1, -1, -1, -1, -1, -1, 'Z');
+//  i = Xc_Select_suppl(1,1,-1, -1, -1, -1, -1, -1, -1, 'Z');
   i = Xc_Select_date(1,1,dates_range,3);
   i = C_select_groupset(0,1);
   WriteRequestTable(atoi(argv[1]),NULL);
