@@ -9,8 +9,9 @@ TESTS = test_z test_p test_f test_ff test_d test_c test_excdes
 
 #RMNLIB = librmnbeta_14.819u.a
 #RMNLIB = librmn_014.826u.a
-BASE_RMNLIB := rmn_014
-NEW_RMNLIB := rmnbeta_015
+#BASE_RMNLIB := rmn_014
+BASE_RMNLIB := rmnbeta_015_959u
+NEW_RMNLIB := rmnbeta_016
 TEST_RMNLIB := Locallib/$(EC_ARCH)/lib$(NEW_RMNLIB).a
 EXTRA_LOCAL := -ILocalinclude -ILocalinclude/$(EC_ARCH) -LLocallib/$(EC_ARCH) -l$(NEW_RMNLIB)
 EXTRA_LOCAL_R := -ILocalinclude -ILocalinclude/$(EC_ARCH) -LLocallib/$(EC_ARCH) -l$(BASE_RMNLIB)
