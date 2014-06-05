@@ -2,7 +2,7 @@
 DISTDIR=..
 # extras with respect to RPN's version of rmnlib (14)
 # EXTRAS  : load in local library
-EXTRAS = fstd98.o DlInterface.o convert_ip123.o fst_missing.o register_dl_routines.o dlfcn.o convip_plus.o xdf98.o
+EXTRAS = fstd98.o  fst_missing.o  xdf98.o
 # EXTRAS2 : do not load yet
 EXTRAS2 = float_packer.o  c_zfstlib.o vmm.o excdes_new.o mgilib2.o mgi_watch.o mgi_test.o mgi_shm.o
 TESTS = test_z test_p test_f test_ff test_d test_c test_excdes
@@ -30,17 +30,8 @@ mgi_test.o:	mgi_test.c
 mgi_shm.o:	mgi_shm.c
 	s.cc -c -O 2 $<
 
-DlInterface.o:	DlInterface.c
-	s.cc -c DlInterface.c
-
-register_dl_routines.o: register_dl_routines.c
-	s.cc -c -O 2 $<
-
 excdes_new.o:	excdes_new.c
 	s.cc -c -O 2 $<
-
-dlfcn.o: dlfcn.f90
-	s.f90 -c $<
 
 # "virtual" memory manager
 vmm.o: vmm.c
@@ -63,13 +54,6 @@ xdf98.o: xdf98.c
 
 fstd98.o: fstd98.c  if_fstd98.c
 	s.cc -c -O 2 fstd98.c
-
-# IP123 conversion
-convert_ip123.o:	convert_ip123.f90
-	s.f90 -c -O 2 $<
-
-convip_plus.o:	convip_plus.f90 convert_ip123.f90
-	s.f90 -c -O 2 convip_plus.f90
 
 $(TEST_RMNLIB): $(EXTRAS) $(EXTRAS2)
 	mkdir -p Locallib/$(EC_ARCH)/
@@ -106,9 +90,9 @@ test_d: $(TEST_RMNLIB) libshared.so test_dlfcn.f90
 	s.f90 -o $@ test_dlfcn.f90 $(EXTRA_LOCAL) -ldl
 
 # missing data feature for standard files test
-test_f:	fst_missing.c DlInterface.o
+test_f:	fst_missing.c  $(TEST_RMNLIB)
 	rm -f $@
-	s.cc -o $@ -O 2 -DSELFTEST fst_missing.c DlInterface.o
+	s.cc -o $@ -O 2 -DSELFTEST fst_missing.c $(EXTRA_LOCAL)
 #	s.f90 -o $@ test_missing.f90 fstd98.o fst_missing.o $(EXTRA_LOCAL)
 #	rm -f fstd98.o fst_missing.o
 
