@@ -24,12 +24,60 @@
 #include <sys/types.h>
 #include <rmnlib.h>
 
+typedef struct
+    {
+#if defined(Little_Endian)
+      word numOfBitsPerToken : 6, SHIFT : 6, unused : 12, ID : 8;
+#else
+      word ID : 8, unused : 12, SHIFT : 6, numOfBitsPerToken : 6;
+#endif
+      word numOfPackedToken : 32;
+      word minValue         : 32;
+      word maxValue         : 32;
+}integer_header;
 
+#define process_packheader                                     \
+       if ( packHeader != NULL ) {                             \
+           theHeader     = (integer_header *)packedHeader;     \
+           tokenSize     = theHeader->numOfBitsPerToken;       \
+           ShiftIntended = theHeader->SHIFT;                   \
+           intCount      = theHeader->numOfPackedToken;        \
+           minSigned     = theHeader->minValue;                \
+           minUnsigned   = theHeader->minValue;                \
+         }                                                     \
+       else {                                                  \
+           tokenSize     = bitSizeOfPackedToken;               \
+           ShiftIntended = 0;                                  \
+           intCount      = intCount;                           \
+           minSigned     = minSignedInteger;                   \
+           minUnsigned   = minUnsignedInteger;                 \
+         };
 
+#define ComputeBitSize(arrayOfSignedUnpacked,arrayOfUnsignedUnpacked,opCode)   \
+          {    /*   obtain minimum, maximun, span */                           \
+            if ( opCode == 3)  {   /* signed number */                         \
+                FindMinMax(arrayOfSignedUnpacked, minSignedInteger, maxSignedInteger);  \
+                maxSpan = ( abs(minSignedInteger) > maxSignedInteger ) ? abs(minSignedInteger) : maxSignedInteger;  \
+              }                                                                \
+            else if (  opCode == 1 ) { /* unsigned number */                   \
+                maxSpan = arrayOfUnsignedUnpacked[0];                          \
+                for(i=stride; i < intCount*stride ; i+=stride) {               \
+                    maxSpan |= arrayOfUnsignedUnpacked[i];                     \
+                  };                                                           \
+              };                                                               \
+            bitSizeOfPackedToken = 0; /* compute bitSizeOfPackedToken */       \
+            while ( maxSpan != 0 ) {                                           \
+                maxSpan = maxSpan >> 1;                                        \
+                bitSizeOfPackedToken++;                                        \
+              };                                                               \
+            if ( opCode == 3 )  {/* accomodate the sign bit */                 \
+                bitSizeOfPackedToken++;                                        \
+              };                                                               \
+            cleanupMask = ((word)(~0)>>(wordSize-bitSizeOfPackedToken));
 
 /***********************************************************
  *                                                         *
- *  Objecttive : find min and max of an integer array      *
+ *  Objective : find min and max of an integer array       *
  *                                                         *
  *  Argument   :                                           *
  *   IN    arrayOfUnpacked    integer array                *
@@ -327,26 +375,12 @@ int  compact_integer( void *unpackedArrayOfInt, void *packedHeader, void *packed
                        int elementCount, int bitSizeOfPackedToken, int off_set, 
                        int stride, int opCode)
 {
-
-    typedef struct
-    {
-#if defined(Little_Endian)
-      word numOfBitsPerToken : 6, SHIFT : 6, unused : 12, ID : 8; 
-#else
-      word ID : 8, unused : 12, SHIFT : 6, numOfBitsPerToken : 6;
-#endif
-      word numOfPackedToken : 32;
-      word minValue         : 32;
-      word maxValue         : 32;
-    }integer_header;
-
     int wordSize;
     word cleanupMask;
     int minSignedInteger=0, maxSignedInteger=0;
     word minUnsignedInteger=0, maxUnsignedInteger=0;
     word maxRange;
     word maxSpan;
-   
 
     int positiveMask;
     word *arrayOfUnsignedUnpacked;
@@ -355,8 +389,6 @@ int  compact_integer( void *unpackedArrayOfInt, void *packedHeader, void *packed
     int i, k;
     int intCount;
     int bitRequiredForRange, shiftRequired = 0;
-
-    
 
     /****************************************
      *                                      *
@@ -381,9 +413,7 @@ int  compact_integer( void *unpackedArrayOfInt, void *packedHeader, void *packed
     word minUnsigned;
     integer_header *theHeader;
 
-
 /*  printf("minSignedInteger=%d minUnsignedInteger=%d \n",minSignedInteger,minUnsignedInteger); */
-
     /********************************
      *                              *
      *   handle abnormal condition  *
@@ -394,12 +424,6 @@ int  compact_integer( void *unpackedArrayOfInt, void *packedHeader, void *packed
       { 
         return 0;
       };  
-
-
-
-
-
-   
     /********************************************************
      *                                                      *
      *    determine wordsize and others                     * 
@@ -413,15 +437,8 @@ int  compact_integer( void *unpackedArrayOfInt, void *packedHeader, void *packed
     arrayOfPacked            = (word  *)packedArrayOfInt;
     intCount                 = elementCount;
     cleanupMask              = ((word)(~0)>>(wordSize-bitSizeOfPackedToken));
-      
 
-
-   if ( (opCode==1) || (opCode==3) )
-    /************************************************
-     *                                              *
-     *         collect info for the packing         *
-     *                                              *
-     ***********************************************/   
+   if ( (opCode==1) || (opCode==3) )   /*   packing   */
    {
      if ( packedHeader != NULL )
        /*******************************************************************
@@ -443,11 +460,12 @@ int  compact_integer( void *unpackedArrayOfInt, void *packedHeader, void *packed
       /*************************************************************
        *                                                           *
        *   pack header not required, X itself is used as packInt,  *
-       *   determines bitSizeOfPackedToken, if not available       *
+       *   determines bitSizeOfPackedToken, if not supplied        *
        *                                                           *
        ************************************************************/
       {
         if ( bitSizeOfPackedToken == -1 )
+#ifdef use_old_code
           {
             /**********************************************************
              *                                                        *
@@ -457,26 +475,22 @@ int  compact_integer( void *unpackedArrayOfInt, void *packedHeader, void *packed
             if ( opCode == 3 )
               {
                 /* signed integer number */
-               
                 FindMinMax(arrayOfSignedUnpacked, minSignedInteger, maxSignedInteger);
-
-                maxSpan    = ( abs(minSignedInteger) > maxSignedInteger ) ? abs(minSignedInteger) : 
-                             maxSignedInteger;            
+                maxSpan = ( abs(minSignedInteger) > maxSignedInteger ) ? abs(minSignedInteger) : maxSignedInteger;
               }
             else if (  opCode == 1 )
               {
                 /* unsigned integer number */
                 maxSpan = arrayOfUnsignedUnpacked[0];
-
                 for(i=stride; i < intCount*stride ; i+=stride)
                   {
                     maxSpan |= arrayOfUnsignedUnpacked[i];
                   }; 
               };
-          
+
             /************************************************************
              *                                                          *
-             *           derive bitSizeOfPackedToken                    *
+             *           compute bitSizeOfPackedToken                   *
              *                                                          *
              ***********************************************************/
             bitSizeOfPackedToken = 0;
@@ -486,9 +500,12 @@ int  compact_integer( void *unpackedArrayOfInt, void *packedHeader, void *packed
                 bitSizeOfPackedToken++;
               };
             if ( opCode == 3 )
-              {/* accomodate the signed bit */
+              {/* accomodate the sign bit */
                 bitSizeOfPackedToken++;
               };
+#else
+            ComputeBitSize(arrayOfSignedUnpacked,arrayOfUnsignedUnpacked,opCode)
+#endif
             cleanupMask = ((word)(~0)>>(wordSize-bitSizeOfPackedToken));
           };/* if */
 
@@ -496,22 +513,17 @@ int  compact_integer( void *unpackedArrayOfInt, void *packedHeader, void *packed
 
       };/* else */
    } 
-   else/* opCode == 2 or 4 */
-    /************************************************
-     *                                              *
-     *         collect info for the unpacking       *
-     *                                              *
-     ***********************************************/
+   else       /* opCode == 2 or 4, unpacking */
      {
+#ifdef use_old_code
        if ( packHeader != NULL )
          {
            theHeader     = (integer_header *)packedHeader;
-           tokenSize     = theHeader->numOfBitsPerToken; 
+           tokenSize     = theHeader->numOfBitsPerToken;
            ShiftIntended = theHeader->SHIFT;
            intCount      = theHeader->numOfPackedToken;
            minSigned     = theHeader->minValue;
            minUnsigned   = theHeader->minValue;
-
          }
        else
          {
@@ -521,6 +533,9 @@ int  compact_integer( void *unpackedArrayOfInt, void *packedHeader, void *packed
            minSigned     = minSignedInteger;
            minUnsigned   = minUnsignedInteger;
          };
+#else
+       process_packheader ;
+#endif
      };
  
    
@@ -564,7 +579,7 @@ int  compact_integer( void *unpackedArrayOfInt, void *packedHeader, void *packed
      }
    else
      {
-       printf("\n opCode:%d is not defined \n", opCode);
+       printf("\n compact_integer: opCode:%d is not defined \n", opCode);
        return 0;
      };/* if */
  
@@ -597,19 +612,6 @@ int  compact_short( void *unpackedArrayOfShort, void *packedHeader, void *packed
                        int elementCount, int bitSizeOfPackedToken, int off_set, 
                        int stride, int opCode)
 {
-
-    typedef struct
-    {
-#if defined(Little_Endian)
-      word numOfBitsPerToken : 6, SHIFT : 6, unused : 12, ID : 8; 
-#else
-      word ID : 8, unused : 12, SHIFT : 6, numOfBitsPerToken : 6;
-#endif
-      word numOfPackedToken : 32;
-      word minValue         : 32;
-      word maxValue         : 32;
-    }integer_header;
-
     int wordSize;
     word cleanupMask;
     int minSignedInteger=0, maxSignedInteger=0;
@@ -620,6 +622,7 @@ int  compact_short( void *unpackedArrayOfShort, void *packedHeader, void *packed
 
     int positiveMask;
     unsigned short *arrayOfUnsignedShort;
+    short *arrayOfSignedShort;
     word *arrayOfPacked;
     int i, k;
     int intCount;
@@ -663,12 +666,6 @@ int  compact_short( void *unpackedArrayOfShort, void *packedHeader, void *packed
       { 
         return 0;
       };  
-
-
-
-
-
-   
     /********************************************************
      *                                                      *
      *    determine wordsize and others                     * 
@@ -676,20 +673,15 @@ int  compact_short( void *unpackedArrayOfShort, void *packedHeader, void *packed
      ********************************************************/
     wordSize                 = 8 * sizeof(word);
     arrayOfUnsignedShort     = (short *)unpackedArrayOfShort;
+    arrayOfSignedShort       = (short *)unpackedArrayOfShort;
     theHeader                = (integer_header *)packedHeader;
     packHeader               = (word *)packedHeader;
     arrayOfPacked            = (word  *)packedArrayOfInt;
     intCount                 = elementCount;
     cleanupMask              = ((word)(~0)>>(wordSize-bitSizeOfPackedToken));
       
-
-
-   if (opCode==5)
-    /************************************************
-     *                                              *
-     *         collect info for the packing         *
-     *                                              *
-     ***********************************************/   
+    opCode = opCode - 4;
+   if (opCode==1 || opCode==3)  /* packing */
    {
      if ( packedHeader != NULL )
        /*******************************************************************
@@ -698,7 +690,8 @@ int  compact_short( void *unpackedArrayOfShort, void *packedHeader, void *packed
         *                                                                  *
         *******************************************************************/
        {
-             constructHeader(arrayOfUnsignedShort, minUnsignedInteger, maxUnsignedInteger);
+             if (opCode==1) constructHeader(arrayOfUnsignedShort, minUnsignedInteger, maxUnsignedInteger);
+             if (opCode==3) constructHeader(arrayOfSignedShort, minSignedInteger, maxSignedInteger);
        }
     else
       /*************************************************************
@@ -709,13 +702,14 @@ int  compact_short( void *unpackedArrayOfShort, void *packedHeader, void *packed
        ************************************************************/
       {
         if ( bitSizeOfPackedToken == -1 )
+#ifdef use_old_code
           {
             /**********************************************************
              *                                                        *
              *   obtain minimum, maximun, span                        *
              *                                                        *
              *********************************************************/
-            if ( opCode == 5 )
+            if ( opCode == 1 )
               {
                 /* unsigned integer number */
                 maxSpan = arrayOfUnsignedShort[0];
@@ -723,7 +717,15 @@ int  compact_short( void *unpackedArrayOfShort, void *packedHeader, void *packed
                 for(i=stride; i < intCount*stride ; i+=stride)
                   {
                     maxSpan |= arrayOfUnsignedShort[i];
-                  }; 
+                  };
+              };
+            if ( opCode == 3 )
+              {
+                /* signed integer number */
+                FindMinMax(arrayOfSignedShort, minSignedInteger, maxSignedInteger);
+
+                maxSpan    = ( abs(minSignedInteger) > maxSignedInteger ) ? abs(minSignedInteger) :
+                             maxSignedInteger;
               };
           
             /************************************************************
@@ -741,6 +743,9 @@ int  compact_short( void *unpackedArrayOfShort, void *packedHeader, void *packed
               {/* accomodate the signed bit */
                 bitSizeOfPackedToken++;
               };
+#else
+            ComputeBitSize(arrayOfSignedShort,arrayOfUnsignedShort,opCode) ;
+#endif
             cleanupMask = ((word)(~0)>>(wordSize-bitSizeOfPackedToken));
           };/* if */
 
@@ -755,15 +760,15 @@ int  compact_short( void *unpackedArrayOfShort, void *packedHeader, void *packed
      *                                              *
      ***********************************************/
      {
+#ifdef use_old_code
        if ( packHeader != NULL )
          {
            theHeader     = (integer_header *)packedHeader;
-           tokenSize     = theHeader->numOfBitsPerToken; 
+           tokenSize     = theHeader->numOfBitsPerToken;
            ShiftIntended = theHeader->SHIFT;
            intCount      = theHeader->numOfPackedToken;
            minSigned     = theHeader->minValue;
            minUnsigned   = theHeader->minValue;
-
          }
        else
          {
@@ -773,6 +778,9 @@ int  compact_short( void *unpackedArrayOfShort, void *packedHeader, void *packed
            minSigned     = minSignedInteger;
            minUnsigned   = minUnsignedInteger;
          };
+#else
+       process_packheader ;
+#endif
      };
  
    
@@ -783,8 +791,7 @@ int  compact_short( void *unpackedArrayOfShort, void *packedHeader, void *packed
     * since 1,2,3,4 without header all needs it  *
     *                                            *
     *********************************************/
-   positiveMask = ( opCode < 7 ) ? 0 : ( 1 << ( bitSizeOfPackedToken - 1 ));
-   fprintf(stderr,"compact_short opCode=%d positiveMask=%d\n",opCode,positiveMask);
+   positiveMask = ( opCode < 3 ) ? 0 : ( 1 << ( bitSizeOfPackedToken - 1 ));
 
 
    /***********************************************
@@ -792,23 +799,24 @@ int  compact_short( void *unpackedArrayOfShort, void *packedHeader, void *packed
     *   pack                                      *
     *                                             *
     **********************************************/
-   if ( opCode == 5 )
+   if ( opCode == 1 || opCode==3)
      {
-       Pack(arrayOfUnsignedShort, 0); 
+       if ( opCode == 1) Pack(arrayOfUnsignedShort, minUnsignedInteger);
+       if ( opCode == 3) Pack(arrayOfSignedShort, minSignedInteger);
      }
    /***********************************************
     *                                             *
     *   unpack                                    *
     *                                             *
     **********************************************/
-   else if ( opCode == 6 )
+   else if ( opCode == 2 || opCode == 4 )
      {
-       Unpack(arrayOfUnsignedShort, ShiftIntended, tokenSize, 
-              0, intCount);
+       if ( opCode == 2 ) Unpack(arrayOfUnsignedShort, ShiftIntended, tokenSize, minUnsigned, intCount);
+       if ( opCode == 4 ) Unpack(arrayOfSignedShort, ShiftIntended, tokenSize, minSigned, intCount);
      }
    else
      {
-       printf("\n opCode:%d is not defined \n", opCode);
+       printf("\n compact_short: opCode:%d is not defined \n", opCode);
        return 0;
      };/* if */
  
@@ -839,35 +847,20 @@ int  compact_char( void *unpackedArrayOfBytes, void *packedHeader, void *packedA
                        int elementCount, int bitSizeOfPackedToken, int off_set, 
                        int stride, int opCode)
 {
-
-    typedef struct
-    {
-#if defined(Little_Endian)
-      word numOfBitsPerToken : 6, SHIFT : 6, unused : 12, ID : 8; 
-#else
-      word ID : 8, unused : 12, SHIFT : 6, numOfBitsPerToken : 6;
-#endif
-      word numOfPackedToken : 32;
-      word minValue         : 32;
-      word maxValue         : 32;
-    }integer_header;
-
     int wordSize;
     word cleanupMask;
     int minSignedInteger=0, maxSignedInteger=0;
     word minUnsignedInteger=0, maxUnsignedInteger=0;
     word maxRange;
     word maxSpan;
-   
 
     int positiveMask;
     unsigned char *arrayOfUnsignedChar;
+    char *arrayOfSignedChar;
     word *arrayOfPacked;
     int i, k;
     int intCount;
     int bitRequiredForRange, shiftRequired = 0;
-
-    
 
     /****************************************
      *                                      *
@@ -877,7 +870,6 @@ int  compact_char( void *unpackedArrayOfBytes, void *packedHeader, void *packedA
     int lastPackBit, spaceInLastWord, lastSlot;
     word lastWordShifted, tempInt;
     word *packHeader;
-    
     /***************************************
      *                                     *
      *    variables used by the unpacker   *
@@ -892,9 +884,7 @@ int  compact_char( void *unpackedArrayOfBytes, void *packedHeader, void *packedA
     word minUnsigned;
     integer_header *theHeader;
 
-
 /*  printf("minSignedInteger=%d minUnsignedInteger=%d \n",minSignedInteger,minUnsignedInteger); */
-
     /********************************
      *                              *
      *   handle abnormal condition  *
@@ -905,12 +895,6 @@ int  compact_char( void *unpackedArrayOfBytes, void *packedHeader, void *packedA
       { 
         return 0;
       };  
-
-
-
-
-
-   
     /********************************************************
      *                                                      *
      *    determine wordsize and others                     * 
@@ -918,20 +902,15 @@ int  compact_char( void *unpackedArrayOfBytes, void *packedHeader, void *packedA
      ********************************************************/
     wordSize                 = 8 * sizeof(word);
     arrayOfUnsignedChar      = (unsigned char *)unpackedArrayOfBytes;
+    arrayOfSignedChar        = (char *)unpackedArrayOfBytes;
     theHeader                = (integer_header *)packedHeader;
     packHeader               = (word *)packedHeader;
     arrayOfPacked            = (word  *)packedArrayOfInt;
     intCount                 = elementCount;
     cleanupMask              = ((word)(~0)>>(wordSize-bitSizeOfPackedToken));
-      
 
-
-   if (opCode==9)
-    /************************************************
-     *                                              *
-     *         collect info for the packing         *
-     *                                              *
-     ***********************************************/   
+    opCode = opCode -8;
+   if (opCode==1 || opCode==3)  /* packing */
    {
      if ( packedHeader != NULL )
        /*******************************************************************
@@ -940,7 +919,8 @@ int  compact_char( void *unpackedArrayOfBytes, void *packedHeader, void *packedA
         *                                                                  *
         *******************************************************************/
        {
-             constructHeader(arrayOfUnsignedChar, minUnsignedInteger, maxUnsignedInteger);
+             if (opCode==1 ) constructHeader(arrayOfUnsignedChar, minUnsignedInteger, maxUnsignedInteger);
+             if (opCode==3) constructHeader(arrayOfSignedChar,   minSignedInteger,   maxSignedInteger);
        }
     else
       /*************************************************************
@@ -951,21 +931,26 @@ int  compact_char( void *unpackedArrayOfBytes, void *packedHeader, void *packedA
        ************************************************************/
       {
         if ( bitSizeOfPackedToken == -1 )
+#ifdef use_old_code
           {
-            /**********************************************************
+             /*********************************************************
              *                                                        *
              *   obtain minimum, maximun, span                        *
              *                                                        *
              *********************************************************/
-            if ( opCode == 9 )
+            if ( opCode == 1 )                /* unsigned byte  */
               {
-                /* unsigned integer number */
                 maxSpan = arrayOfUnsignedChar[0];
-
                 for(i=stride; i < intCount*stride ; i+=stride)
                   {
                     maxSpan |= arrayOfUnsignedChar[i];
                   }; 
+              };
+            if ( opCode == 3 )                /* signed byte  */
+              {
+                FindMinMax(arrayOfSignedChar, minSignedInteger, maxSignedInteger);
+                maxSpan    = ( abs(minSignedInteger) > maxSignedInteger ) ? abs(minSignedInteger) :
+                             maxSignedInteger;
               };
           
             /************************************************************
@@ -979,24 +964,27 @@ int  compact_char( void *unpackedArrayOfBytes, void *packedHeader, void *packedA
                 maxSpan = maxSpan >> 1;
                 bitSizeOfPackedToken++;
               };
-            if ( opCode == 3 )
-              {/* accomodate the signed bit */
+            if ( opCode == 3 )     /* accomodate the sign bit */
+              {
                 bitSizeOfPackedToken++;
               };
-            cleanupMask = ((word)(~0)>>(wordSize-bitSizeOfPackedToken));
+#else
+            ComputeBitSize(arrayOfSignedChar,arrayOfUnsignedChar,opCode) ;
+#endif
+//            cleanupMask = ((word)(~0)>>(wordSize-bitSizeOfPackedToken));
+            cleanupMask = ~(-1 << (wordSize-bitSizeOfPackedToken));
           };/* if */
-
-
 
       };/* else */
    } 
-   else/* opCode == 10 */
+   else                      /* opCode == 10 or 12 */
     /************************************************
      *                                              *
      *         collect info for the unpacking       *
      *                                              *
      ***********************************************/
      {
+#ifdef use_old_code
        if ( packHeader != NULL )
          {
            theHeader     = (integer_header *)packedHeader;
@@ -1005,7 +993,6 @@ int  compact_char( void *unpackedArrayOfBytes, void *packedHeader, void *packedA
            intCount      = theHeader->numOfPackedToken;
            minSigned     = theHeader->minValue;
            minUnsigned   = theHeader->minValue;
-
          }
        else
          {
@@ -1015,42 +1002,31 @@ int  compact_char( void *unpackedArrayOfBytes, void *packedHeader, void *packedA
            minSigned     = minSignedInteger;
            minUnsigned   = minUnsignedInteger;
          };
+#else
+       process_packheader ;
+#endif
      };
- 
-   
-
    /**********************************************
     *                                            *
     *  compute signed int adjustment,            *
     * since 1,2,3,4 without header all needs it  *
     *                                            *
     *********************************************/
-   positiveMask = ( opCode < 11 ) ? 0 : ( 1 << ( bitSizeOfPackedToken - 1 ));
-   fprintf(stderr,"compact_char opCode=%d positiveMask=%d\n",opCode,positiveMask);
+   positiveMask = ( opCode < 3 ) ? 0 : ( 1 << ( bitSizeOfPackedToken - 1 ));
 
-
-   /***********************************************
-    *                                             *
-    *   pack                                      *
-    *                                             *
-    **********************************************/
-   if ( opCode == 9 )
+   if ( opCode == 1 || opCode == 3 )     /*    pack  */
      {
-       Pack(arrayOfUnsignedChar, 0); 
+       if ( opCode == 1) Pack(arrayOfUnsignedChar, minUnsignedInteger);
+       if ( opCode == 3) Pack(arrayOfSignedChar, minSignedInteger);
      }
-   /***********************************************
-    *                                             *
-    *   unpack                                    *
-    *                                             *
-    **********************************************/
-   else if ( opCode == 10 )
+   else if ( opCode == 2 || opCode == 4 )  /*   unpack  */
      {
-       Unpack(arrayOfUnsignedChar, ShiftIntended, tokenSize, 
-              0, intCount);
+       if ( opCode == 2 ) Unpack(arrayOfUnsignedChar, ShiftIntended, tokenSize,minUnsigned, intCount);
+       if ( opCode == 4 ) Unpack(arrayOfSignedChar, ShiftIntended, tokenSize,minSigned, intCount);
      }
    else
      {
-       printf("\n opCode:%d is not defined \n", opCode);
+       printf("\n compact_char: opCode:%d is not defined \n", opCode);
        return 0;
      };/* if */
  

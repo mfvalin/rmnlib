@@ -827,6 +827,8 @@ int c_fstecr(word *field_in, void * work, int npak,
         datyp = 4;
       }
       stdf_entry->datyp = is_missing | 4;  /* turbo compression not supported for this type, revert to normal mode */
+#ifdef use_old_code
+fprintf(stderr,"OLD PACK CODE======================================\n");
       field3 = field;
       if(xdf_short || xdf_byte){
         field3=(word *)alloca(ni*nj*nk*sizeof(word));
@@ -836,6 +838,19 @@ int c_fstecr(word *field_in, void * work, int npak,
       }
       ier = compact_integer(field3,(void *) NULL,&(buffer->data[keys_len]),ni*nj*nk,
                             nbits,0,xdf_stride,3);
+#else
+fprintf(stderr,"NEW PACK CODE======================================\n");
+      if(xdf_short){
+        ier = compact_short(field,(void *) NULL,&(buffer->data[keys_len]),ni*nj*nk,
+                            nbits,0,xdf_stride,7);
+      } else if(xdf_byte){
+        ier = compact_char(field,(void *) NULL,&(buffer->data[keys_len]),ni*nj*nk,
+                            nbits,0,xdf_stride,11);
+      }else{
+        ier = compact_integer(field,(void *) NULL,&(buffer->data[keys_len]),ni*nj*nk,
+                            nbits,0,xdf_stride,3);
+      }
+#endif
       break;
       
     case 5: case 8: case 133:  case 136:            /* IEEE and IEEE complex representation */
@@ -1909,6 +1924,8 @@ int c_fstluk(word *field, int handle, int *ni, int *nj, int *nk)
         }
         
       case 4: mode=4;  /* signed integer */
+#ifdef use_old_code
+fprintf(stderr,"OLD UNPACK CODE ======================================\n");
         if(xdf_short || xdf_byte){
           field_out=alloca(nelm*sizeof(int));
           s_field_out=(short *)field;
@@ -1920,6 +1937,19 @@ int c_fstluk(word *field, int handle, int *ni, int *nj, int *nk)
                               stdf_entry->nbits,0,xdf_stride,mode);
         if(xdf_short){ for (i=0;i<nelm;i++) s_field_out[i]=field_out[i]; } ;
         if(xdf_byte) { for (i=0;i<nelm;i++) b_field_out[i]=field_out[i]; } ;
+#else
+fprintf(stderr,"NEW UNPACK CODE ======================================\n");
+        if(xdf_short){
+          ier = compact_short(field,(void *) NULL,buf->data,nelm,
+                              stdf_entry->nbits,0,xdf_stride,8);
+        }else if(xdf_byte){
+          ier = compact_char(field,(void *) NULL,buf->data,nelm,
+                              stdf_entry->nbits,0,xdf_stride,12);
+        }else{
+          ier = compact_integer(field,(void *) NULL,buf->data,nelm,
+                              stdf_entry->nbits,0,xdf_stride,mode);
+        }
+#endif
         break;
         
       case 5: case 8: mode=2;  /* IEEE representation */
