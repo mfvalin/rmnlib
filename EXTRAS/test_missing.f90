@@ -1,3 +1,7 @@
+program test
+call test_missing_values
+stop
+end
 subroutine test_missing_values
 !
 !  rm -f missing.fst ; MISSING_VALUE_FLAGS="99.0 127 255" ./a.out
@@ -10,6 +14,7 @@ integer, dimension(ASIZE) :: ia, ia2, work
 integer, dimension(ASIZE) :: uia, uia2
 integer *2, dimension(ASIZE) :: sa, sa2
 integer *1, dimension(ASIZE) :: ba, ba2
+integer *4, dimension(ASIZE) :: bba, bba2
 integer *2, dimension(ASIZE) :: usa, usa2
 integer *1, dimension(ASIZE) :: uba, uba2
 real *4, dimension(ASIZE) :: fa, fa2, fa3
@@ -53,8 +58,8 @@ ia(2)=im   ; ia(ASIZE-1)=im ; ia(3)=im   ; ia(ASIZE-2)=im
 sa(2)=sm   ; sa(ASIZE-1)=sm ; sa(4)=sm   ; sa(ASIZE-3)=sm
 ba(2)=bm   ; ba(ASIZE-1)=bm ; ba(1)=bm
 uia(3)=uim ; uia(ASIZE-2)=uim
-usa(3)=usm ; usa(ASIZE-2)=usm ; usa(ASIZE)=usm
-uba(3)=ubm ; uba(ASIZE-2)=ubm
+usa(3)=usm ; usa(ASIZE-2)=usm ; usa(ASIZE)=-2
+uba(3)=ubm ; uba(ASIZE-2)=ubm ; uba(ASIZE)=-3
 ia(ASIZE/2)=125      ! set to 127 to force error message
 sa(ASIZE/2)=124      ! set to 127 to force error message
 ba(ASIZE/2)=123      ! set to 127 to force error message
@@ -123,9 +128,12 @@ do i=1,ASIZE
  print 101,i,fa2(i),da2(i),ia2(i),sa2(i),ba2(i),uia2(i),usa2(i),uba2(i),ca(i),za(i)
 enddo
 1111 continue ! write data into standard file
+if(command_argument_count()>0) call system('rm -f missing.fst')   ! get rid of an old test file if present
 inquire(file='missing.fst',EXIST=file_exists)
 if(file_exists) then
-  print *,"============= missing.fst exists, write test will be skipped ============"
+  print 1,"========================================================================="
+  print 1,"============= missing.fst exists, write test will be skipped ============"
+  print 1,"========================================================================="
   goto 2222 ! skip write test if file exists
 endif
 print *,'============= writing into standard file with and without missing values ============'
@@ -155,9 +163,9 @@ call fstecr(da,work,-16,11,0,0,0,ASIZE,1,1,8,0,0,'XX','YYYY','ETIKET','X',0,0,0,
 call fstecr(da,work,-64,11,0,0,0,ASIZE,1,1,18,0,0,'XX','YYYY','ETIKET','X',0,0,0,0,69,.false.) ! IEEE64 with missing
 
 call fst_data_length(2)
-call fstecr(usa,work,-8,11,0,0,0,ASIZE,1,1,9,0,0,'XX','YYYY','ETIKET','X',0,0,0,0,2,.false.)  ! unsigned short
+call fstecr(usa,work,-16,11,0,0,0,ASIZE,1,1,9,0,0,'XX','YYYY','ETIKET','X',0,0,0,0,2,.false.)  ! unsigned short
 call fst_data_length(2)
-call fstecr(usa,work,-8,11,0,0,0,ASIZE,1,1,10,0,0,'XX','YYYY','ETIKET','X',0,0,0,0,66,.false.)! unsigned short with missing
+call fstecr(usa,work,-16,11,0,0,0,ASIZE,1,1,10,0,0,'XX','YYYY','ETIKET','X',0,0,0,0,66,.false.)! unsigned short with missing
 
 call fst_data_length(2)
 call fstecr(sa,work,-8,11,0,0,0,ASIZE,1,1,11,0,0,'XX','YYYY','ETIKET','X',0,0,0,0,4,.false.)  ! signed short
@@ -232,17 +240,24 @@ call fst_data_length(2)
 status=fstlir(sa2,12,ni,nj,nk,-1,' ',12,-1,-1,' ',' ')    ! signed short with missing
 call fst_data_length(2)
 status=fstlir(usa2,12,ni,nj,nk,-1,' ',10,-1,-1,' ',' ')   ! unsigned short with missing
+status=fstlir(bba2,12,ni,nj,nk,-1,' ',10,-1,-1,' ',' ')   ! unsigned short with missing, read into full size integer
 
 call fst_data_length(1)
 status=fstlir(ba2,12,ni,nj,nk,-1,' ',14,-1,-1,' ',' ')    ! signed byte with missing
 call fst_data_length(1)
 status=fstlir(uba2,12,ni,nj,nk,-1,' ',16,-1,-1,' ',' ')   ! unsigned byte with missing
+status=fstlir(bba,12,ni,nj,nk,-1,' ',16,-1,-1,' ',' ')   ! unsigned byte with missing, read into full size integer
 
-print *,'---------------------------------------------------------------------------------------------------'
-print *,'#    float  <f16> double             int  short   byte   uint ushort  ubyte     float  <IEEE> double     complex 32    complex 64'
-print *,'---------------------------------------------------------------------------------------------------'
+1 format(A)
+print 1,'---------------------------------------------------------------------------------------------------'
+print 1,'#    float  <f16> double             int  short   byte   uint ushort  ubyte     float  <IEEE> double     complex 32    complex 64'
+print 1,'---------------------------------------------------------------------------------------------------'
 do i=1,ASIZE
  print 101,i,fa2(i),da2(i),ia2(i),sa2(i),ba2(i),uia2(i),usa2(i),uba2(i),fa3(i),da3(i),ca3(i),za3(i)
+enddo
+print 1,'---------------------------------------------------------------------------------------------------'
+do i=1,ASIZE
+ print 101,i,fa2(i),da2(i),ia2(i),sa2(i),ba2(i),uia2(i),bba2(i),bba(i),fa3(i),da3(i),ca3(i),za3(i)
 enddo
 
 call fstfrm(12)
