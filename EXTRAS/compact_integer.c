@@ -549,414 +549,6 @@ int  compact_char( void *unpackedArray, void *packedHeader, void *packedArrayOfI
   return intCount;  /* unused, function must return something */
 } /* end compact_char */
 
-int  compact_short2( void *unpackedArrayOfShort, void *packedHeader, void *packedArrayOfInt, 
-                       int elementCount, int bitSizeOfPackedToken, int off_set, 
-                       int stride, int opCode)
-{
-    int wordSize;
-    word cleanupMask;
-    int minSignedInteger=0, maxSignedInteger=0;
-    word minUnsignedInteger=0, maxUnsignedInteger=0;
-    word maxRange;
-    word maxSpan;
-   
-
-    int positiveMask;
-    unsigned short *arrayOfUnsignedUnpacked;
-    short *arrayOfSignedUnpacked;
-    word *arrayOfPacked;
-    int i, k;
-    int intCount;
-    int bitRequiredForRange, shiftRequired = 0;
-
-    
-
-    /****************************************
-     *                                      *
-     *     variables used by the packer     *
-     *                                      *
-     ***************************************/
-    int lastPackBit, spaceInLastWord, lastSlot;
-    word lastWordShifted, tempInt;
-    word *packHeader;
-    
-    /***************************************
-     *                                     *
-     *    variables used by the unpacker   *
-     *                                     *
-     **************************************/
-    int firstPackBit, bitPackInFirstWord, currentSlot;
-    word currentWord, packInt;
-    int significantBit, inSignificantBit;
-    word *arrayPtr;
-    int tokenSize, ShiftIntended, elementCountFromHeader;
-    int  minSigned;
-    word minUnsigned;
-    integer_header *theHeader;
-
-
-/*  printf("minSignedInteger=%d minUnsignedInteger=%d \n",minSignedInteger,minUnsignedInteger); */
-
-    /********************************
-     *                              *
-     *   handle abnormal condition  *
-     *                              *
-     ********************************/
-    /* token size is 0 */
-    if ( bitSizeOfPackedToken == 0 )
-      { 
-        return 0;
-      };  
-    /********************************************************
-     *                                                      *
-     *    determine wordsize and others                     * 
-     *                                                      *
-     ********************************************************/
-    wordSize                 = 8 * sizeof(word);
-    arrayOfUnsignedUnpacked     = (short *)unpackedArrayOfShort;
-    arrayOfSignedUnpacked       = (short *)unpackedArrayOfShort;
-    theHeader                = (integer_header *)packedHeader;
-    packHeader               = (word *)packedHeader;
-    arrayOfPacked            = (word  *)packedArrayOfInt;
-    intCount                 = elementCount;
-    cleanupMask              = ((word)(~0)>>(wordSize-bitSizeOfPackedToken));
-      
-    opCode = opCode - 4;
-   if (opCode==1 || opCode==3)  /* packing */
-   {
-     if ( packedHeader != NULL )
-       /*******************************************************************
-        *                                                                  *
-        *  pack header is required, (X - Xmin) is used as packInt          *
-        *                                                                  *
-        *******************************************************************/
-       {
-             if (opCode==1) constructHeader(arrayOfUnsignedUnpacked, minUnsignedInteger, maxUnsignedInteger);
-             if (opCode==3) constructHeader(arrayOfSignedUnpacked, minSignedInteger, maxSignedInteger);
-       }
-    else
-      /*************************************************************
-       *                                                           *
-       *   pack header not required, X itself is used as packInt,  *
-       *   determines bitSizeOfPackedToken, if not available       *
-       *                                                           *
-       ************************************************************/
-      {
-        if ( bitSizeOfPackedToken == -1 )
-          {
-#ifdef use_old_code
-            /**********************************************************
-             *                                                        *
-             *   obtain minimum, maximun, span                        *
-             *                                                        *
-             *********************************************************/
-            if ( opCode == 1 )
-              {
-                /* unsigned integer number */
-                maxSpan = arrayOfUnsignedUnpacked[0];
-
-                for(i=stride; i < intCount*stride ; i+=stride)
-                  {
-                    maxSpan |= arrayOfUnsignedUnpacked[i];
-                  };
-              };
-            if ( opCode == 3 )
-              {
-                /* signed integer number */
-                FindMinMax(arrayOfSignedUnpacked, minSignedInteger, maxSignedInteger);
-
-                maxSpan    = ( abs(minSignedInteger) > maxSignedInteger ) ? abs(minSignedInteger) :
-                             maxSignedInteger;
-              };
-          
-            /************************************************************
-             *                                                          *
-             *           derive bitSizeOfPackedToken                    *
-             *                                                          *
-             ***********************************************************/
-            bitSizeOfPackedToken = 0;
-            while ( maxSpan != 0 )
-              {
-                maxSpan = maxSpan >> 1;
-                bitSizeOfPackedToken++;
-              };
-            if ( opCode == 3 )
-              {/* accomodate the signed bit */
-                bitSizeOfPackedToken++;
-              };
-#else
-            ComputeBitSize(arrayOfSignedUnpacked,arrayOfUnsignedUnpacked,opCode) ;
-#endif
-            cleanupMask = ((word)(~0)>>(wordSize-bitSizeOfPackedToken));
-          };/* if */
-
-
-
-      };/* else */
-   } 
-   else/* opCode == 6 or 8 */
-    /************************************************
-     *                                              *
-     *         collect info for the unpacking       *
-     *                                              *
-     ***********************************************/
-     {
-#ifdef use_old_code
-       if ( packHeader != NULL )
-         {
-           theHeader     = (integer_header *)packedHeader;
-           tokenSize     = theHeader->numOfBitsPerToken;
-           ShiftIntended = theHeader->SHIFT;
-           intCount      = theHeader->numOfPackedToken;
-           minSigned     = theHeader->minValue;
-           minUnsigned   = theHeader->minValue;
-         }
-       else
-         {
-           tokenSize     = bitSizeOfPackedToken;
-           ShiftIntended = 0;
-           intCount      = intCount;
-           minSigned     = minSignedInteger;
-           minUnsigned   = minUnsignedInteger;
-         };
-#else
-       ProcessPackHeader ;
-#endif
-     };
- 
-   
-
-   /**********************************************
-    *                                            *
-    *  compute signed int adjustment,            *
-    * since 1,2,3,4 without header all needs it  *
-    *                                            *
-    *********************************************/
-   positiveMask = ( opCode < 3 ) ? 0 : ( 1 << ( bitSizeOfPackedToken - 1 ));
-
-
-   /***********************************************
-    *                                             *
-    *   pack                                      *
-    *                                             *
-    **********************************************/
-   if ( opCode == 1 || opCode==3)
-     {
-       if ( opCode == 1) Pack(arrayOfUnsignedUnpacked, minUnsignedInteger);
-       if ( opCode == 3) Pack(arrayOfSignedUnpacked, minSignedInteger);
-     }
-   /***********************************************
-    *                                             *
-    *   unpack                                    *
-    *                                             *
-    **********************************************/
-   else if ( opCode == 2 || opCode == 4 )
-     {
-       if ( opCode == 2 ) Unpack(arrayOfUnsignedUnpacked, ShiftIntended, tokenSize, minUnsigned, intCount);
-       if ( opCode == 4 ) Unpack(arrayOfSignedUnpacked, ShiftIntended, tokenSize, minSigned, intCount);
-     }
-   else
-     {
-       printf("\n compact_short: opCode:%d is not defined \n", opCode);
-       return 0;
-     };/* if */
- 
-  return intCount;  /* unused, function must return something */
- 
-
-} /* end compact_short2 */
-
-int  compact_char2( void *unpackedArrayOfBytes, void *packedHeader, void *packedArrayOfInt, 
-                       int elementCount, int bitSizeOfPackedToken, int off_set, 
-                       int stride, int opCode)
-{
-    int wordSize;
-    word cleanupMask;
-    int minSignedInteger=0, maxSignedInteger=0;
-    word minUnsignedInteger=0, maxUnsignedInteger=0;
-    word maxRange;
-    word maxSpan;
-
-    int positiveMask;
-    unsigned char *arrayOfUnsignedUnpacked;
-    char *arrayOfSignedUnpacked;
-    word *arrayOfPacked;
-    int i, k;
-    int intCount;
-    int bitRequiredForRange, shiftRequired = 0;
-
-    /****************************************
-     *                                      *
-     *     variables used by the packer     *
-     *                                      *
-     ***************************************/
-    int lastPackBit, spaceInLastWord, lastSlot;
-    word lastWordShifted, tempInt;
-    word *packHeader;
-    /***************************************
-     *                                     *
-     *    variables used by the unpacker   *
-     *                                     *
-     **************************************/
-    int firstPackBit, bitPackInFirstWord, currentSlot;
-    word currentWord, packInt;
-    int significantBit, inSignificantBit;
-    word *arrayPtr;
-    int tokenSize, ShiftIntended, elementCountFromHeader;
-    int  minSigned;
-    word minUnsigned;
-    integer_header *theHeader;
-
-/*  printf("minSignedInteger=%d minUnsignedInteger=%d \n",minSignedInteger,minUnsignedInteger); */
-    /********************************
-     *                              *
-     *   handle abnormal condition  *
-     *                              *
-     ********************************/
-    /* token size is 0 */
-    if ( bitSizeOfPackedToken == 0 )
-      { 
-        return 0;
-      };  
-    /********************************************************
-     *                                                      *
-     *    determine wordsize and others                     * 
-     *                                                      *
-     ********************************************************/
-    wordSize                 = 8 * sizeof(word);
-    arrayOfUnsignedUnpacked      = (unsigned char *)unpackedArrayOfBytes;
-    arrayOfSignedUnpacked        = (char *)unpackedArrayOfBytes;
-    theHeader                = (integer_header *)packedHeader;
-    packHeader               = (word *)packedHeader;
-    arrayOfPacked            = (word  *)packedArrayOfInt;
-    intCount                 = elementCount;
-    cleanupMask              = ((word)(~0)>>(wordSize-bitSizeOfPackedToken));
-
-    opCode = opCode -8;
-   if (opCode==1 || opCode==3)  /* packing */
-   {
-     if ( packedHeader != NULL )
-       /*******************************************************************
-        *                                                                  *
-        *  pack header is required, (X - Xmin) is used as packInt          *
-        *                                                                  *
-        *******************************************************************/
-       {
-             if (opCode==1 ) constructHeader(arrayOfUnsignedUnpacked, minUnsignedInteger, maxUnsignedInteger);
-             if (opCode==3) constructHeader(arrayOfSignedUnpacked,   minSignedInteger,   maxSignedInteger);
-       }
-    else
-      /*************************************************************
-       *                                                           *
-       *   pack header not required, X itself is used as packInt,  *
-       *   determines bitSizeOfPackedToken, if not available       *
-       *                                                           *
-       ************************************************************/
-      {
-        if ( bitSizeOfPackedToken == -1 )
-          {
-#ifdef use_old_code
-             /*********************************************************
-             *                                                        *
-             *   obtain minimum, maximun, span                        *
-             *                                                        *
-             *********************************************************/
-            if ( opCode == 1 )                /* unsigned byte  */
-              {
-                maxSpan = arrayOfUnsignedUnpacked[0];
-                for(i=stride; i < intCount*stride ; i+=stride)
-                  {
-                    maxSpan |= arrayOfUnsignedUnpacked[i];
-                  }; 
-              };
-            if ( opCode == 3 )                /* signed byte  */
-              {
-                FindMinMax(arrayOfSignedUnpacked, minSignedInteger, maxSignedInteger);
-                maxSpan    = ( abs(minSignedInteger) > maxSignedInteger ) ? abs(minSignedInteger) :
-                             maxSignedInteger;
-              };
-          
-            /************************************************************
-             *                                                          *
-             *           derive bitSizeOfPackedToken                    *
-             *                                                          *
-             ***********************************************************/
-            bitSizeOfPackedToken = 0;
-            while ( maxSpan != 0 )
-              {
-                maxSpan = maxSpan >> 1;
-                bitSizeOfPackedToken++;
-              };
-            if ( opCode == 3 )     /* accomodate the sign bit */
-              {
-                bitSizeOfPackedToken++;
-              };
-#else
-            ComputeBitSize(arrayOfSignedUnpacked,arrayOfUnsignedUnpacked,opCode) ;
-#endif
-//            cleanupMask = ((word)(~0)>>(wordSize-bitSizeOfPackedToken));
-            cleanupMask = ~(-1 << (wordSize-bitSizeOfPackedToken));
-          };/* if */
-
-      };/* else */
-   } 
-   else                      /* opCode == 10 or 12 */
-    /************************************************
-     *                                              *
-     *         collect info for the unpacking       *
-     *                                              *
-     ***********************************************/
-     {
-#ifdef use_old_code
-       if ( packHeader != NULL )
-         {
-           theHeader     = (integer_header *)packedHeader;
-           tokenSize     = theHeader->numOfBitsPerToken; 
-           ShiftIntended = theHeader->SHIFT;
-           intCount      = theHeader->numOfPackedToken;
-           minSigned     = theHeader->minValue;
-           minUnsigned   = theHeader->minValue;
-         }
-       else
-         {
-           tokenSize     = bitSizeOfPackedToken;
-           ShiftIntended = 0;
-           intCount      = intCount;
-           minSigned     = minSignedInteger;
-           minUnsigned   = minUnsignedInteger;
-         };
-#else
-       ProcessPackHeader ;
-#endif
-     };
-   /**********************************************
-    *                                            *
-    *  compute signed int adjustment,            *
-    * since 1,2,3,4 without header all needs it  *
-    *                                            *
-    *********************************************/
-   positiveMask = ( opCode < 3 ) ? 0 : ( 1 << ( bitSizeOfPackedToken - 1 ));
-
-   if ( opCode == 1 || opCode == 3 )     /*    pack  */
-     {
-       if ( opCode == 1) Pack(arrayOfUnsignedUnpacked, minUnsignedInteger);
-       if ( opCode == 3) Pack(arrayOfSignedUnpacked, minSignedInteger);
-     }
-   else if ( opCode == 2 || opCode == 4 )  /*   unpack  */
-     {
-       if ( opCode == 2 ) Unpack(arrayOfUnsignedUnpacked, ShiftIntended, tokenSize,minUnsigned, intCount);
-       if ( opCode == 4 ) Unpack(arrayOfSignedUnpacked, ShiftIntended, tokenSize,minSigned, intCount);
-     }
-   else
-     {
-       printf("\n compact_char: opCode:%d is not defined \n", opCode);
-       return 0;
-     };/* if */
- 
-  return intCount;  /* unused, function must return something */
- 
-
-} /* end compact_char2 */
 
 #ifdef SELFTEST
 #define DATASIZE 128
@@ -989,6 +581,7 @@ main()
   integer_header my_header;
   int datasize=DATASIZE;
   int stride = 1;
+  int offset;
 
   int ibuf[DATASIZE];
   short sbuf[DATASIZE];
@@ -1064,31 +657,25 @@ main()
   fprintf(stderr,"==========  NO header, with stride %d, no offset ==========\n", stride);
   datasize = DATASIZE / stride ;
 
-  zeroheader;
   status = compact_integer(uiref, NULL , pakbuf, datasize, 16, 0, stride, 1); nullify(uibuf);
   status = compact_integer(uibuf, NULL , pakbuf, datasize, 16, 0, stride, 2);
   verify(uiref,uibuf,"unsigned int")
-  zeroheader;
   status = compact_integer(iref, NULL , pakbuf, datasize, 16, 0, stride, 3); nullify(ibuf);
   status = compact_integer(ibuf, NULL , pakbuf, datasize, 16, 0, stride, 4);
   verify(iref,ibuf,"signed int")
 
-  zeroheader;
   status = compact_short(usref, NULL , pakbuf, datasize, 12, 0, stride, 1+4); nullify(usbuf); nullify(uibuf);
   status = compact_short(usbuf, NULL , pakbuf, datasize, 12, 0, stride, 2+4);
   verify(usref,usbuf,"unsigned short")
-  zeroheader;
   status = compact_short(sref, NULL , pakbuf, datasize, 12, 0, stride, 3+4); nullify(sbuf); nullify(ibuf);
   status = compact_short(sbuf, NULL , pakbuf, datasize, 12, 0, stride, 4+4);
   verify(sref,sbuf,"signed short")
   status = compact_integer(ibuf, NULL , pakbuf, datasize, 12, 0, stride, 4);
   verify(sref,ibuf,"signed short > signed int")
 
-  zeroheader;
   status = compact_char(ucref, NULL , pakbuf, datasize, 8, 0, stride, 1+8); nullify(ucbuf); nullify(uibuf);
   status = compact_char(ucbuf, NULL , pakbuf, datasize, 8, 0, stride, 2+8);
   verify(ucref,ucbuf,"unsigned char")
-  zeroheader;
   status = compact_char(cref, NULL , pakbuf, datasize, 8, 0, stride, 3+8); nullify(cbuf); nullify(ibuf);
   status = compact_char(cbuf, NULL , pakbuf, datasize, 8, 0, stride, 4+8);
   verify(cref,cbuf,"signed char")
@@ -1141,37 +728,79 @@ main()
 
   stride = 1 ; datasize = DATASIZE / stride ;
 
+  for (stride=2 ; stride <= DATASIZE-1 ; stride++) {
+  fprintf(stderr,"==========  with header, with stride and offset %d ==========\n", stride);
+  datasize = DATASIZE / stride ;
+
+  offset = stride;
+  zeroheader;
+  status = compact_integer(uiref, &my_header , pakbuf, datasize, 16, offset, stride, 1); nullify(uibuf);
+  status = compact_integer(uibuf, &my_header , pakbuf, datasize, 16, offset, stride, 2);
+  verify(uiref,uibuf,"unsigned int")
+  zeroheader;
+  status = compact_integer(iref, &my_header , pakbuf, datasize, 16, offset, stride, 3); nullify(ibuf);
+  status = compact_integer(ibuf, &my_header , pakbuf, datasize, 16, offset, stride, 4);
+  verify(iref,ibuf,"signed int")
+
+  zeroheader;
+  status = compact_short(usref, &my_header , pakbuf, datasize, 12, offset, stride, 1+4); nullify(usbuf); nullify(uibuf);
+  status = compact_short(usbuf, &my_header , pakbuf, datasize, 12, offset, stride, 2+4);
+  verify(usref,usbuf,"unsigned short")
+  zeroheader;
+  status = compact_short(sref, &my_header , pakbuf, datasize, 12, offset, stride, 3+4); nullify(sbuf); nullify(ibuf);
+  status = compact_short(sbuf, &my_header , pakbuf, datasize, 12, offset, stride, 4+4);
+  verify(sref,sbuf,"signed short")
+  status = compact_integer(ibuf, &my_header , pakbuf, datasize, 12, offset, stride, 4);
+  verify(sref,ibuf,"signed short > signed int")
+
+  zeroheader;
+  status = compact_char(ucref, &my_header , pakbuf, datasize, 8, offset, stride, 1+8); nullify(ucbuf); nullify(uibuf);
+  status = compact_char(ucbuf, &my_header , pakbuf, datasize, 8, offset, stride, 2+8);
+  verify(ucref,ucbuf,"unsigned char")
+  zeroheader;
+  status = compact_char(cref, &my_header , pakbuf, datasize, 8, offset, stride, 3+8); nullify(cbuf); nullify(ibuf);
+  status = compact_char(cbuf, &my_header , pakbuf, datasize, 8, offset, stride, 4+8);
+  verify(cref,cbuf,"signed char")
+  status = compact_short(sbuf, &my_header , pakbuf, datasize, 8, offset, stride, 4+4);
+  verify(cref,sbuf,"signed char > signed short")
+  status = compact_integer(ibuf, &my_header , pakbuf, datasize, 8, offset, stride, 4);
+  verify(cref,ibuf,"signed char > signed int")
+
+  }
+
+  stride = 1 ; datasize = DATASIZE / stride ;
+
   fprintf(stderr,"==========  with header, no stride, no offset, autobitsize ==========\n");
   zeroheader;
   status = compact_integer(uiref, &my_header , pakbuf, DATASIZE, -1, 0, 1, 1); nullify(uibuf);
-  fprintf(stderr,"computed nbits = %d\n",my_header.numOfBitsPerToken);
+  fprintf(stderr,"computed nbits = %d, expecting 16\n",my_header.numOfBitsPerToken);
   status = compact_integer(uibuf, &my_header , pakbuf, DATASIZE, -1, 0, 1, 2);
   verify(uiref,uibuf,"unsigned int")
   zeroheader;
   status = compact_integer(iref, &my_header , pakbuf, DATASIZE, -1, 0, 1, 3); nullify(ibuf);
-  fprintf(stderr,"computed nbits = %d\n",my_header.numOfBitsPerToken);
+  fprintf(stderr,"computed nbits = %d, expecting 16\n",my_header.numOfBitsPerToken);
   status = compact_integer(ibuf, &my_header , pakbuf, DATASIZE, -1, 0, 1, 4);
   verify(iref,ibuf,"signed int")
 
   zeroheader;
   status = compact_short(usref, &my_header , pakbuf, DATASIZE, -1, 0, 1, 5); nullify(usbuf);
-  fprintf(stderr,"computed nbits = %d\n",my_header.numOfBitsPerToken);
+  fprintf(stderr,"computed nbits = %d, expecting 12\n",my_header.numOfBitsPerToken);
   status = compact_short(usbuf, &my_header , pakbuf, DATASIZE, -1, 0, 1, 6);
   verify(usref,usbuf,"unsigned short")
   zeroheader;
   status = compact_short(sref, &my_header , pakbuf, DATASIZE, -1, 0, 1, 7); nullify(sbuf);
-  fprintf(stderr,"computed nbits = %d\n",my_header.numOfBitsPerToken);
+  fprintf(stderr,"computed nbits = %d, expecting 12\n",my_header.numOfBitsPerToken);
   status = compact_short(sbuf, &my_header , pakbuf, DATASIZE, -1, 0, 1, 8);
   verify(sref,sbuf,"signed short")
 
   zeroheader;
   status = compact_char(ucref, &my_header , pakbuf, DATASIZE, -1, 0, 1, 9); nullify(ucbuf);
-  fprintf(stderr,"computed nbits = %d\n",my_header.numOfBitsPerToken);
+  fprintf(stderr,"computed nbits = %d, expecting 8\n",my_header.numOfBitsPerToken);
   status = compact_char(ucbuf, &my_header , pakbuf, DATASIZE, -1, 0, 1, 10);
   verify(ucref,ucbuf,"unsigned char")
   zeroheader;
   status = compact_char(cref, &my_header , pakbuf, DATASIZE, -1, 0, 1, 11); nullify(cbuf);
-  fprintf(stderr,"computed nbits = %d\n",my_header.numOfBitsPerToken);
+  fprintf(stderr,"computed nbits = %d, expecting 8\n",my_header.numOfBitsPerToken);
   status = compact_char(cbuf, &my_header , pakbuf, DATASIZE, -1, 0, 1, 12);
   verify(cref,cbuf,"signed char")
 
