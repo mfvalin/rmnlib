@@ -218,9 +218,10 @@ INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32 *strea
 {
   float *z=source;
   INT_32 *intsrc= (INT_32 *)source;
-  floatint fmin,fmax;
+  floatint fmin,fmax,temp,temp2;
+  float decoded;
   INT_32 n;
-  INT_32 MaxExp, Exp, Mask, Mantis, Shift, Minimum, Maximum, Src, Shift2, Store, Accu, Round;
+  INT_32 MaxExp, Exp, Mask, Mantis, Shift, Minimum, Maximum, Src, Shift2, Store, Accu, Round, Sgn, MaxMax;
 
   n=npts;
   fmin.f = *z;
@@ -266,6 +267,38 @@ INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32 *strea
   Round = Round >> 1;                       /* this bit ends up vis a vis last bit shifted out */
   header[1] = Minimum;                      /* store minimum, maxexp, shift2, npts into header (64 bits) */
   header[0] = header[0] | ((MaxExp & 0xFF) << 8) | (Shift2 & 0xFF);
+  /* encode then decode max value to see if decoded value > original max */
+  Src = fmax.i;                           /* encode */
+  Mantis = (1 << 23) | ( 0x7FFFFF & Src );
+  Exp    = (Src >> 23) & 0xFF;
+  Shift  = MaxExp - Exp;
+  if (Shift > 31) Shift = 31;    
+  Mantis = Mantis >> Shift;
+  if( Src >> 31 ) Mantis = - Mantis;
+  Mantis = Mantis - Minimum;              /* subtract minimum from mantissa */
+  Mantis = Mantis + Round;                /* add rounding term */
+  Mantis = Mantis >> Shift2;              /* force to fit within nbits bits */
+  if (Mantis > Mask) Mantis = Mask;
+  MaxMax=Mantis;
+  Mantis = Mantis << Shift2;                           /* decode */  
+  Mantis = Mantis + Minimum;                         /* regenerate mantissa, possibly not normalized */
+  Sgn = (Mantis >> 31) & 1;
+  if(Sgn) Mantis =- Mantis;                          /* need absolute value of Mantis */
+  if (Mantis > 0xFFFFFF) Mantis = 0xFFFFFF; 
+  temp.i = (Mantis & (~(-1<<23))) | (MaxExp << 23);  /* eliminate bit 23 (hidden 1) and add exponent */
+  temp.i = temp.i | (Sgn << 31);                     /* add sign in proper position */
+  if(Mantis & (1<<23)) {
+    decoded = temp.f;                                /* hidden 1 is genuine */
+  }else{
+    temp2.i= MaxExp << 23;                           /* subtract this bogus hidden 1 */
+    temp2.i = temp2.i | (Sgn << 31);                 /* add sign in proper position */
+    temp2.i = temp2.i & ( ~( (Mantis << 8) >> 31 ) );/* non zero only if hidden 1 is not present */
+    decoded = temp.f - temp2.f;                      /* hidden 1 was not present, subtract it */
+    }
+  if(decoded > fmax.f) {       /* make sure decoded max will be <= actual max value */
+    /*   fprintf(stderr,"decoded max > max \n");   */
+    if(MaxMax > 127) Mask=MaxMax-1;   /* do not damage max error by more thatn 1%  */
+  }
 
 /* fprintf(stderr,"Debug+ MaxExp=%d\n",MaxExp);
   fprintf(stderr,"Debug+ min=%f fmin.i=%X max=%f Minimum=%d Maximum=%d\n",fmin.f,fmin.i,fmax.f,Minimum,Maximum); */
