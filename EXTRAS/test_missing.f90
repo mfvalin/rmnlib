@@ -128,7 +128,7 @@ do i=1,ASIZE
  print 101,i,fa2(i),da2(i),ia2(i),sa2(i),ba2(i),uia2(i),usa2(i),uba2(i),ca(i),za(i)
 enddo
 1111 continue ! write data into standard file
-if(command_argument_count()>0) call system('rm -f missing.fst')   ! get rid of an old test file if present
+if(command_argument_count()==0) call system('rm -f missing.fst')   ! get rid of an old test file if present
 inquire(file='missing.fst',EXIST=file_exists)
 if(file_exists) then
   print 1,"========================================================================="
