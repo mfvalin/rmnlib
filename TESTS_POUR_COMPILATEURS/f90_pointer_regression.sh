@@ -96,19 +96,21 @@ EOT
 cat <<EOT >f90_pointer_regression_3.f90
 EOT
 
-cat <<EOT >f90_pointer_regression_4.f90
+cat <<EOT >f90_pointer_regression_4.F90
 program test
 
   interface
   subroutine test1(bus2,n)
-  integer, dimension(n), target :: bus2
+!  integer, dimension(n), target :: bus2
+  real, dimension(n), target :: bus2
   integer :: n
   end subroutine test1
   end interface
 
   integer :: i
   integer, parameter :: BUS_SIZE=200000
-  integer, dimension(BUS_SIZE) :: bus
+!  integer, dimension(BUS_SIZE) :: bus
+  real, dimension(BUS_SIZE) :: bus
 
   bus=[ (i, i=1,BUS_SIZE) ]
   call test1(bus,size(bus))
@@ -117,7 +119,8 @@ end
 logical function vf_array(text,a,n,start,incr)
   implicit none
   integer :: n,start,incr
-  integer, dimension(n) :: a
+!  integer, dimension(n) :: a
+  real, dimension(n) :: a
   character(len=*) :: text
 
   integer :: i
@@ -147,17 +150,24 @@ end
 subroutine test1(bus2,n)
   use pointers_nd
   implicit none
-  integer, dimension(n), target :: bus2
+!  integer, dimension(n), target :: bus2
+  real, dimension(n), target :: bus2
   integer :: n
 
-  integer, pointer, dimension(:) :: ptd
-  integer, pointer, dimension(:) :: p0d
-  integer, pointer, dimension(:) :: p1d
-  integer, pointer, dimension(:,:) :: p2d
-  integer, pointer, dimension(:,:) :: a1, a2, a3, a4, a5
+!  integer, pointer, dimension(:) :: ptd
+!  integer, pointer, dimension(:) :: p0d
+!  integer, pointer, dimension(:) :: p1d
+!  integer, pointer, dimension(:,:) :: p2d
+  real, pointer, dimension(:) :: ptd
+  real, pointer, dimension(:) :: p0d
+  real, pointer, dimension(:) :: p1d
+  real, pointer, dimension(:,:) :: p2d
+!  integer, pointer, dimension(:,:) :: a1, a2, a3, a4, a5
+  real, pointer, dimension(:,:) :: a1, a2, a3, a4, a5
   integer*8 :: locarray
   !integer, dimension(30), target :: bus
-  integer, dimension(:), pointer :: bus
+!  integer, dimension(:), pointer :: bus
+  real, dimension(:), pointer :: bus
   character(len=17) :: copy_in
   integer, parameter :: BUS_SIZE=300
   integer :: ni, nj, base, i, j
@@ -219,7 +229,7 @@ subroutine test1(bus2,n)
   status=vf_array('a3',a3,ni*nj,base+base+3*ni*nj,2)
   status=vf_array('a4',a4,ni*nj,base+base+4*ni*nj,2)
   status=vf_array('a5',a5,ni*nj,base+base+5*ni*nj,2)
-
+#ifdef NEVER
   bus=[ (i, i=1,BUS_SIZE) ]
 
   p1d=>ptr1d(20)
@@ -412,13 +422,13 @@ subroutine test1(bus2,n)
   !p2d(0:1,1:5)=>p0d(1:10)
   !call print_ptr1d(copy_in,locarray,p2d,10,1,1)
   !print 100,copy_in//'p0d=bus(1:10) p2d(0:1,1:5)=>p0d(1:10) , passing p2d'
-
+#endif
   return
 end
 EOT
 rm -f a.out pointers_nd.mod
 set -x
-${compiler} ${FFLAGS} f90_pointer_regression_[0-4].f90
+${compiler} ${MY_FFLAGS} f90_pointer_regression_[0-4].f90 f90_pointer_regression_[0-4].F90
 set +x
 [[ -x ./a.out ]] && ./a.out
-rm -f f90_pointer_regression_[0-4].f90 f90_pointer_regression_[0-4].o pointers_nd.mod a.out
+rm -f f90_pointer_regression_[0-4].f90 f90_pointer_regression_[0-4].F90 f90_pointer_regression_[0-4].o pointers_nd.mod a.out
