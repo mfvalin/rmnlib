@@ -1,5 +1,11 @@
 #!/bin/bash
 compiler=${1:-gfortran}
+#DATATYPE=${2:-integer}
+for DATATYPE in integer real 'double precision'
+do
+echo "==========================================================================="
+echo "=                          ${DATATYPE}                                    ="
+echo "==========================================================================="
 cat <<EOT >f90_pointer_regression_0.f90
 module pointers_nd
 
@@ -7,15 +13,15 @@ contains
 
 function arrayptr1d(array,ni) result(p1d)
 integer, intent(IN) :: ni
-integer, dimension(ni), target :: array
-integer, pointer, dimension(:) :: p1d
+${DATATYPE}, dimension(ni), target :: array
+${DATATYPE}, pointer, dimension(:) :: p1d
 p1d=>array(1:ni)
 end function arrayptr1d
 
 function ptr1ds(ni,stride) result(p1d)
 integer, intent(IN) :: ni,stride
-integer, pointer, dimension(:) :: p1d
-integer, pointer, dimension(:) :: p0d
+${DATATYPE}, pointer, dimension(:) :: p1d
+${DATATYPE}, pointer, dimension(:) :: p0d
 integer :: i
 allocate(p0d(ni))
 p0d= [ (i, i=1,ni) ]
@@ -25,7 +31,7 @@ end function ptr1ds
 
 function ptr1d(ni) result(p1d)
 integer, intent(IN) :: ni
-integer, pointer, dimension(:) :: p1d
+${DATATYPE}, pointer, dimension(:) :: p1d
 integer :: i
 allocate(p1d(ni))
 p1d= [ (i, i=1,ni) ]
@@ -35,14 +41,14 @@ end function ptr1d
 
 function ptr2d(ni,nj) result(p2d)
 integer, intent(IN) :: ni,nj
-integer, pointer, dimension(:,:) :: p2d
+${DATATYPE}, pointer, dimension(:,:) :: p2d
 allocate(p2d(ni,nj))
 return
 end function ptr2d
 
 function ptr3d(ni,nj,nk) result(p3d)
 integer, intent(IN) :: ni,nj,nk
-integer, pointer, dimension(:,:,:) :: p3d
+${DATATYPE}, pointer, dimension(:,:,:) :: p3d
 allocate(p3d(ni,nj,nk))
 return
 end function ptr3d
@@ -51,13 +57,19 @@ end module pointers_nd
 EOT
 
 cat <<EOT >f90_pointer_regression_1.f90
+integer function intval(what)
+${DATATYPE} :: what
+intval=what
+return
+end
 subroutine print_ptr1d(copy_in,locarray,array,ni,i0,stride)
 integer*8, intent(IN) :: locarray
 integer, intent(IN) :: ni, i0, stride
-integer, intent(IN), dimension(ni) :: array
+${DATATYPE}, intent(IN), dimension(ni) :: array
 logical :: same
 integer :: errors, delta, i
 character(len=*) :: copy_in
+integer, external :: intval
 
 print *,' ------------------------------------------'
 same = (locarray==loc(array))
@@ -79,7 +91,7 @@ if(copy_in/='         ' .or. errors/=0) then
   if(errors>0) then
 !    print 102,'',' errors=',errors
     print 103,'expected: ',(I0+I*stride , I=0,ni-1)
-    print 103,'got     : ',array(1:ni)
+    print 103,'got     : ',(intval(array(i)),i=1,ni)
     if(copy_in==' O.K.    ')then
       copy_in=' ERROR'
     else
@@ -101,16 +113,14 @@ program test
 
   interface
   subroutine test1(bus2,n)
-!  integer, dimension(n), target :: bus2
-  real, dimension(n), target :: bus2
+  ${DATATYPE}, dimension(n), target :: bus2
   integer :: n
   end subroutine test1
   end interface
 
   integer :: i
   integer, parameter :: BUS_SIZE=200000
-!  integer, dimension(BUS_SIZE) :: bus
-  real, dimension(BUS_SIZE) :: bus
+  ${DATATYPE}, dimension(BUS_SIZE) :: bus
 
   bus=[ (i, i=1,BUS_SIZE) ]
   call test1(bus,size(bus))
@@ -119,8 +129,7 @@ end
 logical function vf_array(text,a,n,start,incr)
   implicit none
   integer :: n,start,incr
-!  integer, dimension(n) :: a
-  real, dimension(n) :: a
+  ${DATATYPE}, dimension(n) :: a
   character(len=*) :: text
 
   integer :: i
@@ -135,14 +144,15 @@ end function vf_array
 subroutine pr_array(text,a,ni,nj)
   implicit none
   integer :: ni, nj
-  integer, dimension(ni,nj) :: a
+  ${DATATYPE}, dimension(ni,nj) :: a
   character(len=*) :: text
+  integer, external :: intval
 
   integer :: i,j
 
   print *,'--------------  '//trim(text)//'  -------------------'
   do j=nj,1,-1
-    print 101,j,a(:,j)
+    print 101,j,(intval(a(i,j)),i=1,ni)
   enddo
 101 format(i4,20I5)
   return
@@ -150,24 +160,16 @@ end
 subroutine test1(bus2,n)
   use pointers_nd
   implicit none
-!  integer, dimension(n), target :: bus2
-  real, dimension(n), target :: bus2
+  ${DATATYPE}, dimension(n), target :: bus2
   integer :: n
 
-!  integer, pointer, dimension(:) :: ptd
-!  integer, pointer, dimension(:) :: p0d
-!  integer, pointer, dimension(:) :: p1d
-!  integer, pointer, dimension(:,:) :: p2d
-  real, pointer, dimension(:) :: ptd
-  real, pointer, dimension(:) :: p0d
-  real, pointer, dimension(:) :: p1d
-  real, pointer, dimension(:,:) :: p2d
-!  integer, pointer, dimension(:,:) :: a1, a2, a3, a4, a5
-  real, pointer, dimension(:,:) :: a1, a2, a3, a4, a5
+  ${DATATYPE}, pointer, dimension(:) :: ptd
+  ${DATATYPE}, pointer, dimension(:) :: p0d
+  ${DATATYPE}, pointer, dimension(:) :: p1d
+  ${DATATYPE}, pointer, dimension(:,:) :: p2d
+  ${DATATYPE}, pointer, dimension(:,:) :: a1, a2, a3, a4, a5
   integer*8 :: locarray
-  !integer, dimension(30), target :: bus
-!  integer, dimension(:), pointer :: bus
-  real, dimension(:), pointer :: bus
+  ${DATATYPE}, dimension(:), pointer :: bus
   character(len=17) :: copy_in
   integer, parameter :: BUS_SIZE=300
   integer :: ni, nj, base, i, j
@@ -199,6 +201,7 @@ subroutine test1(bus2,n)
   status=vf_array('a3',a3,ni*nj,base+base+3*ni*nj,2)
   status=vf_array('a4',a4,ni*nj,base+base+4*ni*nj,2)
   status=vf_array('a5',a5,ni*nj,base+base+5*ni*nj,2)
+
   allocate(bus(BUS_SIZE))
 
   bus=[ (i, i=1,BUS_SIZE) ]
@@ -229,7 +232,7 @@ subroutine test1(bus2,n)
   status=vf_array('a3',a3,ni*nj,base+base+3*ni*nj,2)
   status=vf_array('a4',a4,ni*nj,base+base+4*ni*nj,2)
   status=vf_array('a5',a5,ni*nj,base+base+5*ni*nj,2)
-#ifdef NEVER
+#ifndef NEVER
   bus=[ (i, i=1,BUS_SIZE) ]
 
   p1d=>ptr1d(20)
@@ -432,3 +435,4 @@ ${compiler} ${MY_FFLAGS} f90_pointer_regression_[0-4].f90 f90_pointer_regression
 set +x
 [[ -x ./a.out ]] && ./a.out
 rm -f f90_pointer_regression_[0-4].f90 f90_pointer_regression_[0-4].F90 f90_pointer_regression_[0-4].o pointers_nd.mod a.out
+done
