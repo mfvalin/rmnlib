@@ -49,7 +49,11 @@ typedef union {
 
 
 /* stream is really INT32 but addressed as INT16, one MUST account for endianness of machines */
-INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_32 npts)
+#ifdef ORIGINAL
+static INT_32 float_unpacker_new(float *dest, INT_32 *header, INT_32 *stream, INT_32 npts)
+#else
+static INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_32 npts)
+#endif
 {
   floatint temp,temp2;
   INT_32 n, shft1_23, shft1_31, m23;
@@ -157,7 +161,7 @@ INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_32 npts
   return 0;
 }
 
-INT_32 float_unpacker_1_orig(float *dest, INT_32 *header, INT_32 *stream, INT_32 npts)
+static INT_32 float_unpacker_1_orig(float *dest, INT_32 *header, INT_32 *stream, INT_32 npts)
 {
   floatint temp,temp2;
   INT_32 n;
@@ -201,6 +205,12 @@ INT_32 float_unpacker_1_orig(float *dest, INT_32 *header, INT_32 *stream, INT_32
     }
   return 0;
 }
+#ifdef ORIGINAL
+static INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_32 npts)
+{
+  return float_unpacker_1_orig(dest, header, stream, npts);
+}
+#endif
 
 /* =====================================================================================================
     SINGLE BLOCK floating point packer
@@ -214,7 +224,7 @@ INT_32 float_unpacker_1_orig(float *dest, INT_32 *header, INT_32 *stream, INT_32
 
    ===================================================================================================== */
 
-INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32 *stream, INT_32 npts)
+static INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32 *stream, INT_32 npts)
 {
   float *z=source;
   INT_32 *intsrc= (INT_32 *)source;
@@ -302,10 +312,42 @@ INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32 *strea
 
 /* fprintf(stderr,"Debug+ MaxExp=%d\n",MaxExp);
   fprintf(stderr,"Debug+ min=%f fmin.i=%X max=%f Minimum=%d Maximum=%d\n",fmin.f,fmin.i,fmax.f,Minimum,Maximum); */
+  n=npts;
+#ifndef ORIGINAL
+  while(n > 1){                               /* transform input floating point into 16 bit integers (chunks of 2 values) */
+    Src = *intsrc++;
+    Mantis = (1 << 23) | ( 0x7FFFFF & Src );
+    Exp    = (Src >> 23) & 0xFF;
+    Shift  = MaxExp - Exp;
+    if (Shift > 31) Shift = 31;    
+    Mantis = Mantis >> Shift;
+    if( Src >> 31 ) Mantis = - Mantis;
+    Mantis = Mantis - Minimum;              /* subtract minimum from mantissa */
+    Mantis = Mantis + Round;                /* add rounding term */
+    Mantis = Mantis >> Shift2;              /* force to fit within nbits bits */
+    if (Mantis > Mask) Mantis = Mask;
+
+    Accu   = (Mantis << 16);
+
+    Src = *intsrc++;
+    Mantis = (1 << 23) | ( 0x7FFFFF & Src );
+    Exp    = (Src >> 23) & 0xFF;
+    Shift  = MaxExp - Exp;
+    if (Shift > 31) Shift = 31;    
+    Mantis = Mantis >> Shift;
+    if( Src >> 31 ) Mantis = - Mantis;
+    Mantis = Mantis - Minimum;              /* subtract minimum from mantissa */
+    Mantis = Mantis + Round;                /* add rounding term */
+    Mantis = Mantis >> Shift2;              /* force to fit within nbits bits */
+    if (Mantis > Mask) Mantis = Mask;
+
+    *stream++ = Accu | Mantis;             /* store the 2 tokens */    
+    n = n - 2;
+  }
+#endif
   Store = 0;
   Accu = 0;
-  n=npts;
-  while(n--){                               /* transform input floating point into 16 bit integers */
+  while(n--){                               /* transform input floating point into 16 bit integers (remainder) */
     Src = *intsrc++;
     Mantis = (1 << 23) | ( 0x7FFFFF & Src );
     Exp    = (Src >> 23) & 0xFF;
@@ -359,7 +401,7 @@ INT_32 c_float_unpacker(float *dest, INT_32 *header, void *stream, INT_32 npts, 
   return 0;
 }
 
-INT_32 c_float_unpacker_orig(float *dest, INT_32 *header, void *stream, INT_32 npts, INT_32 *nbits)
+static INT_32 c_float_unpacker_orig(float *dest, INT_32 *header, void *stream, INT_32 npts, INT_32 *nbits)
 {
   INT_32 ierror;
 
@@ -448,7 +490,7 @@ void f77name(float_packer_params)(INT_32 *header_size, INT_32 *stream_size, INT_
 #ifdef TEST_PACK
 #include <sys/time.h>
 /* test program to verify that results are identical on all machines */
-#define NPTS (3+2000*1400)
+#define NPTS (3+800*600)
 int main()
 {
   struct timeval t1,t2;
@@ -486,8 +528,9 @@ int main()
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
-  printf("unpacking new time = %d usec\n",duree);
-
+  printf("unpacking time = %d usec\n",duree);
+#ifndef ORIGINAL
+#ifdef FULL
   for ( i=0 ; i<NPTS ; i++ ) { source2[i]=-2000.; };
   gettimeofday(&t1,NULL);
   f77name(float_unpacker_orig)(source2, header, stream, &npts, &NBITS);
@@ -496,7 +539,8 @@ int main()
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
   printf("unpacking orig time = %d usec\n",duree);
-
+#endif
+#endif
   for ( i=0 ; i<NPTS ; i++ ) { source2[i]=-2000.; };
   gettimeofday(&t1,NULL);
   f77name(float_unpacker)(source2, header, stream, &npts, &NBITS);
@@ -504,7 +548,7 @@ int main()
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
-  printf("unpacking new time = %d usec\n",duree);
+  printf("unpacking time = %d usec\n",duree);
   
   printf("source2[0],source2[1],source2[2],source2[NPTS-1]=%f,%f,%f,%f\n",source2[0],source2[1],source2[2],source2[NPTS-1]);
   printf("nbits = %d ,nbits from unpacker = %d\n",nbits,NBITS);
@@ -543,6 +587,8 @@ int main()
 /*
     for ( i=0 ; i<NPTS ; i++ ) source2[i]=0;
 */
+#ifndef ORIGINAL
+#ifdef FULL
     gettimeofday(&t1,NULL);
     f77name(float_unpacker_orig)(source2, header, stream, &npts, &NBITS);
     gettimeofday(&t2,NULL);
@@ -550,13 +596,15 @@ int main()
     T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
     duree = T2-T1;
     printf("unpacking orig time = %d usec\n",duree);
+#endif
+#endif
     gettimeofday(&t1,NULL);
     f77name(float_unpacker)(source2, header, stream, &npts, &NBITS);
     gettimeofday(&t2,NULL);
     T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
     T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
     duree = T2-T1;
-    printf("unpacking new time = %d usec\n",duree);
+    printf("unpacking time = %d usec\n",duree);
     }
 
   errormax=0;
