@@ -1,3 +1,5 @@
+#!/bin/bash
+cat <<EOT >a_ptr_test.f90
     program toto
 
      implicit none
@@ -53,4 +55,11 @@
      enddo
      stop
      end
-
+EOT
+Compiler=${1:-gfortran}
+shift
+set -x
+${Compiler} $* a_ptr_test.f90
+set +x
+./a.out
+rm -f a_ptr_test.f90 a_ptr_test.o a.out
