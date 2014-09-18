@@ -1,4 +1,26 @@
 #!/bin/bash
+[[ ${1:---help} == *-h* ]] && cat <<true && exit 0
+usage: ${0} compiler compiler options
+
+examples:
+       ${0} gfortran -O3
+       ${0} pgf95 -O2 -fast -fpic
+true
+cat <<EOT
+expected output : 5 times 
+ Set tplus= 240.0
+ Set uplus= to 10.0
+ Set vplus= to 5.0
+ uplus0(1,1)=   10.000000      u0(1,1)=   10.000000    
+ vplus0(1,1)=   5.0000000      v0(1,1)=   5.0000000    
+ tplus0(1,1)=   240.00000      t0(1,1)=   240.00000    
+ Set tplus(:,:)= 240.0
+ Set uplus(:,:)= to 10.0
+ Set vplus(:,:)= to 5.0
+ uplus0(1,1)=   10.000000      u0(1,1)=   10.000000    
+ vplus0(1,1)=   5.0000000      v0(1,1)=   5.0000000    
+ tplus0(1,1)=   240.00000      t0(1,1)=   240.00000    
+EOT
 cat <<EOT >a_ptr_test.f90
     program toto
 
