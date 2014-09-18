@@ -73,11 +73,11 @@ localdist: $(TEST_RMNLIB)
 
 dist: $(EXTRAS)
 	mkdir -p $(DISTDIR)/lib/$(EC_ARCH)
-	ar rcv $(DISTDIR)/lib/$(EC_ARCH)/$(NEW_RMNLIB) $(EXTRAS)
+	ar rcv $(DISTDIR)/lib/$(EC_ARCH)/lib$(NEW_RMNLIB).a $(EXTRAS)
 	mkdir -p $(DISTDIR)/include/$(EC_ARCH)
 	cp *.mod $(DISTDIR)/include/$(EC_ARCH)/
-	cp convert_ip.h $(DISTDIR)/include/convert_ip.h_new
-	mv $(DISTDIR)/include/convert_ip.h_new $(DISTDIR)/include/convert_ip.h
+#	cp convert_ip.h $(DISTDIR)/include/convert_ip.h_new
+#	mv $(DISTDIR)/include/convert_ip.h_new $(DISTDIR)/include/convert_ip.h
 	rm -f $(EXTRAS)
 
 tests:	$(TESTS)
