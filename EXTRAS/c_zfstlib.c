@@ -1589,9 +1589,143 @@ void unpackTokensParallelogramOLD(unsigned short ufld[], unsigned int z[], int n
     }
 }
 
-int *unpackTokensParallelogramDATA = NULL;
-#define UFLD_I ufld.i
+int ParallelogramDaTa = 0;
+int *unpackTokensParallelogramDATA = &ParallelogramDaTa;
 
+#define UFLD32_I ufld.i
+void unpackTokensParallelogram_32(void *ufld_in, unsigned int z[], int ni, int nj, int nbits, int istep, word *header)
+{
+  unsigned int *ufld_ = ufld_in;
+  union{
+    unsigned int *i;
+    float *r;
+  } ufld;
+  unsigned short jarray[nj+3];
+  int i, j, k, m, n;
+  int bitPackInWord;
+
+  unsigned int *cur, local_min;
+  unsigned int  nbits_needed, curword;
+  int lcl_m, lcl_n, rowbump;
+  unsigned int nbits_req_container, nbits2;
+  int token, token2 ;
+  int istart, iend, jstart, jend;
+  int k0, k1, k2;
+
+  UFLD32_I = (unsigned int *)ufld_in;
+  bitPackInWord = 32;
+  cur = z;
+  junk = memcpy(header, cur, sizeof(unsigned int));
+  cur++;
+  curword = *cur;
+  
+  extract32(nbits_req_container, cur, 32, 3, curword, bitPackInWord); 
+  for (i=0; i < ni; i++)  /* get first row (elements 11>ni) */
+  {
+   extract32(token, cur, 32, nbits, curword, bitPackInWord); 
+   UFLD32_I[i] = token;
+  }
+  for (j=1; j < nj; j++) /* get first column (elements 2->nj) */
+  {
+   extract32(token, cur, 32, nbits, curword, bitPackInWord); 
+   jarray[j] = token;
+  }
+
+  for (jstart=1,k=ni; jstart < nj; jstart+=istep,k=k+istep*ni)  /* loop over rows */
+  {
+    jend = jstart + istep -1;
+    jend = (jend > nj-1) ? nj - 1 : jend;
+    lcl_n = jend - jstart + 1;
+
+    for (i=0 ; i<lcl_n; i++) UFLD32_I[k+i*ni] = jarray[jstart+i];
+
+    for (istart=1; istart < ni; istart+=istep)   /* process row (elements 2->ni) */
+    {
+      iend = istart + istep -1;
+      iend = (iend > ni-1) ? ni - 1 : iend;
+      lcl_m = iend - istart + 1;
+      k0 = k;
+      extract32(nbits_needed, cur, 32, nbits_req_container, curword, bitPackInWord); 
+      switch (nbits_needed)
+      {
+        case 0:
+        for (j=jstart; j<=jend ; j++)
+        {
+          k1 = k0 + istart;
+          for (i=istart; i<=iend ; i++)
+          {
+            UFLD32_I[k1] = 0 + UFLD32_I[k1-1] + UFLD32_I[k1-ni] - UFLD32_I[k1-ni-1] ; /* apply parallelogram rule */
+            k1++ ;                   /* bump along row */
+          }
+          k0 = k0 + ni ;  /* bump along column, going back to proper point on row */
+        }
+        break;
+        
+        default:
+        if(nbits_needed == 15 ) nbits_needed = 16;
+        nbits2 = nbits_needed + 1;
+        if(lcl_m*lcl_n == 9){  /* 3 x 3 block */
+
+          k1 = k0 + istart;
+          extract32(token, cur, 32, nbits2, curword, bitPackInWord);              /* get bit slice */
+          token2 = (token << (32-nbits2)) >> (32-nbits2);                         /* sign extend */
+          UFLD32_I[k1] = token2 + UFLD32_I[k1-1] + UFLD32_I[k1-ni] - UFLD32_I[k1-ni-1] ;  /* apply parallelogram rule */
+          k1++ ;
+          extract32(token, cur, 32, nbits2, curword, bitPackInWord);
+          token2 = (token << (32-nbits2)) >> (32-nbits2);
+          UFLD32_I[k1] = token2 + UFLD32_I[k1-1] + UFLD32_I[k1-ni] - UFLD32_I[k1-ni-1] ;
+          k1++ ;
+          extract32(token, cur, 32, nbits2, curword, bitPackInWord);
+          token2 = (token << (32-nbits2)) >> (32-nbits2);
+          UFLD32_I[k1] = token2 + UFLD32_I[k1-1] + UFLD32_I[k1-ni] - UFLD32_I[k1-ni-1] ;
+          k0 = k0 + ni ;  /* bump along column, going back to proper point on row */
+
+          k1 = k0 + istart;
+          extract32(token, cur, 32, nbits2, curword, bitPackInWord);
+          token2 = (token << (32-nbits2)) >> (32-nbits2);
+          UFLD32_I[k1] = token2 + UFLD32_I[k1-1] + UFLD32_I[k1-ni] - UFLD32_I[k1-ni-1] ;  /* apply parallelogram rule */
+          k1++ ;
+          extract32(token, cur, 32, nbits2, curword, bitPackInWord);
+          token2 = (token << (32-nbits2)) >> (32-nbits2);
+          UFLD32_I[k1] = token2 + UFLD32_I[k1-1] + UFLD32_I[k1-ni] - UFLD32_I[k1-ni-1] ;
+          k1++ ;
+          extract32(token, cur, 32, nbits2, curword, bitPackInWord);
+          token2 = (token << (32-nbits2)) >> (32-nbits2);
+          UFLD32_I[k1] = token2 + UFLD32_I[k1-1] + UFLD32_I[k1-ni] - UFLD32_I[k1-ni-1] ;
+          k0 = k0 + ni ;  /* bump along column, going back to proper point on row */
+
+          k1 = k0 + istart;
+          extract32(token, cur, 32, nbits2, curword, bitPackInWord);
+          token2 = (token << (32-nbits2)) >> (32-nbits2);
+          UFLD32_I[k1] = token2 + UFLD32_I[k1-1] + UFLD32_I[k1-ni] - UFLD32_I[k1-ni-1] ;  /* apply parallelogram rule */
+          k1++ ;
+          extract32(token, cur, 32, nbits2, curword, bitPackInWord);
+          token2 = (token << (32-nbits2)) >> (32-nbits2);
+          UFLD32_I[k1] = token2 + UFLD32_I[k1-1] + UFLD32_I[k1-ni] - UFLD32_I[k1-ni-1] ;
+          k1++ ;
+          extract32(token, cur, 32, nbits2, curword, bitPackInWord);
+          token2 = (token << (32-nbits2)) >> (32-nbits2);
+          UFLD32_I[k1] = token2 + UFLD32_I[k1-1] + UFLD32_I[k1-ni] - UFLD32_I[k1-ni-1] ;
+
+        }else{
+          for (j=jstart; j<=jend ; j++)
+          {
+            k1 = k0 + istart;
+            for (i=istart; i<=iend ; i++) {
+                extract32(token, cur, 32, nbits2, curword, bitPackInWord);
+                token2 = (token << (32-nbits2)) >> (32-nbits2);
+                UFLD32_I[k1] = token2 + UFLD32_I[k1-1] + UFLD32_I[k1-ni] - UFLD32_I[k1-ni-1] ;  /* apply parallelogram rule */
+                k1++ ;                   /* bump along row */
+            }  
+            k0 = k0 + ni ;  /* bump along column, going back to proper point on row */
+          }
+        }
+      }
+    }
+  }
+}
+
+#define UFLD_I ufld_
 void unpackTokensParallelogram(unsigned short ufld_in[], unsigned int z[], int ni, int nj, int nbits, int istep, word *header)
 {
   unsigned short *ufld_ = ufld_in;
@@ -1610,6 +1744,7 @@ void unpackTokensParallelogram(unsigned short ufld_in[], unsigned int z[], int n
   int token, token2 ;
   int istart, iend, jstart, jend;
   int k0, k1, k2;
+  unsigned long long CurToken;
 
   UFLD_I = (unsigned short *)ufld_in;
   bitPackInWord = 32;
@@ -1617,7 +1752,9 @@ void unpackTokensParallelogram(unsigned short ufld_in[], unsigned int z[], int n
   junk = memcpy(header, cur, sizeof(unsigned int));
   cur++;
   curword = *cur;
-  
+
+//  get_bits_64(unpacked,nbits,CurToken,bitPackInWord)
+//  check_unpack_64(CurToken,bitPackInWord,cur)
   extract32(nbits_req_container, cur, 32, 3, curword, bitPackInWord); 
   for (i=0; i < ni; i++)  /* get first row (elements 11>ni) */
   {
@@ -1710,31 +1847,12 @@ void unpackTokensParallelogram(unsigned short ufld_in[], unsigned int z[], int n
           for (j=jstart; j<=jend ; j++)
           {
             k1 = k0 + istart;
-#ifdef SUPERFLUOUS
-            if(lcl_m == 3){
-              extract32(token, cur, 32, nbits2, curword, bitPackInWord);
-              token2 = (token << (32-nbits2)) >> (32-nbits2);
-              UFLD_I[k1] = token2 + UFLD_I[k1-1] + UFLD_I[k1-ni] - UFLD_I[k1-ni-1] ;  /* apply parallelogram rule */
-              k1++ ;
-              extract32(token, cur, 32, nbits2, curword, bitPackInWord);
-              token2 = (token << (32-nbits2)) >> (32-nbits2);
-              UFLD_I[k1] = token2 + UFLD_I[k1-1] + UFLD_I[k1-ni] - UFLD_I[k1-ni-1] ;  /* apply parallelogram rule */
-              k1++ ;
-              extract32(token, cur, 32, nbits2, curword, bitPackInWord);
-              token2 = (token << (32-nbits2)) >> (32-nbits2);
-              UFLD_I[k1] = token2 + UFLD_I[k1-1] + UFLD_I[k1-ni] - UFLD_I[k1-ni-1] ;  /* apply parallelogram rule */
-              k1++ ;
-            }else{
-#endif
-              for (i=istart; i<=iend ; i++) {
-                  extract32(token, cur, 32, nbits2, curword, bitPackInWord);
-                  token2 = (token << (32-nbits2)) >> (32-nbits2);
-                  UFLD_I[k1] = token2 + UFLD_I[k1-1] + UFLD_I[k1-ni] - UFLD_I[k1-ni-1] ;  /* apply parallelogram rule */
-                  k1++ ;                   /* bump along row */
-              }  
-#ifdef SUPERFLUOUS
-            }
-#endif
+            for (i=istart; i<=iend ; i++) {
+                extract32(token, cur, 32, nbits2, curword, bitPackInWord);
+                token2 = (token << (32-nbits2)) >> (32-nbits2);
+                UFLD_I[k1] = token2 + UFLD_I[k1-1] + UFLD_I[k1-ni] - UFLD_I[k1-ni-1] ;  /* apply parallelogram rule */
+                k1++ ;                   /* bump along row */
+            }  
             k0 = k0 + ni ;  /* bump along column, going back to proper point on row */
           }
         }
