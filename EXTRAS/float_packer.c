@@ -73,7 +73,7 @@ static INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_
   shft1_31 = 1 << 31;
   m23 = MaxExp << 23 ;
   if (MaxExp == 0) {
-  	while (n--) *dest++ = 0.0;
+    while (n--) *dest++ = 0.0;
     return (0);
     }
   while(n>3){
@@ -131,7 +131,7 @@ static INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_
     }
     *dest++ = temp.f - temp2.f;                      /* hidden 1 was not present, subtract it */
     n -=4;
-    }
+  }
   i0 = 0;
   Mantis0 = *stream++ ;
   if(n>2) Mantis2 = *stream++ ;
@@ -140,24 +140,18 @@ static INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_
   Mantis2 >>= 16;
   StReAm[0] = Mantis0 & 0xFFFF ;
   StReAm[2] = Mantis2 & 0xFFFF ;
-  while(n>0){
-    Mantis = StReAm[i0] ;
+  while(n-->0){
+    Mantis = StReAm[i0++] ;
     Mantis = Mantis << Shift2;
     Mantis = Mantis + Minimum;                         /* regenerate mantissa, possibly not normalized */
     Sgn = 0;
-    if(Mantis < 0) { Mantis =- Mantis; Sgn = 1; }                         /* need absolute value of Mantis */
+    if(Mantis < 0) { Mantis =- Mantis; Sgn = shft1_31; }                         /* need absolute value of Mantis */
     if(Mantis > 0xFFFFFF) Mantis = 0xFFFFFF; 
-    temp2.i = (MaxExp << 23) | (Sgn << 31);
-    temp.i  = temp2.i;
-    temp.i  = (Mantis & (~(-1<<23))) | temp.i;  /* eliminate bit 23 (hidden 1) and add exponent */
-    if(Mantis & (1<<23)) {
-      *dest++ = temp.f;                                /* hidden 1 is genuine */
-    }else{
-      *dest++ = temp.f - temp2.f;                      /* hidden 1 was not present, subtract it */
-      }
-    i0++;
-    n -=1;
-    }
+    temp2.i = m23 | Sgn ;
+    temp.i  = (Mantis & 0x7FFFFF) | temp2.i;  /* eliminate bit 23 (hidden 1) and add exponent */
+    if(Mantis & shft1_23) temp2.i = 0;        /* hidden 1 is genuine, nothing to subtract */
+    *dest++ = temp.f - temp2.f;               /* if hidden 1 was not present, subtract it */
+  }
   return 0;
 }
 
@@ -177,7 +171,7 @@ static INT_32 float_unpacker_1_orig(float *dest, INT_32 *header, INT_32 *stream,
 
   n=npts;
   if (MaxExp == 0) {
-  	while (n--) *dest++ = 0.0;
+    while (n--) *dest++ = 0.0;
     return (0);
     }
   Accu = *stream++;                                    /* get first 32 bit token from stream */
