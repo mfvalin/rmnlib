@@ -15,7 +15,7 @@ typedef union {
    packed record format :
 
    +-------------+-----------------+-----------------+-----------------------+
-   | main header | header block    |   D A T A     
+   | main header | header block    |   D A T A
    +-------------+-----------------+-----------------+-----------------------+
 
    32 bit main header format :
@@ -102,10 +102,10 @@ static INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_
     if(Mantis1 < 0) { Mantis1 =- Mantis1; Sgn1 = shft1_31; }                         /* need absolute value of Mantis */
     if(Mantis2 < 0) { Mantis2 =- Mantis2; Sgn2 = shft1_31; }                         /* need absolute value of Mantis */
     if(Mantis3 < 0) { Mantis3 =- Mantis3; Sgn3 = shft1_31; }                         /* need absolute value of Mantis */
-    if(Mantis0 > 0xFFFFFF) Mantis0 = 0xFFFFFF; 
-    if(Mantis1 > 0xFFFFFF) Mantis1 = 0xFFFFFF; 
-    if(Mantis2 > 0xFFFFFF) Mantis2 = 0xFFFFFF; 
-    if(Mantis3 > 0xFFFFFF) Mantis3 = 0xFFFFFF; 
+    if(Mantis0 > 0xFFFFFF) Mantis0 = 0xFFFFFF;
+    if(Mantis1 > 0xFFFFFF) Mantis1 = 0xFFFFFF;
+    if(Mantis2 > 0xFFFFFF) Mantis2 = 0xFFFFFF;
+    if(Mantis3 > 0xFFFFFF) Mantis3 = 0xFFFFFF;
     temp2.i = m23 | Sgn0 ;
     temp.i  = (Mantis0 & 0x7FFFFF) | temp2.i;  /* eliminate bit 23 (hidden 1) and add exponent */
     if(Mantis0 & shft1_23) {
@@ -146,7 +146,7 @@ static INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_
     Mantis = Mantis + Minimum;                         /* regenerate mantissa, possibly not normalized */
     Sgn = 0;
     if(Mantis < 0) { Mantis =- Mantis; Sgn = shft1_31; }                         /* need absolute value of Mantis */
-    if(Mantis > 0xFFFFFF) Mantis = 0xFFFFFF; 
+    if(Mantis > 0xFFFFFF) Mantis = 0xFFFFFF;
     temp2.i = m23 | Sgn ;
     temp.i  = (Mantis & 0x7FFFFF) | temp2.i;  /* eliminate bit 23 (hidden 1) and add exponent */
     if(Mantis & shft1_23) temp2.i = 0;        /* hidden 1 is genuine, nothing to subtract */
@@ -182,7 +182,7 @@ static INT_32 float_unpacker_1_orig(float *dest, INT_32 *header, INT_32 *stream,
     Mantis = Mantis + Minimum;                         /* regenerate mantissa, possibly not normalized */
     Sgn = (Mantis >> 31) & 1;
     if(Sgn) Mantis =- Mantis;                          /* need absolute value of Mantis */
-    if (Mantis > 0xFFFFFF) Mantis = 0xFFFFFF; 
+    if (Mantis > 0xFFFFFF) Mantis = 0xFFFFFF;
     temp.i = (Mantis & (~(-1<<23))) | (MaxExp << 23);  /* eliminate bit 23 (hidden 1) and add exponent */
     temp.i = temp.i | (Sgn << 31);                     /* add sign in proper position */
     if(Mantis & (1<<23)) {
@@ -276,7 +276,7 @@ static INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32
   Mantis = (1 << 23) | ( 0x7FFFFF & Src );
   Exp    = (Src >> 23) & 0xFF;
   Shift  = MaxExp - Exp;
-  if (Shift > 31) Shift = 31;    
+  if (Shift > 31) Shift = 31;
   Mantis = Mantis >> Shift;
   if( Src >> 31 ) Mantis = - Mantis;
   Mantis = Mantis - Minimum;              /* subtract minimum from mantissa */
@@ -284,11 +284,11 @@ static INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32
   Mantis = Mantis >> Shift2;              /* force to fit within nbits bits */
   if (Mantis > Mask) Mantis = Mask;
   MaxMax=Mantis;
-  Mantis = Mantis << Shift2;                           /* decode */  
+  Mantis = Mantis << Shift2;                           /* decode */
   Mantis = Mantis + Minimum;                         /* regenerate mantissa, possibly not normalized */
   Sgn = (Mantis >> 31) & 1;
   if(Sgn) Mantis =- Mantis;                          /* need absolute value of Mantis */
-  if (Mantis > 0xFFFFFF) Mantis = 0xFFFFFF; 
+  if (Mantis > 0xFFFFFF) Mantis = 0xFFFFFF;
   temp.i = (Mantis & (~(-1<<23))) | (MaxExp << 23);  /* eliminate bit 23 (hidden 1) and add exponent */
   temp.i = temp.i | (Sgn << 31);                     /* add sign in proper position */
   if(Mantis & (1<<23)) {
@@ -313,7 +313,7 @@ static INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32
     Mantis = (1 << 23) | ( 0x7FFFFF & Src );
     Exp    = (Src >> 23) & 0xFF;
     Shift  = MaxExp - Exp;
-    if (Shift > 31) Shift = 31;    
+    if (Shift > 31) Shift = 31;
     Mantis = Mantis >> Shift;
     if( Src >> 31 ) Mantis = - Mantis;
     Mantis = Mantis - Minimum;              /* subtract minimum from mantissa */
@@ -327,7 +327,7 @@ static INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32
     Mantis = (1 << 23) | ( 0x7FFFFF & Src );
     Exp    = (Src >> 23) & 0xFF;
     Shift  = MaxExp - Exp;
-    if (Shift > 31) Shift = 31;    
+    if (Shift > 31) Shift = 31;
     Mantis = Mantis >> Shift;
     if( Src >> 31 ) Mantis = - Mantis;
     Mantis = Mantis - Minimum;              /* subtract minimum from mantissa */
@@ -335,7 +335,7 @@ static INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32
     Mantis = Mantis >> Shift2;              /* force to fit within nbits bits */
     if (Mantis > Mask) Mantis = Mask;
 
-    *stream++ = Accu | Mantis;             /* store the 2 tokens */    
+    *stream++ = Accu | Mantis;             /* store the 2 tokens */
     n = n - 2;
   }
 #endif
@@ -346,7 +346,7 @@ static INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32
     Mantis = (1 << 23) | ( 0x7FFFFF & Src );
     Exp    = (Src >> 23) & 0xFF;
     Shift  = MaxExp - Exp;
-    if (Shift > 31) Shift = 31;    
+    if (Shift > 31) Shift = 31;
     Mantis = Mantis >> Shift;
     if( Src >> 31 ) Mantis = - Mantis;
     Mantis = Mantis - Minimum;              /* subtract minimum from mantissa */
@@ -374,7 +374,7 @@ static INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32
     subroutine float_unpacker(VALUES,HEADER,STREAM,NPTS,NBITS)
     integer *4 NPTS, HEADER(2), STREAM(NPTS/2, NBITS)
     real *4 VALUES(NPTS)
-    return value is zero if OK, error code from float_unpacker_1 otherwise 
+    return value is zero if OK, error code from float_unpacker_1 otherwise
    ===================================================================================================== */
 
 INT_32 c_float_unpacker(float *dest, INT_32 *header, void *stream, INT_32 npts, INT_32 *nbits)
@@ -436,7 +436,7 @@ ftnword f77name(float_unpacker_orig)(float *dest, INT_32 *header, INT_32 *stream
     integer function float_packer(VALUES,NBITS,HEADER,STREAM,NPTS)
     integer *4 NPTS, HEADER(2), NBITS, STREAM(NPTS/2)
     real *4 VALUES(NPTS)
-    return value is 0 if there was no error, -1 if error occurred 
+    return value is 0 if there was no error, -1 if error occurred
    ===================================================================================================== */
 
 INT_32 c_float_packer(float *source, INT_32 nbits, INT_32 *header, INT_32 *stream, INT_32 npts)
@@ -466,7 +466,7 @@ ftnword f77name(float_packer)(float *source, INT_32 *nbits, INT_32 *header, INT_
 
    subroutine float_packer_params(HEADER_SIZE,STREAM_SIZE,P1,P2,NPTS)
    integer *4 NPTS,HEADER_SIZE,STREAM_SIZE,P1,P2
-   
+
   ===================================================================================================== */
 void c_float_packer_params(INT_32 *header_size, INT_32 *stream_size, INT_32 *p1, INT_32 *p2, INT_32 npts)
 {
@@ -501,10 +501,10 @@ int main()
   INT_32 signature;
   int i,j;
   INT_32 p1,p2,header_size,stream_size;
-  
+
   f77name(float_packer_params)(&header_size, &stream_size, &p1, &p2, &npts);
   printf("header_size,stream_size=%d,%d\n",header_size,stream_size);
-  
+
   for ( i=0 ; i<NPTS ; i++ ) { source[i]=i*1.234-1123.123; };
   printf("source[0],source[1],source[2],source[NPTS-1]=%f,%f,%f,%f\n",source[0],source[1],source[2],source[NPTS-1]);
   gettimeofday(&t1,NULL);
@@ -543,12 +543,12 @@ int main()
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
   printf("unpacking time = %d usec\n",duree);
-  
+
   printf("source2[0],source2[1],source2[2],source2[NPTS-1]=%f,%f,%f,%f\n",source2[0],source2[1],source2[2],source2[NPTS-1]);
   printf("nbits = %d ,nbits from unpacker = %d\n",nbits,NBITS);
   signature=0;
-  for ( i=0 ; i< (1+2*((NPTS+32767)/32768))  ; i++ ) { 
-    signature=signature^header[i]; 
+  for ( i=0 ; i< (1+2*((NPTS+32767)/32768))  ; i++ ) {
+    signature=signature^header[i];
     /* printf(" %x",header[i]);  */
     }
   printf("\nafter packing signature=%x\n",signature);
@@ -559,11 +559,11 @@ int main()
   errormax=0;
   errorabs=0;
   erroravg=0;
-  for ( i=0 ; i<NPTS ; i++ ) { 
-    error = source2[i]-source[i]; 
-    erroravg=erroravg+error; 
-    if(error<0) error=-error ; 
-    errorabs=errorabs+error ; 
+  for ( i=0 ; i<NPTS ; i++ ) {
+    error = source2[i]-source[i];
+    erroravg=erroravg+error;
+    if(error<0) error=-error ;
+    errorabs=errorabs+error ;
     errormax=error>errormax?error:errormax;
     }
   printf("after packing errormax=%f,erroravg=%f, errorabs avg=%f\n",errormax,erroravg/NPTS,errorabs/NPTS);
@@ -603,10 +603,10 @@ int main()
 
   errormax=0;
   erroravg=0;
-  for ( i=0 ; i<NPTS ; i++ ) { 
-    error = source2[i]-source[i]; 
-    erroravg=erroravg+error; 
-    if(error<0) error=-error ; 
+  for ( i=0 ; i<NPTS ; i++ ) {
+    error = source2[i]-source[i];
+    erroravg=erroravg+error;
+    if(error<0) error=-error ;
     errormax=error>errormax?error:errormax;
     }
   printf("after REpacking errormax=%f,erroravg=%f\n",errormax,erroravg/NPTS);  /* better be zero */
