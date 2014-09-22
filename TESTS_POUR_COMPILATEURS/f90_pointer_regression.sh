@@ -1,5 +1,6 @@
 #!/bin/bash
 compiler=${1:-gfortran}
+shift
 #DATATYPE=${2:-integer}
 for DATATYPE in integer real 'double precision'
 do
@@ -431,7 +432,7 @@ end
 EOT
 rm -f a.out pointers_nd.mod
 set -x
-${compiler} ${MY_FFLAGS} f90_pointer_regression_[0-4].f90 f90_pointer_regression_[0-4].F90
+${compiler} ${MY_FFLAGS} f90_pointer_regression_[0-4].f90 f90_pointer_regression_[0-4].F90 $*
 set +x
 [[ -x ./a.out ]] && ./a.out
 rm -f f90_pointer_regression_[0-4].f90 f90_pointer_regression_[0-4].F90 f90_pointer_regression_[0-4].o pointers_nd.mod a.out
