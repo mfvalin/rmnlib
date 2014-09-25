@@ -321,7 +321,7 @@ static INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32
     Mantis = Mantis >> Shift2;              /* force to fit within nbits bits */
     if (Mantis > Mask) Mantis = Mask;
 
-    Accu   = (Mantis << 16);
+    Accu = Mantis ;
 
     Src = *intsrc++;
     Mantis = (1 << 23) | ( 0x7FFFFF & Src );
@@ -335,7 +335,7 @@ static INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32
     Mantis = Mantis >> Shift2;              /* force to fit within nbits bits */
     if (Mantis > Mask) Mantis = Mask;
 
-    *stream++ = Accu | Mantis;             /* store the 2 tokens */
+    *stream++ = (Accu << 16) | Mantis;             /* store the 2 tokens */
     n = n - 2;
   }
 #endif
@@ -353,9 +353,11 @@ static INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32
     Mantis = Mantis + Round;                /* add rounding term */
     Mantis = Mantis >> Shift2;              /* force to fit within nbits bits */
     if (Mantis > Mask) Mantis = Mask;
-    Accu   = (Accu << 16) | Mantis;         /* insert into stream as 16 bit token */
-    if(Store) *stream++ = Accu;             /* store every other trip in the loop */
+//    Accu   = (Accu << 16) | Mantis;         /* insert into stream as 16 bit token */
+//    if(Store) *stream++ = Accu;             /* store every other trip in the loop */
+    if(Store) *stream++ = (Accu << 16) | Mantis;
     Store = Store ^ 1;
+    Accu = Mantis;
     }
   if(Store) *stream++ = Accu << 16;         /* must store last ? (odd number of trips in loop) */
   return 0;
