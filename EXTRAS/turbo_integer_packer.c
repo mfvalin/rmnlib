@@ -3,8 +3,14 @@
 #include <string.h>
 #include <sys/time.h>
 
-#define WITH_OFFSET + signed_offset
-#define WITH_OFFSET__
+#define WITH_OFFSET__ + signed_offset
+#define WITH_OFFSET
+
+#ifndef USE_MY_MACROS
+
+#include <pack_macros_64.h>
+
+#else
 
 #define get_bits_64(unpacked,nbits,temp,bleft) \
         unpacked = (temp >> (64 - nbits)) WITH_OFFSET; \
@@ -40,6 +46,8 @@
 #define end_pack_64(temp,bleft,packed)             \
         if(bleft < 32) *packed++ = temp << bleft;
 
+#endif
+        
 void IntegerUnpacker_32(void *stream, void *dst,int nbits, int nbitt,int n,int offset)
 {
     unsigned int *packed = ( unsigned int *)stream;
