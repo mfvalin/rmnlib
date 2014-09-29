@@ -47,8 +47,13 @@ typedef union {
 
 */
 
-
+float dummy[4];
 /* stream is really INT32 but addressed as INT16, one MUST account for endianness of machines */
+#ifdef USE_SSE
+#include <xmmintrin.h>
+#define VLEN 4
+#endif
+
 #ifdef ORIGINAL
 static INT_32 float_unpacker_new(float *dest, INT_32 *header, INT_32 *stream, INT_32 npts)
 #else
@@ -59,6 +64,10 @@ static INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_
   INT_32 n, shft1_23, shft1_31, m23;
   INT_32 MaxExp, Mantis, Mantis0, Mantis1, Mantis2, Mantis3, Sgn, Sgn0, Sgn1, Sgn2, Sgn3, Minimum, Shift2, i0;
   INT_32 StReAm[3];
+#ifdef USE_SSE
+  int  __attribute__ ((aligned (16))) Mantis_[VLEN];
+  __m128i Mantisv,  Hiddenv, Temp1v, Temp2v, M23v, Minimumv, Bit31v, Signv;
+#endif
 
   Minimum = header[1];                     /* get Minimum, MaxExp, Shift2 from header */
   MaxExp = (header[0] >> 8) & 0xFF;
@@ -76,16 +85,56 @@ static INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_
     while (n--) *dest++ = 0.0;
     return (0);
     }
+
+#ifdef USE_SSE
+  M23v = (__m128i)_mm_load_ss((const float *)&m23);
+  M23v = (__m128i)_mm_shuffle_ps((__m128)M23v,(__m128)M23v,0);
+  Minimumv = (__m128i)_mm_load_ss((const float *)&Minimum);
+  Minimumv = (__m128i)_mm_shuffle_ps((__m128)Minimumv,(__m128)Minimumv,0);
+  Bit31v = (__m128i)_mm_load_ss((const float *)&shft1_31);
+  Bit31v = (__m128i)_mm_shuffle_ps((__m128)Bit31v,(__m128)Bit31v,0);
+#endif
+
   while(n>3){
     Mantis0 = *stream++ ;
     Mantis2 = *stream++ ;
+
+#ifdef USE_SSE
+    Mantis_[0] = Mantis0 >> 16;
+    Mantis_[1] = Mantis0 & 0xFFFF ;
+    Mantis_[2] = Mantis2 >> 16;
+    Mantis_[3] = Mantis2 & 0xFFFF ;
+    Mantisv = (__m128i)_mm_load_ps((const float *)Mantis_);   /* load mantissa */
+    Temp1v = _mm_xor_si128(Temp1v,Temp1v);                    /* zero  */
+    Mantisv = _mm_slli_epi32(Mantisv,Shift2);                 /* shift left by shift2 */
+    Temp2v = _mm_xor_si128(Temp2v,Temp2v);                    /* zero  */
+    Mantisv = _mm_add_epi32 (Mantisv,Minimumv);               /* add minimum value */
+    Signv = _mm_and_si128(Bit31v,Mantisv);                     /* isolate sign bit */
+                                                              /* compute absolute value of mantissa */
+    Temp1v = _mm_cmplt_epi32(Mantisv,Temp1v);                 /*  all ones  where mantissa is negative */
+    Temp2v = _mm_sub_epi32(Temp2v,Mantisv);                   /* - mantissa */
+    Mantisv = _mm_andnot_si128(Mantisv,Temp1v);               /* keep mantissa where it was positive, wipe where negative*/
+    Temp2v = _mm_and_si128(Temp2v,Temp1v);                    /* keep -mantissa where it was negative, wipe where positive */
+    Mantisv = _mm_or_si128(Mantisv,Temp2v);                   /* put mantissa back together (abs value) */
+
+    Hiddenv = _mm_srli_epi32(Mantisv,23);
+    Temp1v = _mm_xor_si128(Temp1v,Temp1v);                    /* zero  */
+    Temp2v = M23v;
+    Hiddenv = _mm_cmpgt_epi32(Hiddenv,Temp1v);                /* all ones where hidden 1 not zero */
+    Temp2v = _mm_or_si128(Temp2v,Signv);                      /* m23 + sign */
+    Temp2v = _mm_and_si128(Temp1v,Hiddenv);                   /* zero out where hidden 1 absent */
+    Temp1v = (__m128i)_mm_sub_ps((__m128)Temp1v,(__m128)Temp2v);                       /* subtract hidden one where present, sero otherwise */
+//    _mm_storeu_ps(dest,(__m128)Temp1v);
+//    dest += 4;
+#else
+#endif
+
     Mantis1 = Mantis0 & 0xFFFF ;
     Mantis3 = Mantis2 & 0xFFFF ;
     Mantis0 >>= 16;
     Mantis2 >>= 16;
     Mantis0 = Mantis0 & 0xFFFF ;
     Mantis2 = Mantis2 & 0xFFFF ;
-
     Mantis0 = Mantis0 << Shift2;
     Mantis1 = Mantis1 << Shift2;
     Mantis2 = Mantis2 << Shift2;

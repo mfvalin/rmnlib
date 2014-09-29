@@ -48,7 +48,7 @@
 
 #endif
         
-void IntegerUnpacker_32(void *stream, void *dst,int nbits, int nbitt,int n,int offset)
+void IntegerUnpacker_32(void *stream, void *dst,int nbits_in, int nbitt,int n,int offset)
 {
     unsigned int *packed = ( unsigned int *)stream;
     int *unpacked = ( int *)dst;
@@ -56,13 +56,15 @@ void IntegerUnpacker_32(void *stream, void *dst,int nbits, int nbitt,int n,int o
     unsigned int token, token1, token2, token3;
     int bleft, mbleft;
     int signed_offset = 0;
+    int nbits;
 
+    nbits = (nbits_in < 0) ? -nbits_in : nbits_in;
     if(nbits > 32 || nbitt > nbits) return;
 
     packed += offset/32;
     bleft = 32 - (offset % 32);
     token = *packed++;
-    if(nbits == -1) signed_offset = -(1 << (nbitt-1));
+    if(nbits_in < 0) signed_offset = -(1 << (nbitt-1));
 
     if(bleft == 32) {     /* we are aligned on a 32 bit boundary */
       if(nbits == 32) {
@@ -77,7 +79,6 @@ void IntegerUnpacker_32(void *stream, void *dst,int nbits, int nbitt,int n,int o
           *unpacked++ = token WITH_OFFSET;
           token = *packed++;
         }
-//        packed = (unsigned int *)memcpy(dst,stream,n*sizeof(unsigned int));
         return;
       }
       if(nbits == 24) {
@@ -240,7 +241,7 @@ void IntegerUnpacker_32(void *stream, void *dst,int nbits, int nbitt,int n,int o
     temp <<= 32;
     temp |= *packed++;
     if(bleft < 32) temp <<= (32-bleft);
-    if(nbits > 0) {
+    if(nbits > 16) {
       while(n > 1){
         get_bits_64(*unpacked++,nbits,temp,bleft)
         check_unpack_64(temp,bleft,*packed++)
