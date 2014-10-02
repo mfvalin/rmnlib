@@ -18,6 +18,9 @@
  * Boston, MA 02111-1307, USA.
  */
 
+#include "pack_macros_64.h"
+#define WITH_OFFSET
+
 #define powerSpan 65
 #define MAX_RANGE 1.0e+38
 static double powerOf2s[powerSpan];
