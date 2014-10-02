@@ -481,7 +481,7 @@ void *compact_FLOAT_4_8(void *unpackedArrayOfFloat, void *packedHeader, void *pa
       unsigned long long temp;
       unsigned int *packed=arrayOfInt + ( off_set / wordSize );
       int bleft = wordSize - ( off_set % wordSize );
-      fprintf(stderr,"bleft=%d, offset=%d\n",bleft,off_set);
+//      fprintf(stderr,"bleft=%d, offset=%d\n",bleft,off_set);
       int scrap;
 
       temp = *packed++;
@@ -511,7 +511,7 @@ void *compact_FLOAT_4_8(void *unpackedArrayOfFloat, void *packedHeader, void *pa
         else if ( packInt == 0 )
         {
           arrayOfFloat[i] = minFloat;
-          fprintf(stderr,"i=%d, packInt=%d, float=%f\n",i,packInt,arrayOfFloat[i]);
+//          fprintf(stderr,"i=%d, packInt=%d, float=%f\n",i,packInt,arrayOfFloat[i]);
         }
         else
         {
