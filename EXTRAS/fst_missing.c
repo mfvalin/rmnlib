@@ -360,10 +360,65 @@ void set_missing_value_flags(float *f, int *i, unsigned int *ui, double *d, shor
   if(set_plugin_missing_value_flags != NULL ) (*set_plugin_missing_value_flags)(f, i, ui, d, s, us,b, ub);
 }
 
-/* 
+#ifdef USE_MACROS
+/*
  * functions to find minimum and maximum values of a field while ignoring the missing value code
- * these functions return the humber of missing values detected
+ * these functions return the number of missing values detected
 */
+
+#define FLD_TYPE_ANAL(name,kind,flag)                          \
+static int name(kind *z, int n , kind *zmax, kind *zmin)  {    \
+  kind zma, zmi;                                               \
+  int i, missing;                                              \
+  i = 0; missing = 0;                                          \
+  while( i<n && z[i]==flag ) {i++ ; missing++ ; }              \
+  zma = zmi = z[i];                                            \
+  while(++i < n) {                                             \
+    if( z[i] == flag ) {                                       \
+      missing++;                                               \
+    }else{                                                     \
+      zmi = z[i] < zmi ? z[i] : zmi;                           \
+      zma = z[i] > zma ? z[i] : zma;                           \
+    }                                                          \
+  }                                                            \
+  *zmax = zma ; *zmin = zmi ;                                  \
+  return(missing);                                             \
+}
+
+FLD_TYPE_ANAL(fld_float_anal,  float,          float_missing_val)
+FLD_TYPE_ANAL(fld_double_anal, double,         double_missing_val)
+FLD_TYPE_ANAL(fld_int_anal,    int,            int_missing_val)
+FLD_TYPE_ANAL(fld_uint_anal,   unsigned int,   uint_missing_val)
+FLD_TYPE_ANAL(fld_short_anal,  short,          short_missing_val)
+FLD_TYPE_ANAL(fld_ushort_anal, unsigned short, ushort_missing_val)
+FLD_TYPE_ANAL(fld_byte_anal,   char,           byte_missing_val)
+FLD_TYPE_ANAL(fld_ubyte_anal,  unsigned char,  ubyte_missing_val)
+
+/*
+ * routines to replace maximum value of field with missing value code
+ */
+
+#define FLD_TYPE_DECODE(name,kind,kind_anal,flag)               \
+static void name(kind *z, int n) {                              \
+  kind zma, zmi;                                                \
+  int notused;                                                  \
+  if(missing_value_used()==0) return;                           \
+  notused = kind_anal(z,n,&zma,&zmi);                           \
+  while(n--) { if(*z==zma) *z=flag ; z++ ; }                    \
+  return;                                                       \
+}
+
+FLD_TYPE_DECODE(fst_double_decode_missing, double,         fld_double_anal, double_missing_val)
+FLD_TYPE_DECODE(fst_float_decode_missing,  float,          fld_float_anal,  float_missing_val)
+FLD_TYPE_DECODE(fst_int_decode_missing,    int,            fld_int_anal,    int_missing_val)
+FLD_TYPE_DECODE(fst_uint_decode_missing,   unsigned int,   fld_uint_anal,   uint_missing_val)
+FLD_TYPE_DECODE(fst_short_decode_missing,  short,          fld_short_anal,  short_missing_val)
+FLD_TYPE_DECODE(fst_ushort_decode_missing, unsigned short, fld_ushort_anal, ushort_missing_val)
+FLD_TYPE_DECODE(fst_byte_decode_missing,   char,           fld_byte_anal,   byte_missing_val)
+FLD_TYPE_DECODE(fst_ubyte_decode_missing,  unsigned char,  fld_ubyte_anal,  ubyte_missing_val)
+
+#else
+
 static int fld_float_anal(float *z, int n , float *zmax, float *zmin)  /* float values */
 {
   float zma, zmi;
@@ -555,7 +610,95 @@ static int fld_ubyte_anal(unsigned char *z, int n , unsigned char *zmax, unsigne
   *zmin = zmi ;
   return(missing);
 }
+/* routines to replace maximum value of field with missing value code */
+static void fst_double_decode_missing(double *z, int n)  /* float values */
+{
+  double zma, zmi;
+  int notused;
 
+  if(missing_value_used()==0) return;
+  notused = fld_double_anal(z,n,&zma,&zmi);
+  while(n--) { if(*z==zma) *z=double_missing_val ; z++ ; } /* float values */
+  return;
+}
+
+static void fst_float_decode_missing(float *z, int n)  /* float values */
+{
+  float zma, zmi;
+  int notused;
+
+  if(missing_value_used()==0) return;
+  notused = fld_float_anal(z,n,&zma,&zmi);
+  while(n--) { if(*z==zma) *z=float_missing_val ; z++ ; } /* float values */
+  return;
+}
+
+static void fst_int_decode_missing(int *z, int n)  /* signed ints */
+{
+  int zma, zmi;
+  int notused;
+
+  if(missing_value_used()==0) return;
+  notused = fld_int_anal(z,n,&zma,&zmi);
+  while(n--) { if(*z==zma) *z=int_missing_val ; z++ ; }
+  return;
+}
+
+static void fst_short_decode_missing(short *z, int n) /* signed shorts */
+{
+  short zma, zmi;
+  int notused;
+
+  if(missing_value_used()==0) return;
+  notused = fld_short_anal(z,n,&zma,&zmi);
+  while(n--) { if(*z==zma) *z=short_missing_val ; z++ ; } /* signed shorts */
+  return;
+}
+
+static void fst_byte_decode_missing(signed char *z, int n) /* signed bytes */
+{
+  signed char zma, zmi;
+  int notused;
+
+  if(missing_value_used()==0) return;
+  notused = fld_byte_anal(z,n,&zma,&zmi);
+  while(n--) { if(*z==zma) *z=byte_missing_val ; z++ ; } /* signed bytes */
+  return;
+}
+
+static void fst_uint_decode_missing(unsigned int *z, int n) /* unsigned integers */
+{
+  unsigned int zma, zmi;
+  int notused;
+
+  if(missing_value_used()==0) return;
+  notused = fld_uint_anal(z,n,&zma,&zmi);
+  while(n--) { if(*z==zma) *z=uint_missing_val ; z++ ; } /* unsigned integers */
+  return;
+}
+
+static void fst_ushort_decode_missing(unsigned short *z, int n) /* unsigned shorts */
+{
+  unsigned short zma, zmi;
+  int notused;
+
+  if(missing_value_used()==0) return;
+  notused = fld_ushort_anal(z,n,&zma,&zmi);
+  while(n--) { if(*z==zma) *z=ushort_missing_val ; z++ ;  } /* unsigned shorts */
+  return;
+}
+
+static void fst_ubyte_decode_missing(unsigned char *z, int n) /* unsigned bytes */
+{
+  unsigned char zma, zmi;
+  int notused;
+
+  if(missing_value_used()==0) return;
+  notused = fld_ubyte_anal(z,n,&zma,&zmi);
+  while(n--) { if(*z==zma) *z=ubyte_missing_val ; z++ ;  } /* unsigned bytes */
+  return;
+}
+#endif
 /* functions te replace missing value code with value suitable for packers */
 static int fst_double_encode_missing(double *z, double *z2, int n, int nbits)  /* double values */
 {
@@ -760,95 +903,9 @@ static int fst_ubyte_encode_missing(unsigned char *z, unsigned char *z2, int n, 
   return(missing);
 }
 
-/* routines to replace maximum value of field with missing value code */
-static void fst_double_decode_missing(double *z, int n)  /* float values */
-{
-  double zma, zmi;
-  int notused;
-  
-  if(missing_value_used()==0) return;
-  notused = fld_double_anal(z,n,&zma,&zmi);
-  while(n--) { if(*z==zma) *z=double_missing_val ; z++ ; } /* float values */
-  return;
-}
-
-static void fst_float_decode_missing(float *z, int n)  /* float values */
-{
-  float zma, zmi;
-  int notused;
-  
-  if(missing_value_used()==0) return;
-  notused = fld_float_anal(z,n,&zma,&zmi);
-  while(n--) { if(*z==zma) *z=float_missing_val ; z++ ; } /* float values */
-  return;
-}
-
-static void fst_int_decode_missing(int *z, int n)  /* signed ints */
-{
-  int zma, zmi;
-  int notused;
-  
-  if(missing_value_used()==0) return;
-  notused = fld_int_anal(z,n,&zma,&zmi);
-  while(n--) { if(*z==zma) *z=int_missing_val ; z++ ; }
-  return;
-}
-
-static void fst_short_decode_missing(short *z, int n) /* signed shorts */
-{
-  short zma, zmi;
-  int notused;
-  
-  if(missing_value_used()==0) return;
-  notused = fld_short_anal(z,n,&zma,&zmi);
-  while(n--) { if(*z==zma) *z=short_missing_val ; z++ ; } /* signed shorts */
-  return;
-}
-
-static void fst_byte_decode_missing(signed char *z, int n) /* signed bytes */
-{
-  signed char zma, zmi;
-  int notused;
-  
-  if(missing_value_used()==0) return;
-  notused = fld_byte_anal(z,n,&zma,&zmi);
-  while(n--) { if(*z==zma) *z=byte_missing_val ; z++ ; } /* signed bytes */
-  return;
-}
-
-static void fst_uint_decode_missing(unsigned int *z, int n) /* unsigned integers */
-{
-  unsigned int zma, zmi;
-  int notused;
-  
-  if(missing_value_used()==0) return;
-  notused = fld_uint_anal(z,n,&zma,&zmi);
-  while(n--) { if(*z==zma) *z=uint_missing_val ; z++ ; } /* unsigned integers */
-  return;
-}
-
-static void fst_ushort_decode_missing(unsigned short *z, int n) /* unsigned shorts */
-{
-  unsigned short zma, zmi;
-  int notused;
-  
-  if(missing_value_used()==0) return;
-  notused = fld_ushort_anal(z,n,&zma,&zmi);
-  while(n--) { if(*z==zma) *z=ushort_missing_val ; z++ ;  } /* unsigned shorts */
-  return;
-}
-
-static void fst_ubyte_decode_missing(unsigned char *z, int n) /* unsigned bytes */
-{
-  unsigned char zma, zmi;
-  int notused;
-  
-  if(missing_value_used()==0) return;
-  notused = fld_ubyte_anal(z,n,&zma,&zmi);
-  while(n--) { if(*z==zma) *z=ubyte_missing_val ; z++ ;  } /* unsigned bytes */
-  return;
-}
-
+#ifdef USE_MACROS
+#else
+#endif
 static void fst_null_decode_missing(void *z, int n) /* null decoder */
 {
 /*  fprintf(stderr,"using null decoder\n"); */
@@ -1081,8 +1138,8 @@ void decode_missing_value(void *field,int *nvalues,int *datatype,int *is_byte,in
 
 #ifdef SELFTEST
 #define ASIZE 16
-/* test program , the 6 basic types are encoded/decoded 
- * float, int, unsigned int, double, short, unsigned short 
+/* test program , the 8 basic types are encoded/decoded
+ * float, int, unsigned int, double, short, unsigned short, char, unsigned char
  * both the C and the FORTRAN interface are used in the test
 */
 int main()
