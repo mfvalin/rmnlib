@@ -20,6 +20,19 @@
 
 #include "pack_macros_64.h"
 #define WITH_OFFSET
+static double pow2(int i)
+{
+  union{
+    double d;
+    long long l;
+  } dl;
+  long long exp;
+  exp = i + 1023;
+  exp = (exp < 0) ? 0 : exp;
+  exp = (exp > 2047) ? 2047 : exp;
+  dl.l = exp << 52;
+  return(dl.d);
+}
 
 #define powerSpan 65
 #define MAX_RANGE 1.0e+38

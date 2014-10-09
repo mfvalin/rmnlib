@@ -1,4 +1,16 @@
 
+#define declare_pack_64(temp,bleft,nbits)   \
+        unsigned long long temp;            \
+        int bleft, nbits;
+
+#define start_unpack_64(temp,bleft,packed,offset)  \
+        temp = 8 * sizeof(*packed);                \
+        packed = packed + ( offset / temp );       \
+        bleft = temp - ( offset % temp );          \
+        temp = *packed++;                          \
+        temp <<= 32;                               \
+        temp |= *packed++;                         \
+        temp <<= (32-bleft);
 
 #define get_bits_64(unpacked,nbits,temp,bleft) \
         unpacked = (temp >> (64 - nbits)) WITH_OFFSET; \
@@ -6,16 +18,12 @@
         bleft -= nbits;
 
 #define check_unpack_64(temp,bleft,packed) \
-        if(bleft <= 0) {                 \
-          temp = temp >> (-bleft) ;      \
-          temp |= packed;                \
-          temp <<= (-bleft);             \
-          bleft += 32;                   \
+        if(bleft <= 0) {                   \
+          temp = temp >> (-bleft) ;        \
+          temp |= *packed++;               \
+          temp <<= (-bleft);               \
+          bleft += 32;                     \
         }
-
-#define declare_pack_64(temp,bleft,nbits)   \
-        unsigned long long temp;            \
-        int bleft, nbits;
 
 #define start_pack_64(temp,bleft)  \
         temp = 0;                  \

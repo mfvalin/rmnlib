@@ -6,47 +6,7 @@
 #define WITH_OFFSET__ + signed_offset
 #define WITH_OFFSET
 
-#ifndef USE_MY_MACROS
-
 #include <pack_macros_64.h>
-
-#else
-
-#define get_bits_64(unpacked,nbits,temp,bleft) \
-        unpacked = (temp >> (64 - nbits)) WITH_OFFSET; \
-        temp <<= nbits;                                   \
-        bleft -= nbits;
-
-#define check_unpack_64(temp,bleft,packed) \
-        if(bleft <= 0) {                 \
-          temp = temp >> (-bleft) ;      \
-          temp |= packed;                \
-          temp <<= (-bleft);             \
-          bleft += 32;                   \
-        }
-
-#define declare_pack_64(temp,bleft,nbits)   \
-        unsigned long long temp;            \
-        int bleft, nbits;
-
-#define start_pack_64(temp,bleft)  \
-        temp = 0;                  \
-        bleft = 32;
-
-#define put_bits_64(unpacked,nbits,temp,bleft,mask)   \
-        bleft -= nbits;                               \
-        temp = (temp << nbits) | (unpacked & mask)
-
-#define check_pack_64(temp,bleft,packed)  \
-        if(bleft <= 0) {                  \
-          *packed++ = temp  >> (-bleft);  \
-          bleft += 32;                    \
-        }
-
-#define end_pack_64(temp,bleft,packed)             \
-        if(bleft < 32) *packed++ = temp << bleft;
-
-#endif
         
 void IntegerUnpacker_32(void *stream, void *dst,int nbits_in, int nbitt,int n,int offset)
 {
@@ -244,22 +204,22 @@ void IntegerUnpacker_32(void *stream, void *dst,int nbits_in, int nbitt,int n,in
     if(nbits > 16) {
       while(n > 1){
         get_bits_64(*unpacked++,nbits,temp,bleft)
-        check_unpack_64(temp,bleft,*packed++)
+        check_unpack_64(temp,bleft,packed)
         get_bits_64(*unpacked++,nbits,temp,bleft)
-        check_unpack_64(temp,bleft,*packed++)
+        check_unpack_64(temp,bleft,packed)
         n -= 2;
       }
     }else{
       while(n > 1){
         get_bits_64(*unpacked++,nbits,temp,bleft)
         get_bits_64(*unpacked++,nbits,temp,bleft)
-        check_unpack_64(temp,bleft,*packed++)
+        check_unpack_64(temp,bleft,packed)
         n -= 2;
       }
     }
     while(n-- > 0){
         get_bits_64(*unpacked++,nbits,temp,bleft)
-        check_unpack_64(temp,bleft,*packed++)
+        check_unpack_64(temp,bleft,packed)
     }
 }
 
@@ -430,12 +390,12 @@ void IntegerUnpacker_16(void *stream, void *dst,int nbits, int nbitt,int n,int o
     while(n > 1){
         get_bits_64(*unpacked++,nbits,temp,bleft)
         get_bits_64(*unpacked++,nbits,temp,bleft)
-        check_unpack_64(temp,bleft,*packed++)
+        check_unpack_64(temp,bleft,packed)
       n -= 2;
     }
     while(n-- > 0){
         get_bits_64(*unpacked++,nbits,temp,bleft)
-        check_unpack_64(temp,bleft,*packed++)
+        check_unpack_64(temp,bleft,packed)
     }
 }
 

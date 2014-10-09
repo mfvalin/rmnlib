@@ -325,7 +325,8 @@ void *compact_FLOAT_4_8(void *unpackedArrayOfFloat, void *packedHeader, void *pa
       double two=2.0;
       ftnword expos_ftn;
       expos_ftn = tempExpo;
-      mulFactor = powerOf2s[bitSizeOfPackedToken] / f77name(f_pow)(&two,&expos_ftn);
+//      mulFactor = powerOf2s[bitSizeOfPackedToken] / f77name(f_pow)(&two,&expos_ftn);
+      mulFactor = powerOf2s[bitSizeOfPackedToken] / pow2(expos_ftn);
     }
     /***********************************************************************
      *                                                                     *
@@ -439,7 +440,8 @@ void *compact_FLOAT_4_8(void *unpackedArrayOfFloat, void *packedHeader, void *pa
       wordint expos_ftn;  /* bug on the NEC, can not pass expos_i directly to f_pow */
       expos_i = (rangeExponent - 127 - tokenSize);
       expos_ftn = expos_i;
-      mulFactor = f77name(f_pow)(&two,&expos_ftn);
+//      mulFactor = f77name(f_pow)(&two,&expos_ftn);
+      mulFactor = pow2(expos_ftn);
     }
     if ( ( theHeader->minMantisa32 == 0 ) || ( theHeader->minExpo < 849 ) )
     {
@@ -479,28 +481,31 @@ void *compact_FLOAT_4_8(void *unpackedArrayOfFloat, void *packedHeader, void *pa
     arrayPtr = &arrayOfInt[currentSlot];
     {    /***  unpack floating point numbers  from  integer representation  ***/
       unsigned long long temp;
-      unsigned int *packed=arrayOfInt + ( off_set / wordSize );
-      int bleft = wordSize - ( off_set % wordSize );
+      unsigned int *packed=arrayOfInt;
+      int bleft;
+//      packed=arrayOfInt + ( off_set / wordSize );
+//      bleft = wordSize - ( off_set % wordSize );
 //      fprintf(stderr,"bleft=%d, offset=%d\n",bleft,off_set);
       int scrap;
 
-      temp = *packed++;
-      temp <<= 32;
-      temp |= *packed++;
-      temp <<= (32-bleft);
-      check_unpack_64(temp,bleft,*packed++)
+//      temp = *packed++;
+//      temp <<= 32;
+//      temp |= *packed++;
+//      temp <<= (32-bleft);
+      start_unpack_64(temp,bleft,packed,off_set)
+      check_unpack_64(temp,bleft,packed)
 
       for ( i = 0; i < intCount*stride; i+=stride)
       {
         /*  extract(packInt, arrayPtr, wordSize, significantBit, currentWord, bitPackInFirstWord);  */
         get_bits_64(packInt,significantBit,temp,bleft)
-        check_unpack_64(temp,bleft,*packed++)
+        check_unpack_64(temp,bleft,packed)
 
         if ( inSignificantBit > 0 )        /***  discard extra bits if necessary  ***/
         {
           /* discard(arrayPtr, wordSize, inSignificantBit, currentWord, bitPackInFirstWord);  */
           get_bits_64(scrap,inSignificantBit,temp,bleft)
-          check_unpack_64(temp,bleft,*packed++)
+          check_unpack_64(temp,bleft,packed)
 //          fprintf(stderr,"discard\n");
         }
         if ( ( hasMissing == 1 ) && ( packInt == missingToken ) )

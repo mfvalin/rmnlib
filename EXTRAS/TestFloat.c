@@ -36,6 +36,10 @@ main()
 {
   int i;
   int position_i;
+  struct timeval t0, t1;
+  long long time0, time1;
+  int tm0, tm1;
+
 
   FLOAT_4_8 arrayOfFloat0[myElementCount];
   FLOAT_4_8 arrayOfFloat[myElementCount2], arrayOfFloatTest[strideElementCount];
@@ -43,13 +47,10 @@ main()
   FLOAT_4_8 arrayOfFloat3[myElementCount2], arrayOfFloat4[myElementCount2]; 
   FLOAT_4_8 arrayOfFloat5[myElementCount2], arrayOfFloat6[myElementCount2], arrayOfFloat7[myElementCount2];
  
-#if !defined (NEC)
 
   float arrayOfFloat1_large[veryLargeElementCount], arrayOfFloat2_large[veryLargeElementCount];
   word  arrayOfInt1_large[veryLargeElementCount];
   
-#endif
-
   INT_32 arrayOfInt1[myElementCount3], arrayOfInt2[myElementCount3];
   word arrayOfInt3[myElementCount3], arrayOfInt4[myElementCount3];
   word arrayOfInt5[myElementCount3], arrayOfInt6[myElementCount3], arrayOfInt7[myElementCount3];
@@ -67,6 +68,7 @@ main()
   ftnword *unpackedFloat1, *unpackedFloat2, *unpackedFloat3, *unpackedFloat4,*unpackedFloat5, *unpackedFloat6;
 
   FLOAT_4_8 missingTag = 9999.0000;
+  FLOAT_4_8 missingTagT = -9999.0000;
   FLOAT_4_8 tempFloat;
   FLOAT_4_8 maxError, maxDifference;
   int notStablized = 0;
@@ -203,9 +205,6 @@ if ( geneticOn == 1 )
   unpackedFloat2 = compact_FLOAT_4_8(arrayOfFloat2, &arrayOfInt1[0], &arrayOfInt1[3], 4, 
                                      16, 24, 2, FLOAT_UNPACK, 0, &missingTag);    
                                                            
- 
-
-                                 
   printf("\n i, originalFloat, \t packedInt, \t unpackedFloat\n");
 
   for ( i = 0; i < 9; i++)
@@ -657,12 +656,6 @@ if ( strideTestOn == 1 )
 
 };
 
-
-
-
-
-
-
 if ( errorTestOn  == 1 )
 {
 
@@ -761,16 +754,6 @@ if ( errorTestOn  == 1 )
 }/* error test */
 
 
-
-
-
-
-
-
-
-
-
-
 if ( inPlaceTestOn == 1 )
 {
   /**********************************
@@ -825,7 +808,6 @@ if ( inPlaceTestOn == 1 )
     {
       ftn_arrayOfInt1[i] = arrayOfInt1[i];
     };
-
 
 
 if ( 0 == 0 )
@@ -887,8 +869,6 @@ if ( 0 == 0 )
 
 
 }/* inplace pack and unpack */
-
-
 
 if ( indexTestOn == 1 )
 {
@@ -956,9 +936,6 @@ if ( indexTestOn == 1 )
   printf("\n ===================================================== \n\n\n");
 
 };
-
-
-
 
 if ( indexTestOn == 1 )
 {
@@ -1028,19 +1005,6 @@ if ( indexTestOn == 1 )
 };
 
 
-
-
-
-
-
-
-
-
-
-
-
-#if !defined (NEC)
-
 if ( largeTestOn == 1 )
 {
   /******************************
@@ -1058,13 +1022,30 @@ if ( largeTestOn == 1 )
       arrayOfFloat1_large[i] = ((i+1.0) / (veryLargeElementCount + 10.0) - 0.5);
       
      
-    };  
-
-  unpackedFloat1 = compact_FLOAT_4_8(arrayOfFloat1_large, &arrayOfInt1_large[0], &arrayOfInt1_large[4],
-                                     veryLargeElementCount, bitSizeOfInt, 0, 1, FLOAT_PACK, 0, 
-                                     &missingTag);
-  
-  unpackWrapper( arrayOfFloat2_large, arrayOfInt1_large, arrayOfInt1_large, 1, &missingTag);
+    };
+  for(bitSizeOfInt = 8 ; bitSizeOfInt <=27 ; bitSizeOfInt++){
+    gettimeofday(&t0,NULL);
+    unpackedFloat1 = compact_FLOAT_4_8(arrayOfFloat1_large, &arrayOfInt1_large[0], &arrayOfInt1_large[4],
+                                      veryLargeElementCount, bitSizeOfInt, 0, 1, FLOAT_PACK, 0,
+                                      &missingTag);
+    gettimeofday(&t1,NULL);
+    time0 = t0.tv_sec;
+    time0 = time0*1000000 + t0.tv_usec;
+    time1 = t1.tv_sec;
+    time1 = time1*1000000 + t1.tv_usec;
+    time1 = time1 - time0;
+    tm0 = time1;
+    gettimeofday(&t0,NULL);
+    unpackWrapper( arrayOfFloat2_large, arrayOfInt1_large, arrayOfInt1_large, 1, &missingTag);
+    gettimeofday(&t1,NULL);
+    time0 = t0.tv_sec;
+    time0 = time0*1000000 + t0.tv_usec;
+    time1 = t1.tv_sec;
+    time1 = time1*1000000 + t1.tv_usec;
+    time1 = time1 - time0;
+    tm1 = time1;
+    fprintf(stderr,"nbits=%d, PACKING time = %d, UNPACKING time = %d\n",bitSizeOfInt,tm0,tm1);
+  }
   /*
     unpackedFloat2 = compact_FLOAT_4_8(arrayOfFloat2, &arrayOfInt1[0], &arrayOfInt1[4], veryLargeElementCount, 
     bitSizeOfInt, 0, 1, FLOAT_UNPACK, 0, &missingTag);
@@ -1133,8 +1114,6 @@ if ( largeTestOn == 1 )
   printf("\n ===================================================== \n\n\n");
 
 };
-
-#endif
 
 }/* end of program */
 
