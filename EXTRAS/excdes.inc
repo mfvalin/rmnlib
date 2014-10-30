@@ -42,7 +42,7 @@
         end function Select_date
 
 !       int Xf_select_etiquette(int set_nb, int des_exc, char *etiq_list, int nelm, int flng)
-        function Select_etiquette(set_nb, des_exc, etiq_list,
+        function Select_etiquette(set_nb, des_exc, etiq_list,                  &
      &                            nelm, flng)                                  &
      &           result (status) BIND(C,name='Xf_Select_etiquette')
           import :: C_INT, C_CHAR
