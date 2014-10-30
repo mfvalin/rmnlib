@@ -1467,28 +1467,24 @@ int c_fstinfx(int handle, int iun, int *ni, int *nj, int *nk,
  *  OUT liste   list of handle to the records                                *
  *  OUT infon   number of elements for the list (number of records found)    *
  *  OUT nmax    dimension of list as given by caller                         *
- *  IN  extra   if nonzero, infon will contain the number of matching        *
- *              records, possibly > nmax. liste will NOT contain more        *
- *              than nmax entries                                            *
- *                                                                           * 
+ *                                                                           *
  *****************************************************************************/
 
-int c_fstinl_x(int iun, int *ni, int *nj, int *nk, int datev, char *etiket,
+int c_fstinl(int iun, int *ni, int *nj, int *nk, int datev, char *etiket,
                  int ip1, int ip2, int ip3, char *typvar, char *nomvar,
-                 word *liste, int *infon, int nmax, int extra)
+                 word *liste, int *infon, int nmax)
 {
   int handle, nfound=0, nimax, njmax, nkmax, nijkmax;
 
   if (msg_level < INFORM)
-    fprintf(stdout,"Debug fstinl iun %d recherche: datev=%d etiket=[%s] ip1=%d ip2=%d ip3=%d typvar=[%s] nomvar=[%s]\n",
-            iun,datev,etiket,ip1,ip2,ip3,typvar,nomvar);
+    fprintf(stdout,"Debug fstinl iun %d recherche: datev=%d etiket=[%s] ip1=%d ip2=%d ip3=%d typvar=[%s] nomvar=[%s]\n",iun,datev,etiket,ip1,ip2,ip3,typvar,nomvar);
 
   handle = c_fstinf(iun,ni,nj,nk,datev,etiket,ip1,ip2,ip3,typvar,nomvar);
   nijkmax = (*ni) * (*nj) * (*nk);
   nimax = *ni;
   njmax = *nj;
   nkmax = *nk;
-  
+
   while ((handle >= 0) && (nfound < nmax)) {
     liste[nfound] = handle;
     nfound++;
@@ -1498,18 +1494,7 @@ int c_fstinl_x(int iun, int *ni, int *nj, int *nk, int datev, char *etiket,
       nimax = *ni;
       njmax = *nj;
       nkmax = *nk;
-      nijkmax = nimax*njmax*nkmax;    /*  nijkmax = barre a la dimension du premier enregistrement trouve avant !! */
-    }
-  }
-  if(extra > 0){
-    while( (handle = c_fstsui(iun,ni,nj,nk)) >= 0){
-      nfound++;      
-      if ( ((*ni) * (*nj) * (*nk)) > nijkmax ) {
-        nimax = *ni;
-        njmax = *nj;
-        nkmax = *nk;
-        nijkmax = nimax*njmax*nkmax;    /*  nijkmax = barre a la dimension du premier enregistrement trouve avant !! */
-      }
+      nijkmax = (*ni) * (*nj) * (*nk);
     }
   }
   *ni = nimax;
@@ -1518,13 +1503,14 @@ int c_fstinl_x(int iun, int *ni, int *nj, int *nk, int datev, char *etiket,
   *infon = nfound;
   if (msg_level < INFORM)
     fprintf(stdout,"Debug fstinl nombre trouve=%d nmax=%d\n",nfound,nmax);
-  return(0);
-}
-int c_fstinl(int iun, int *ni, int *nj, int *nk, int datev, char *etiket,
-                 int ip1, int ip2, int ip3, char *typvar, char *nomvar,
-                 word *liste, int *infon, int nmax)
-{
-  return c_fstinl_x(iun,ni,nj,nk,datev,etiket,ip1,ip2,ip3,typvar,nomvar,liste,infon,nmax, 0);
+
+  while ( (handle = c_fstsui(iun,ni,nj,nk)) >= 0) nfound++;
+  if (nfound > nmax) {
+     sprintf(errmsg,"number of records found (%d) > nmax specified (%d)",nfound,nmax);
+     return(error_msg("FSTINL",-nfound,ERROR));
+  }
+  else
+    return(0);
 }
 
 /*splitpoint c_fstlic */

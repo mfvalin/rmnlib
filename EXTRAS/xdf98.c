@@ -527,7 +527,10 @@ int c_qdfdiag(int iun)
 
    if (! wasopen) c_waclos(iun);
    free(fh);
-   return(0);
+   if (! thesame)
+     return(ERR_DAMAGED);
+   else 
+     return(0);
 }
 
 /*splitpoint c_qdfmsig */

@@ -660,26 +660,21 @@ ftnword f77name(fstinfx)(ftnword *f_handle, ftnword *f_iun,
  *  OUT liste   list of handle to the records                                *
  *  OUT infon   number of elements for the list (number of records found)    *
  *  OUT nmax    dimension of list as given by caller                         *
- *  IN  extra   if nonzero, infon will contain the number of matching        *
- *              records, possibly > nmax. liste will NOT contain more        *
- *              than nmax entries                                            *
- *                                                                           * 
+ *                                                                           *
  *****************************************************************************/
 
-ftnword f77name(fstinl_x)(ftnword *f_iun, ftnword *f_ni, ftnword *f_nj,
+ftnword f77name(fstinl)(ftnword *f_iun, ftnword *f_ni, ftnword *f_nj,
                         ftnword *f_nk, ftnword *f_datev, char *f_etiket,
                         ftnword *f_ip1, ftnword *f_ip2, ftnword *f_ip3,
                         char *f_typvar, char *f_nomvar,
                         ftnword *liste, ftnword *f_infon, ftnword *f_nmax,
-                        ftnword *f_extra,
                         F2Cl ll1, F2Cl ll2, F2Cl ll3)
 {
   int iun = *f_iun, datev=*f_datev, ip1=*f_ip1, ip2=*f_ip2, ip3=*f_ip3;
   int infon, nmax = *f_nmax;
-  int extra = *f_extra;
-  int ier,ni,nj,nk;
+  int ier,ni,nj,nk, i;
   int l1=ll1, l2=ll2, l3=ll3;
-//  INT_32 *plong;
+  INT_32 *plong;
   char etiket[13];
   char typvar[3];
   char nomvar[5];
@@ -688,24 +683,13 @@ ftnword f77name(fstinl_x)(ftnword *f_iun, ftnword *f_ni, ftnword *f_nj,
   str_cp_init(typvar,3,f_typvar,l2);
   str_cp_init(nomvar,5,f_nomvar,l3);
 
-  ier = c_fstinl_x(iun,&ni,&nj,&nk,datev,etiket,ip1,ip2,ip3,typvar,nomvar,
-                 (word *)liste,&infon,nmax,extra);
+  ier = c_fstinl(iun,&ni,&nj,&nk,datev,etiket,ip1,ip2,ip3,typvar,nomvar,
+                 (word *)liste,&infon,nmax);
   *f_ni = (ftnword) ni;
   *f_nj = (ftnword) nj;
   *f_nk = (ftnword) nk;
   *f_infon = (ftnword) infon;
   return((ftnword) ier);
-}
-ftnword f77name(fstinl)(ftnword *f_iun, ftnword *f_ni, ftnword *f_nj,
-                        ftnword *f_nk, ftnword *f_datev, char *f_etiket,
-                        ftnword *f_ip1, ftnword *f_ip2, ftnword *f_ip3,
-                        char *f_typvar, char *f_nomvar,
-                        ftnword *liste, ftnword *f_infon, ftnword *f_nmax,
-                        F2Cl ll1, F2Cl ll2, F2Cl ll3)
-{
-  ftnword zero = 0;
-  return f77name(fstinl_x)(f_iun,f_ni,f_nj,f_nk,f_datev,f_etiket,f_ip1,f_ip2,f_ip3,
-                           f_typvar,f_nomvar,liste,f_infon,f_nmax,&zero,ll1,ll2,ll3);
 }
 
 

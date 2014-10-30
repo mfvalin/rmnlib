@@ -340,6 +340,10 @@ int c_fnom(int *iun,char *nom,char *type,int lrec)
      /* a pointer has been passed to c_fnom as iun */
      if (*iun == 0)
         *iun = c_qqqfscr(type);
+        if (*iun == -1) {
+	  fprintf(stderr,"C_FNOM ERROR: no more units available\n");
+	  return(-1);
+	}
      liun = *iun;
      }
 

@@ -14,8 +14,8 @@
 *
         version = 
      %  "  RMNLIB  -  Release:"//
-     %  " beta_015 (Rev 959)"//
-     %  " Linux_x86-64/intel13sp1 Mon 02 Jun 2014 11:26:21 AM"
+     %  " 015 (Rev 967)"//
+     %  " Linux_x86-64/pgi1401 Tue 30 Sep 2014 03:01:23 PM"
 	if (prnt) print *,version
 	return
 	end

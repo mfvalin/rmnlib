@@ -784,7 +784,6 @@ int  compact_short( void *unpackedArrayOfShort, void *packedHeader, void *packed
     *                                            *
     *********************************************/
    positiveMask = ( opCode < 7 ) ? 0 : ( 1 << ( bitSizeOfPackedToken - 1 ));
-   fprintf(stderr,"compact_short opCode=%d positiveMask=%d\n",opCode,positiveMask);
 
 
    /***********************************************
@@ -1026,7 +1025,6 @@ int  compact_char( void *unpackedArrayOfBytes, void *packedHeader, void *packedA
     *                                            *
     *********************************************/
    positiveMask = ( opCode < 11 ) ? 0 : ( 1 << ( bitSizeOfPackedToken - 1 ));
-   fprintf(stderr,"compact_char opCode=%d positiveMask=%d\n",opCode,positiveMask);
 
 
    /***********************************************
