@@ -638,7 +638,6 @@ ftnword f77name(fstinfx)(ftnword *f_handle, ftnword *f_iun,
 
 /*splitpoint fstinl */
 /***************************************************************************** 
- *                              F S T I N L _ X                              *
  *                              F S T I N L                                  *
  *                                                                           * 
  *Object                                                                     * 
@@ -660,7 +659,7 @@ ftnword f77name(fstinfx)(ftnword *f_handle, ftnword *f_iun,
  *  OUT liste   list of handle to the records                                *
  *  OUT infon   number of elements for the list (number of records found)    *
  *  OUT nmax    dimension of list as given by caller                         *
- *                                                                           *
+ *                                                                           * 
  *****************************************************************************/
 
 ftnword f77name(fstinl)(ftnword *f_iun, ftnword *f_ni, ftnword *f_nj,
@@ -749,16 +748,8 @@ ftnword f77name(fstlic)(word *field, ftnword *f_iun,
   str_cp_init(nomvar,5,f_nomvar,l3);
   str_cp_init(grtyp,2,f_grtyp,l4);
 
-#if defined(NEC64)
-  xdf_double = 1;
   ier = c_fstlic(field,iun,ni,nj,nk,date,etiket,ip1,ip2,ip3,
                      typvar,nomvar,ig1,ig2,ig3,ig4,grtyp);
-  backto64(field,(word *) field,ni*nj*nk);
-  xdf_double = 0;
-#else
-  ier = c_fstlic(field,iun,ni,nj,nk,date,etiket,ip1,ip2,ip3,
-                     typvar,nomvar,ig1,ig2,ig3,ig4,grtyp);
-#endif
   return((ftnword) ier);
 }
 

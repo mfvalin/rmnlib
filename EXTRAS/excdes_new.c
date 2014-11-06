@@ -1854,7 +1854,7 @@ c_main(int argc, char **argv)
   dbprint(stddebug,"Debug testnom=%s %s \n",testnom[0],testnom[1]);
   dbprint(stddebug,"Debug testtyp=%s %s %s %s \n",testtyp[0],testtyp[1],testtyp[2],testtyp[3]);
   RequetesInit();
-
+fprintf(stderr,"DEBUG: %d\n",1);
   i = Xc_Select_etiquette(5,1,testeti,3);
   i = Xc_Select_nomvar(5,1,testnom,2);
   i = Xc_Select_typvar(5,1,testtyp,4);
@@ -1880,7 +1880,10 @@ c_main(int argc, char **argv)
   i = Xc_Select_ip2(4,-1,ip1s_range2,2);
   i = Xc_Select_date(4,-1,dates_range3,2);
   i = C_select_groupset(2,5);
-  WriteRequestTable(atoi(argv[1]),NULL);
+  if(argc > 1)
+    WriteRequestTable(atoi(argv[1]),NULL);
+  else
+    WriteRequestTable(0,NULL);
 
 //i=C_fstmatch_parm(handle,  datevalid, ni, nj, nk,       ip1,       ip2,       ip3,typvar,nomvar,      etiket,grtyp,ig1,ig2,ig3,ig4)
   i=C_fstmatch_parm(-1    ,  313280000, 50, 51, 52,       500,        12,         0,   "P",  "TT",  "R2428V4N","X"  ,  0,  0,  0,  0);
@@ -1904,7 +1907,10 @@ c_main(int argc, char **argv)
 //  i = Xc_Select_suppl(1,1,-1, -1, -1, -1, -1, -1, -1, 'Z');
   i = Xc_Select_date(1,1,dates_range,3);
   i = C_select_groupset(0,1);
-  WriteRequestTable(atoi(argv[1]),NULL);
+  if(argc > 1)
+    WriteRequestTable(atoi(argv[1]),NULL);
+  else
+    WriteRequestTable(0,NULL);
   if(argc>narg){
     WriteRequestTable(0,argv[narg]);
     RequetesInit();
