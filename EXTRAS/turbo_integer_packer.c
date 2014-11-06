@@ -28,6 +28,10 @@ void IntegerUnpacker_32(void *stream, void *dst,int nbits_in, int nbitt,int n,in
 
     if(bleft == 32) {     /* we are aligned on a 32 bit boundary */
       if(nbits == 32) {
+        if(signed_offset == 0) {
+          packed = (unsigned int *)memcpy(dst,stream,n*sizeof(unsigned int));
+          n = 0;
+        }
         while(n > 1) {
           *unpacked++ = token WITH_OFFSET;
           token = *packed++;
@@ -1076,7 +1080,7 @@ int main(){
   int status;
 //  status = mytest(4095,0);
 //  if(status != 0) exit(1);
-  status = mytest(1200*800+3,0);
+  status = mytest(1200*800+4,0);
   if(status != 0) exit(1);
   status = mytest(1200*800+3,13);
   if(status != 0) exit(1);
@@ -1085,23 +1089,24 @@ int main(){
 int mytest(int NDATA, int OFFSET)
 {
   int nbits;
-  unsigned int packed[NDATA+10];
-  unsigned int unpacked[NDATA];
-  unsigned short unpacked_s[NDATA];
-  unsigned char unpacked_c[NDATA];
-  unsigned int ref[NDATA];
-  unsigned short ref_s[NDATA];
-  unsigned char ref_c[NDATA];
+  unsigned int *unpacked=(unsigned int *) malloc(NDATA*4);
+  unsigned int *packed=(unsigned int *) malloc(NDATA*4+64);
+  unsigned short *unpacked_s=(unsigned short *)unpacked;
+  unsigned char *unpacked_c=(unsigned char *)unpacked;
+  unsigned int *ref=(unsigned int *) malloc(NDATA*4);
+  unsigned short *ref_s=(unsigned short *)malloc(NDATA*2);
+  unsigned char *ref_c=(unsigned char *)ref_s;
   int i, j, errors;
   struct timeval t0, t1;
   long long time0, time1;
   int tm1, tm2, tm1a, tm2a;
   int limit;
   unsigned int min, max, offset;
-  int nbytes=NDATA*4;
+  int nbytes;
 
   fprintf(stderr,"============== data size = %d,  offset = %d\n",NDATA,OFFSET);
   for( nbits = 1 ; nbits <= 32 ; nbits++) {
+    nbytes=NDATA*4;
     if(nbits > 1 && (nbits & 1) == 1) nbits++;
     if(nbits > 16 && (nbits & 2) == 2) nbits+=2;
     if(nbits < 17) limit = 1 << nbits;
@@ -1117,7 +1122,7 @@ int mytest(int NDATA, int OFFSET)
       max = max < ref[i] ? ref[i] : max;
       unpacked[i] = ref[i];
     }
-    fprintf(stderr,"%8.8x %8.8x ",min,max);
+    fprintf(stderr,"32-%8.8x %8.8x ",min,max);
     for ( i = 0 ; i < NDATA ; i++ )packed[i]=0x12345678;
 
     tm1 = 1000000;
@@ -1158,12 +1163,14 @@ int mytest(int NDATA, int OFFSET)
       }
     }
 //    if(errors >= 1)fprintf(stderr,"\n");
-    fprintf(stderr,"nbits = %2d(%2d), errors = %d, pack = %4d %4d GB/s, unpack = %4d %4d GB/s , pack-unpack= %4d usec\n",nbits,OFFSET,errors,tm1,nbytes/tm1,tm2,nbytes/tm2,tm1-tm2);
+    nbytes = nbytes + ((NDATA*nbits)/8);
+    fprintf(stderr,"nbits = %2d(%2d), errors = %d, pack = %4d usec %4d MB/s %4d MTok/s, unpack = %4d usec %4d MB/s %4d MTok/s , pack-unpack= %4d usec\n",
+            nbits,OFFSET,errors,tm1,nbytes/tm1,NDATA/tm1,tm2,nbytes/tm2,NDATA/tm2,tm1-tm2);
     if(errors > 0) return errors;
   }
 
-  nbytes /= 2;
   for( nbits = 1 ; nbits <= 16 ; nbits++) {
+    nbytes = NDATA*2;
     if(nbits > 1 && (nbits & 1) == 1) nbits++;
     limit = 1 << nbits;
     max = 0;
@@ -1175,7 +1182,7 @@ int mytest(int NDATA, int OFFSET)
       max = max < ref[i] ? ref[i] : max;
       unpacked_s[i] = ref_s[i];
     }
-    fprintf(stderr,"%8.8x %8.8x ",min,max);
+    fprintf(stderr,"16-%8.8x %8.8x ",min,max);
     for ( i = 0 ; i < NDATA ; i++ )packed[i]=0x12345678;
 
     tm1 = 1000000;
@@ -1215,12 +1222,14 @@ int mytest(int NDATA, int OFFSET)
       }
     }
 //    if(errors >= 1)fprintf(stderr,"\n");
-    fprintf(stderr,"nbits = %2d(%2d), errors = %d, pack = %4d %4d GB/s, unpack = %4d %4d GB/s , pack-unpack= %4d usec\n",nbits,OFFSET,errors,tm1,nbytes/tm1,tm2,nbytes/tm2,tm1-tm2);
+    nbytes = nbytes + ((NDATA*nbits)/8);
+    fprintf(stderr,"nbits = %2d(%2d), errors = %d, pack = %4d usec %4d MB/s %4d MTok/s, unpack = %4d usec %4d MB/s %4d MTok/s , pack-unpack= %4d usec\n",
+            nbits,OFFSET,errors,tm1,nbytes/tm1,NDATA/tm1,tm2,nbytes/tm2,NDATA/tm2,tm1-tm2);
     if(errors > 0) return errors;
   }
 
-  nbytes /= 2;
   for( nbits = 1 ; nbits <= 8 ; nbits++) {
+    nbytes = NDATA;
     limit = 1 << nbits;
     max = 0;
     min = 0xFFFFFFFF;
@@ -1231,7 +1240,7 @@ int mytest(int NDATA, int OFFSET)
       max = max < ref[i] ? ref[i] : max;
       unpacked_c[i] = ref_c[i];
     }
-    fprintf(stderr,"%8.8x %8.8x ",min,max);
+    fprintf(stderr,"08-%8.8x %8.8x ",min,max);
     for ( i = 0 ; i < NDATA ; i++ )packed[i]=0x12345678;
 
     tm1 = 1000000;
@@ -1272,9 +1281,15 @@ int mytest(int NDATA, int OFFSET)
       }
     }
 //    if(errors >= 1)fprintf(stderr,"\n");
-    fprintf(stderr,"nbits = %2d(%2d), errors = %d, pack = %4d %4d GB/s, unpack = %4d %4d GB/s , pack-unpack= %4d usec\n",nbits,OFFSET,errors,tm1,nbytes/tm1,tm2,nbytes/tm2,tm1-tm2);
+    nbytes = nbytes + ((NDATA*nbits)/8);
+    fprintf(stderr,"nbits = %2d(%2d), errors = %d, pack = %4d usec %4d MB/s %4d MTok/s, unpack = %4d usec %4d MB/s %4d MTok/s , pack-unpack= %4d usec\n",
+            nbits,OFFSET,errors,tm1,nbytes/tm1,NDATA/tm1,tm2,nbytes/tm2,NDATA/tm2,tm1-tm2);
     if(errors > 0) return errors;
   }
+  free(unpacked);
+  free(packed);
+  free(ref);
+  free(ref_s);
   return 0;
 }
 #endif
