@@ -31,6 +31,12 @@
         temp <<= nbits;                          \
         bleft -= nbits;
 
+#define get_bits_64_signed(unpacked,nbits,temp,bleft)   \
+        unpacked = (temp >> 32)   ;                     \
+        temp <<= nbits;                                 \
+        unpacked = unpacked >> (32 - nbits)  ;          \
+        bleft -= nbits;
+
 #define check_unpack_64(temp,bleft,packed) \
         if(bleft <= 0) {                   \
           temp = temp >> (-bleft) ;        \
@@ -1842,7 +1848,7 @@ void unpackTokensParallelogram(void *ufld_in, void *z_in, int ni, int nj, int nb
     jarray[j] = token;
   }
 
-  for (jstart=1,k=ni; jstart < nj; jstart+=istep,k=k+istep*ni)  /* loop over rows */
+  for (jstart=1,k=ni; jstart < nj; jstart+=istep,k=k+istep*ni)  /* loop over rows, process istep rows at a time */
   {
     jend = jstart + istep -1;
     jend = (jend > nj-1) ? nj - 1 : jend;
@@ -1885,114 +1891,124 @@ void unpackTokensParallelogram(void *ufld_in, void *z_in, int ni, int nj, int nb
           if(nbits2 > 0){
             k1 = k0 + istart; k1mni = k1 - ni;
 #ifdef PACK64
-            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+//            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+            get_bits_64_signed(token2,nbits2,CurToken,bitPackInWord)
             check_unpack_64(CurToken,bitPackInWord,cur)
 #else
             extract32(token, cur, 32, nbits2, curword, bitPackInWord);              /* get bit slice */
 #endif
-            token2 = (token << (32-nbits2)) >> (32-nbits2);                         /* sign extend */
+//            token2 = (token << (32-nbits2)) >> (32-nbits2);                         /* sign extend */
             UFLD_I[k1] = token2 + UFLD_I[k1-1] + UFLD_I[k1mni] - UFLD_I[k1mni-1] ;  /* apply parallelogram rule */
 //            k1++ ;
 #ifdef PACK64
-            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+//            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+            get_bits_64_signed(token2,nbits2,CurToken,bitPackInWord)
             check_unpack_64(CurToken,bitPackInWord,cur)
 #else
             extract32(token, cur, 32, nbits2, curword, bitPackInWord);              /* get bit slice */
 #endif
-            token2 = (token << (32-nbits2)) >> (32-nbits2);
+//            token2 = (token << (32-nbits2)) >> (32-nbits2);
             UFLD_I[k1+1] = token2 + UFLD_I[k1] + UFLD_I[k1mni+1] - UFLD_I[k1mni] ;
 //            k1++ ;
 #ifdef PACK64
-            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+//            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+            get_bits_64_signed(token2,nbits2,CurToken,bitPackInWord)
             check_unpack_64(CurToken,bitPackInWord,cur)
 #else
             extract32(token, cur, 32, nbits2, curword, bitPackInWord);              /* get bit slice */
 #endif
-            token2 = (token << (32-nbits2)) >> (32-nbits2);
+//            token2 = (token << (32-nbits2)) >> (32-nbits2);
             UFLD_I[k1+2] = token2 + UFLD_I[k1+1] + UFLD_I[k1mni+2] - UFLD_I[k1mni+1] ;
             k0 = k0 + ni ;  /* bump along column, going back to proper point on row */
 
             k1 = k0 + istart; k1mni = k1 - ni;
 #ifdef PACK64
-            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+//            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+            get_bits_64_signed(token2,nbits2,CurToken,bitPackInWord)
             check_unpack_64(CurToken,bitPackInWord,cur)
 #else
             extract32(token, cur, 32, nbits2, curword, bitPackInWord);              /* get bit slice */
 #endif
-            token2 = (token << (32-nbits2)) >> (32-nbits2);                         /* sign extend */
+//            token2 = (token << (32-nbits2)) >> (32-nbits2);                         /* sign extend */
             UFLD_I[k1] = token2 + UFLD_I[k1-1] + UFLD_I[k1mni] - UFLD_I[k1mni-1] ;  /* apply parallelogram rule */
 //            k1++ ;
 #ifdef PACK64
-            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+//            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+            get_bits_64_signed(token2,nbits2,CurToken,bitPackInWord)
             check_unpack_64(CurToken,bitPackInWord,cur)
 #else
             extract32(token, cur, 32, nbits2, curword, bitPackInWord);              /* get bit slice */
 #endif
-            token2 = (token << (32-nbits2)) >> (32-nbits2);
+//            token2 = (token << (32-nbits2)) >> (32-nbits2);
             UFLD_I[k1+1] = token2 + UFLD_I[k1] + UFLD_I[k1mni+1] - UFLD_I[k1mni] ;
 //            k1++ ;
 #ifdef PACK64
-            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+//            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+            get_bits_64_signed(token2,nbits2,CurToken,bitPackInWord)
             check_unpack_64(CurToken,bitPackInWord,cur)
 #else
             extract32(token, cur, 32, nbits2, curword, bitPackInWord);              /* get bit slice */
 #endif
-            token2 = (token << (32-nbits2)) >> (32-nbits2);
+//            token2 = (token << (32-nbits2)) >> (32-nbits2);
             UFLD_I[k1+2] = token2 + UFLD_I[k1+1] + UFLD_I[k1mni+2] - UFLD_I[k1mni+1] ;
             k0 = k0 + ni ;  /* bump along column, going back to proper point on row */
 
             k1 = k0 + istart; k1mni = k1 - ni;
 #ifdef PACK64
-            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+//            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+            get_bits_64_signed(token2,nbits2,CurToken,bitPackInWord)
             check_unpack_64(CurToken,bitPackInWord,cur)
 #else
             extract32(token, cur, 32, nbits2, curword, bitPackInWord);              /* get bit slice */
 #endif
-            token2 = (token << (32-nbits2)) >> (32-nbits2);                         /* sign extend */
+//            token2 = (token << (32-nbits2)) >> (32-nbits2);                         /* sign extend */
             UFLD_I[k1] = token2 + UFLD_I[k1-1] + UFLD_I[k1mni] - UFLD_I[k1mni-1] ;  /* apply parallelogram rule */
 //            k1++ ;
 #ifdef PACK64
-            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+//            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+            get_bits_64_signed(token2,nbits2,CurToken,bitPackInWord)
             check_unpack_64(CurToken,bitPackInWord,cur)
 #else
             extract32(token, cur, 32, nbits2, curword, bitPackInWord);              /* get bit slice */
 #endif
-            token2 = (token << (32-nbits2)) >> (32-nbits2);
+//            token2 = (token << (32-nbits2)) >> (32-nbits2);
             UFLD_I[k1+1] = token2 + UFLD_I[k1] + UFLD_I[k1mni+1] - UFLD_I[k1mni] ;
 //            k1++ ;
 #ifdef PACK64
-            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+//            get_bits_64(token,nbits2,CurToken,bitPackInWord)
+            get_bits_64_signed(token2,nbits2,CurToken,bitPackInWord)
             check_unpack_64(CurToken,bitPackInWord,cur)
 #else
             extract32(token, cur, 32, nbits2, curword, bitPackInWord);              /* get bit slice */
 #endif
-            token2 = (token << (32-nbits2)) >> (32-nbits2);
+//            token2 = (token << (32-nbits2)) >> (32-nbits2);
             UFLD_I[k1+2] = token2 + UFLD_I[k1+1] + UFLD_I[k1mni+2] - UFLD_I[k1mni+1] ;
 
           }else{
           }
 
-        }else{
+        }else{       /*   (lcl_m*lcl_n != 9), not a full tile   */
           for (j=jstart; j<=jend ; j++)
           {
             k1 = k0 + istart;
             for (i=istart; i<=iend ; i++) {
 #ifdef PACK64
-                get_bits_64(token,nbits2,CurToken,bitPackInWord)
+//                get_bits_64(token,nbits2,CurToken,bitPackInWord)
+                get_bits_64_signed(token2,nbits2,CurToken,bitPackInWord)
                 check_unpack_64(CurToken,bitPackInWord,cur)
 #else
                 extract32(token, cur, 32, nbits2, curword, bitPackInWord);
 #endif
-                token2 = (token << (32-nbits2)) >> (32-nbits2);
+//                token2 = (token << (32-nbits2)) >> (32-nbits2);
                 UFLD_I[k1] = token2 + UFLD_I[k1-1] + UFLD_I[k1-ni] - UFLD_I[k1-ni-1] ;  /* apply parallelogram rule */
                 k1++ ;                   /* bump along row */
             }
             k0 = k0 + ni ;  /* bump along column, going back to proper point on row */
           }
         }
-      }
-    }
-  }
+      }   /* switch */
+    }     /* end of loop over row elements   */
+  }       /* end of loop over blocks of rows */
 }
 
 
