@@ -14,8 +14,15 @@
 
 #define get_bits_64(unpacked,nbits,temp,bleft) \
         unpacked = (temp >> (64 - nbits)) WITH_OFFSET; \
-        temp <<= nbits;                                   \
+        temp <<= nbits;                                \
         bleft -= nbits;
+        
+#define get_bits_64_signed(unpacked,nbits,temp,bleft)   \
+        unpacked = (temp >> 32)   ;                     \
+        temp <<= nbits;                                 \
+        unpacked = unpacked >> (32 - nbits)  ;          \
+        bleft -= nbits;
+
 
 #define check_unpack_64(temp,bleft,packed) \
         if(bleft <= 0) {                   \
