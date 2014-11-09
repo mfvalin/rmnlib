@@ -55,12 +55,13 @@
 
 #define put_bits_64(unpacked,nbits,temp,bleft,mask)   \
         bleft -= nbits;                               \
-        temp = (temp << nbits) | (unpacked & mask)
+        temp = (temp << nbits) | (unpacked & mask);
 
 #define check_pack_64(temp,bleft,packed)  \
         if(bleft <= 0) {                  \
           *packed++ = temp  >> (-bleft);  \
           bleft += 32;                    \
+          bump++ ;                        \
         }
 
 #define end_pack_64(temp,bleft,packed)             \
@@ -895,7 +896,7 @@ if (debug)
   }
 }
 
-void packTokensMinimum(unsigned int z[], int *zlng, unsigned short ufld[], int ni, int nj, int nbits, int istep, word *header)
+void packTokensMinimum32(unsigned int z[], int *zlng, unsigned short ufld[], int ni, int nj, int nbits, int istep, word *header)
 {
   unsigned int i, j, k, m, n;
   unsigned int lastWordShifted, spaceInLastWord, lastSlot;
@@ -971,6 +972,122 @@ void packTokensMinimum(unsigned int z[], int *zlng, unsigned short ufld[], int n
 
    *zlng = 1 + (int) (cur-z) * 4;
 
+}
+
+
+void packTokensMinimum(unsigned int *z, int *zlng, unsigned short *ufld, int ni, int nj, int nbits, int istep, word *header)
+{
+  unsigned int i, j, k, m, n;
+  unsigned int lastWordShifted, lastSlot;
+  int spaceInLastWord;
+  int lcl_m, lcl_n;
+
+  float entropie;
+  unsigned int *cur, local_min, local_max, local_var;
+  unsigned int nbits2 ;
+  unsigned int lcl, nbits_needed, lsum;
+  unsigned char debug;
+  unsigned long long temp;
+  int n16 = 0;
+  int n00 = 0;
+  int ntok = 0;
+  int bump = 0;
+
+//  packTokensMinimum32(z, zlng, ufld, ni, nj, nbits, istep, header);
+//  return;
+
+  debug = 0;
+  lastSlot = 0;
+  cur = z;
+
+//  lastWordShifted = 0;
+//  spaceInLastWord = 32;
+  junk = memcpy(cur, header, sizeof(unsigned int));
+  cur++;
+  *cur = 0;
+
+  fprintf(stderr,"ni = %d, nj = %d , nbits = %d, istep = %d\n",ni,nj,nbits,istep);
+  start_pack_64(temp,spaceInLastWord)
+// put_bits_64(unpacked,nbits,temp,bleft,mask)
+// check_pack_64(temp,bleft,packed)
+// end_pack_64(temp,bleft,packed)
+  for (j=1; j <= nj; j+=istep) {
+    lcl_n = ((j + istep - 1) >= nj ? nj - j : istep - 1);
+    for (i=1; i <= ni; i+=istep) {
+      k = FTN2C(i,j,ni);
+      local_min = ufld[k];
+      local_max = local_min;
+      lcl_m = ((i + istep - 1) >= ni ? ni - i: istep - 1);
+      for (n=0; n <= lcl_n; n++)
+        {
+          for (m=0; m <= lcl_m; m++)
+            {
+            local_var = ufld[k+m] ;
+            if (local_min > local_var) local_min = local_var;
+            if (local_max < local_var) local_max = local_var;
+            }
+        k += ni ;
+        }
+      local_var = local_max - local_min;
+      if (local_var < 256) nbits_needed = fastlog[local_var];
+      else                 nbits_needed = 8 + fastlog[local_var>>8];
+
+      if (nbits_needed >= 15) { nbits_needed = 15; local_min = 0 ; }
+//      stuff(nbits_needed, cur, 32, 4, lastWordShifted, spaceInLastWord);
+      put_bits_64(nbits_needed,4,temp,spaceInLastWord,0xFFFF)
+      check_pack_64(temp,spaceInLastWord,cur)
+
+      if (nbits_needed == 15) {
+        nbits_needed = 16;
+      } else {
+//        stuff(local_min, cur, 32, nbits, lastWordShifted, spaceInLastWord);
+        put_bits_64(local_min,nbits,temp,spaceInLastWord,0xFFFF)
+        check_pack_64(temp,spaceInLastWord,cur)
+      }
+
+      k = FTN2C(i,j,ni);
+      if (nbits_needed > 0) {
+        n16++;
+        for (n=0; n <= lcl_n; n++) {
+          if(lcl_m == 4) {
+            lcl = ufld[k+0] - local_min;
+            put_bits_64(lcl,nbits_needed,temp,spaceInLastWord,0xFFFF)
+//            check_pack_64(temp,spaceInLastWord,cur)
+            lcl = ufld[k+1] - local_min;
+            put_bits_64(lcl,nbits_needed,temp,spaceInLastWord,0xFFFF)
+            check_pack_64(temp,spaceInLastWord,cur)
+
+            lcl = ufld[k+2] - local_min;
+            put_bits_64(lcl,nbits_needed,temp,spaceInLastWord,0xFFFF)
+//            check_pack_64(temp,spaceInLastWord,cur)
+            lcl = ufld[k+3] - local_min;
+            put_bits_64(lcl,nbits_needed,temp,spaceInLastWord,0xFFFF)
+            check_pack_64(temp,spaceInLastWord,cur)
+
+            lcl = ufld[k+4] - local_min;
+            put_bits_64(lcl,nbits_needed,temp,spaceInLastWord,0xFFFF)
+            check_pack_64(temp,spaceInLastWord,cur)
+          }else{
+            for (m=0; m <= lcl_m; m++) {
+              lcl = ufld[k+m] - local_min;
+              put_bits_64(lcl,nbits_needed,temp,spaceInLastWord,0xFFFF)
+              check_pack_64(temp,spaceInLastWord,cur)
+            }
+          }
+          k += ni ;
+        }
+      }else{
+        n00++;
+      }
+    }  /* for i */
+  }  /* for j */
+
+
+  lcl = 0;
+//  stuff(lcl, cur, 32, 16, lastWordShifted, spaceInLastWord);
+//  stuff(lcl, cur, 32, 16, lastWordShifted, spaceInLastWord);
+  end_pack_64(temp,spaceInLastWord,cur)
+   *zlng = 1 + (int) (cur-z) * 4;
 }
 
 /**********************************************************************************************************************************/
@@ -1135,37 +1252,23 @@ void unpackTokensMinimum(void *ufld_in, void *z_in, int ni, int nj, int nbits, i
   int bitPackInWord;
 
   unsigned int *cur;
-  unsigned int  nbits_needed, token, rowbump, ntok, local_min;
-//  unsigned int curword;
+  unsigned int  nbits_needed, token, local_min;
   int lcl_m, lcl_n;
   unsigned long long temp;
 
-//  unpackTokensMinimum32(ufld_in, z_in, ni, nj, nbits, istep, header);
-//  return;
-
-/*   memset(ufld, NULL, ni*nj*sizeof(short)); */
   cur = z;
   junk = memcpy(header, cur, sizeof(unsigned int));
   cur++;
-//  CurToken = *cur++;
-//  CurToken = (CurToken << 32) | *cur++;
-//  get_bits_64(nbits_req_container,3,CurToken,bitPackInWord)
-//  curword = *cur ;
-//  bitPackInWord = 32;
   temp = *cur++;
   temp = (temp << 32)  | *cur++;
   bitPackInWord = 32;
   for (j=1; j <= nj; j+=istep) {
     lcl_n = ((j + istep) > nj ? nj - j : istep - 1);
     for (i=1; i <= ni; i+=istep) {
-      //                                get_bits_64(unpacked,nbits,temp,bleft)
-      //                                check_unpack_64(temp,bleft,packed)
-//      extract32(nbits_needed, cur,32, 4, curword, bitPackInWord);
       get_bits_64(nbits_needed,4,temp,bitPackInWord)
       check_unpack_64(temp,bitPackInWord,cur)
       lcl_m = ((i + istep) > ni ? ni - i : istep - 1);
       k = FTN2C(i,j,ni) ;
-      rowbump = ni - lcl_m - 1;  /* + ni for row up, -(lcl_m +1) to undo the lcl_m +1 bumps along row in m loop */
       if(nbits_needed >= 15) {
           local_min = 0 ;
           nbits_needed = 16;
@@ -1176,38 +1279,36 @@ void unpackTokensMinimum(void *ufld_in, void *z_in, int ni, int nj, int nbits, i
       if (nbits_needed == 0) {
         for (n=0; n <= lcl_n; n++) {
           for (m=0; m <= lcl_m; m++) {
-            ufld[k] = local_min;
-            k++;               /* bump along row */
+            ufld[k+m] = local_min;
           }
-          k = k + rowbump ;    /* bump along column */
+          k = k + ni ;    /* bump along column */
         }
       }else{
         for (n=0; n <= lcl_n; n++) {
           if(lcl_m == 4){
             get_bits_64(token,nbits_needed,temp,bitPackInWord)
-            ufld[k++] = token + local_min;
+            ufld[k] = token + local_min;
             get_bits_64(token,nbits_needed,temp,bitPackInWord)
-            ufld[k++] = token + local_min;
+            ufld[k+1] = token + local_min;
             check_unpack_64(temp,bitPackInWord,cur)      /* as nbits <= 16 , check_pack_64 is only needed every other time */
 
             get_bits_64(token,nbits_needed,temp,bitPackInWord)
-            ufld[k++] = token + local_min;
+            ufld[k+2] = token + local_min;
             get_bits_64(token,nbits_needed,temp,bitPackInWord)
-            ufld[k++] = token + local_min;
+            ufld[k+3] = token + local_min;
             check_unpack_64(temp,bitPackInWord,cur)      /* as nbits <= 16 , check_pack_64 is only needed every other time */
 
             get_bits_64(token,nbits_needed,temp,bitPackInWord)
             check_unpack_64(temp,bitPackInWord,cur)
-            ufld[k++] = token + local_min;
+            ufld[k+4] = token + local_min;
           }else{
             for (m=0; m <= lcl_m; m++) {
               get_bits_64(token,nbits_needed,temp,bitPackInWord)
               check_unpack_64(temp,bitPackInWord,cur)
-              ufld[k] = token + local_min;
-              k++;               /* bump along row */
+              ufld[k+m] = token + local_min;
             }
           }
-          k = k + rowbump ;    /* bump along column */
+          k = k + ni ;    /* bump along column */
         }
       }
     }
@@ -2689,8 +2790,8 @@ int c_armn_compress_getswap()
   return swapStream;
 }
 #if defined(TEST_TURBO)
-#define NI 2000
-#define NJ 1400
+#define NI 2003
+#define NJ 1404
 #include <sys/time.h>
 int main()
 {
@@ -2722,9 +2823,6 @@ int main()
    for(j=2 ; j<=256 ; j*=2 , nbits_needed++) {
      while(i<j) {
        fastlog[i++]  = nbits_needed;
-//       if(fastlog[i++]  != nbits_needed) {
-//         fprintf(stderr,"%d: expected %d, got %d\n",i,fastlog[i],nbits_needed);
-//       }
      }
    }
    fprintf(stderr,"fastlog table initialized \n");
@@ -2736,6 +2834,16 @@ int main()
     for (j = 3 ; j <= NJ ; j+=6 )
     { zi[FTN2C(i,j,NI)] = 60000 ; zi[FTN2C(i-1,j-1,NI)] = 60000 ;}
 //  c_armn_compress_setlevel(FAST);
+  if(NI > 1000 && NJ > 1000){
+    for (i = 450 ; i< 550 ; i++)
+      for (j = 450 ; j< 550 ; j++)
+        { zi[FTN2C(i,j,NI)] = 65535 ; }
+  }
+  if(NI > 1000 && NJ > 1000){
+    for (i = 550 ; i< 650 ; i++)
+      for (j = 550 ; j< 550 ; j++)
+        { zi[FTN2C(i,j,NI)] = 32767 ; }
+  }
   gettimeofday(&t1,NULL);
   USE_NEW=0 ;
   c_fstzip(buffer, &zlng, (unsigned int *)zi, NI, NJ, MINIMUM, 0, 5, nbits, 0);
@@ -2782,8 +2890,8 @@ int main()
   duree = T2-T1;
   printf("MINIMUM unpacking new time = %d usec, %d MTok/sec\n",duree,(NI*NJ)/duree);
   err2 = 0;
-  for (i=0 ; i<NI*NJ ; i++) { if(zi[i] != zo[i]) { errors++; if(64 == zi[i]-zo[i]) err2++ ; if(errors<10)fprintf(stderr,"i=%d, expected=%d, got=%d\n",i,zi[i],zo[i]); } }
-  printf("INFO: decompression errors = %d, err2 = %d\n",errors,err2);
+  for (i=0 ; i<NI*NJ ; i++) { if(zi[i] != zo[i]) { errors++; if(errors<10)fprintf(stderr,"i=%d, expected=%d, got=%d\n",i,zi[i],zo[i]); } }
+  printf("INFO: decompression errors = %d\n",errors);
 
   printf("------------------------------------------------------------\n");
 
