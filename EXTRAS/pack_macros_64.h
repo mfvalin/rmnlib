@@ -12,15 +12,15 @@
         temp |= *packed++;                         \
         temp <<= (32-bleft);
 
-#define get_bits_64(unpacked,nbits,temp,bleft) \
-        unpacked = (temp >> (64 - nbits)) WITH_OFFSET; \
-        temp <<= nbits;                                \
+#define get_bits_64(unpacked,nbits,temp,bleft)          \
+        unpacked = (temp >> (64 - nbits)) WITH_OFFSET ; \
+        temp <<= nbits;                                 \
         bleft -= nbits;
         
-#define get_bits_64_signed(unpacked,nbits,temp,bleft)   \
-        unpacked = (temp >> 32)   ;                     \
-        temp <<= nbits;                                 \
-        unpacked = unpacked >> (32 - nbits)  ;          \
+#define get_bits_64_signed(unpacked,nbits,temp,bleft)       \
+        unpacked = (temp >> 32)   ;                         \
+        temp <<= nbits;                                     \
+        unpacked = (unpacked >> (32 - nbits)) WITH_OFFSET ; \
         bleft -= nbits;
 
 
@@ -38,7 +38,7 @@
 
 #define put_bits_64(unpacked,nbits,temp,bleft,mask)   \
         bleft -= nbits;                               \
-        temp = (temp << nbits) | (unpacked & mask)
+        temp = (temp << nbits) | (unpacked & mask);
 
 #define check_pack_64(temp,bleft,packed)  \
         if(bleft <= 0) {                  \
