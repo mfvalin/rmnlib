@@ -112,7 +112,8 @@ static int USE_NEW=1;   /* use new code , USE_NEW=0 only used for regression and
 
 static int fstcompression_level = -1;
 static int swapStream           =  1;
-static unsigned char fastlog[257];
+#define FASTLOG_SIZE 257
+static unsigned char fastlog[FASTLOG_SIZE];
 static int once = 0;
 int zfst_msglevel = 2;
 
@@ -159,8 +160,8 @@ if (once == 0)
 //      fastlog[i] = (int)(1+log(i+0.5)*rlog2);
 //      }
    nbits_needed = 1;
-   i = 1; fastlog[0] = 0; fastlog[256] = 9;
-   for(j=2 ; j<256 ; j*=2 , nbits_needed++) {
+   i = 1; fastlog[0] = 0; fastlog[FASTLOG_SIZE-1] = 9;
+   for(j=2 ; j<FASTLOG_SIZE ; j*=2 , nbits_needed++) {
      while(i<j) {
        fastlog[i++] = nbits_needed;
 //       if(fastlog[i]  != nbits_needed) {
@@ -337,7 +338,7 @@ void c_fstzip(unsigned int *zfld, int *zlng, unsigned int *fld, int ni, int nj, 
       break;
 
     case SAMPLE:
-      fprintf(stderr, "The SAMPLE option has been deactivated as of April 2006. This is an error and should never happen.\n");
+      fprintf(stderr, "FATAL: The SAMPLE option has been deactivated as of April 2006.\n");
       exit(13);
 /*      c_fstzip_sample(zfld, zlng, (unsigned short *)fld, ni, nj, step, nbits, (word *) &zfstzip);*/
       break;
@@ -359,7 +360,7 @@ void c_fstunzip(void *fld, void *zfld, int ni, int nj, int nbits)
   switch (zfstzip.predictor_type)
     {
     case MINIMUM:
-      printf("DEBUG: step=%d, nbits=%d,ni=%d,nj=%d\n",zfstzip.step, zfstzip.nbits,ni, nj);
+//      printf("DEBUG: step=%d, nbits=%d,ni=%d,nj=%d\n",zfstzip.step, zfstzip.nbits,ni, nj);
       c_fstunzip_minimum(fld, zfld, ni, nj, zfstzip.step, zfstzip.nbits, (word *)&zfstzip);
       break;
 
@@ -764,7 +765,7 @@ void packTokensMinimumOLD(unsigned int z[], int *zlng, unsigned short ufld[], in
         }
       else
         {
-        if (local_var < 256)
+        if (local_var < (FASTLOG_SIZE-1))
          {
          nbits_needed = fastlog[local_var];
          }
@@ -877,7 +878,7 @@ void packTokensMinimum32(unsigned int z[], int *zlng, unsigned short ufld[], int
         k += rowbump ;
         }
       local_var = local_max - local_min;
-      if (local_var < 256) nbits_needed = fastlog[local_var];
+      if (local_var < (FASTLOG_SIZE-1)) nbits_needed = fastlog[local_var];
       else                 nbits_needed = 8 + fastlog[local_var>>8];
 
       if (nbits_needed >= 15) { nbits_needed = 15; local_min = 0 ; }
@@ -955,7 +956,7 @@ void packTokensMinimum(unsigned int *z, int *zlng, unsigned short *ufld, int ni,
         k += ni ;
         }
       local_var = local_max - local_min;
-      if (local_var < 256) nbits_needed = fastlog[local_var];
+      if (local_var < (FASTLOG_SIZE-1)) nbits_needed = fastlog[local_var];
       else                 nbits_needed = 8 + fastlog[local_var>>8];
 
       if (nbits_needed >= 15) { nbits_needed = 15; local_min = 0 ; }
@@ -1188,7 +1189,7 @@ void packTokensParallelogramOLD(unsigned int z[], int *zlng, unsigned short ufld
       nbits_needed = 1;
       i = 1; fastlog[0] = 0;
       k = 2;
-      for(k=2 ; k<256 ; k*=2 , nbits_needed++) {
+      for(k=2 ; k<FASTLOG_SIZE ; k*=2 , nbits_needed++) {
         while(i<k) {
           fastlog[i++] = nbits_needed;
         }
@@ -1286,7 +1287,7 @@ void packTokensParallelogramOLD(unsigned int z[], int *zlng, unsigned short ufld
         }
       else
         {
-        if (local_max < 256)
+        if (local_max < (FASTLOG_SIZE-1))
          {
          nbits_needed = fastlog[local_max];
          }
@@ -1449,7 +1450,7 @@ void packTokensParallelogram(unsigned int *z, int *zlng, unsigned short *ufld, i
       }
 
       nbits_needed = 0;
-      while(local_max > 256) { nbits_needed += 8 ; local_max >>= 8; }
+      while(local_max > (FASTLOG_SIZE-1)) { nbits_needed += 8 ; local_max >>= 8; }
       nbits_needed += fastlog[local_max] ;
 
       if (nbits_needed == 16) nbits_needed = 15;
@@ -2533,8 +2534,8 @@ int main()
 //     fastlog[i] = (int)(1+log(i+0.5)*rlog2);
 //     }
    nbits_needed = 1;
-   i = 1; fastlog[0] = 0; fastlog[256] = 9;
-   for(j=2 ; j<=256 ; j*=2 , nbits_needed++) {
+   i = 1; fastlog[0] = 0; fastlog[FASTLOG_SIZE-1] = 9;
+   for(j=2 ; j<FASTLOG_SIZE ; j*=2 , nbits_needed++) {
      while(i<j) {
        fastlog[i++]  = nbits_needed;
      }
