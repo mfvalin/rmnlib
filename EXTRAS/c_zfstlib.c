@@ -162,7 +162,18 @@
 --------------------------------------------------------------------------
 */
 
-
+#if defined(TEST_TURBO)
+void unpackTokensMinimumOLD(void *ufld, void *z, int ni, int nj, int nbits, int istep, word *header);
+void unpackTokensParallelogramOLDOLD(void *ufld, void *z, int ni, int nj, int nbits, int istep, word *header);
+void unpackTokensParallelogramOLD(void *ufld, void *z, int ni, int nj, int nbits, int istep, word *header);
+void packTokensParallelogramOLD(unsigned int z[], int *zlng, unsigned short ufld[], int ni, int nj, int nbits, int istep, word *header);
+void packTokensMinimumOLD(unsigned int z[], int *zlng, unsigned short ufld[], int ni, int nj, int nbits, int istep, word *header);
+#endif
+#if defined(USE_FSTZIP_SAMPLE)
+void unpackTokensSample(unsigned int zc[], int diffs[], unsigned int z[], int nicoarse, int njcoarse,  int ni, int nj, int nbits, int step, word *header, int start);
+void unpackTokensSample(unsigned int zc[], int diffs[], unsigned int z[], int nicoarse, int njcoarse,  int ni, int nj, int nbits, int step, word *header, int start);
+void c_fstunzip_sample(void *fld, void *zfld, int ni, int nj, int step, int nbits, word *header);
+#endif
 void  packTokensMinimum(unsigned int z[], int *zlng, unsigned short ufld[], int ni, int nj, int nbits, int istep, word *header);
 void  packTokensParallelogram(unsigned int z[], int *zlng, unsigned short ufld[], int ni, int nj, int nbits, int istep, word *header);
 int armn_compress(void *fld, int ni, int nj, int nk, int nbits, int op_code);
@@ -174,13 +185,8 @@ void fixpredflds(int *predfld, int *zc, int ni, int nj, int nicoarse, int njcoar
 void init_comp_settings(char *comp_settings);
 int is_on_coarse(int i, int j, int ni, int nj, int step);
 void packTokensSample(unsigned int z[], int *zlng, unsigned int zc[], int nicoarse, int njcoarse, int diffs[], int ni, int nj, int nbits, int step, word *header, int start, int end);
-void unpackTokensMinimumOLD(void *ufld, void *z, int ni, int nj, int nbits, int istep, word *header);
 void unpackTokensMinimum(void *ufld, void *z, int ni, int nj, int nbits, int istep, word *header);
-void unpackTokensParallelogramOLDOLD(void *ufld, void *z, int ni, int nj, int nbits, int istep, word *header);
-void unpackTokensParallelogramOLD(void *ufld, void *z, int ni, int nj, int nbits, int istep, word *header);
 void unpackTokensParallelogram(void *ufld, void *z, int ni, int nj, int nbits, int istep, word *header);
-void unpackTokensSample(unsigned int zc[], int diffs[], unsigned int z[], int nicoarse, int njcoarse,  int ni, int nj, int nbits, int step, word *header, int start);
-void unpackTokensSample(unsigned int zc[], int diffs[], unsigned int z[], int nicoarse, int njcoarse,  int ni, int nj, int nbits, int step, word *header, int start);
 void c_armn_compress_setlevel(int level);
 int  c_armn_compress_getlevel();
 void c_armn_compress_setswap(int swapState);
@@ -189,7 +195,6 @@ void c_armn_compress_option(char *option, char *value);
 void c_fstunzip(void *fld, void *zfld, int ni, int nj, int nbits);
 void c_fstunzip_minimum(void *fld, void *zfld, int ni, int nj, int step, int nbits, word *header);
 void c_fstunzip_parallelogram(void *fld, void *zfld, int ni, int nj, int step, int nbits, word *header);
-void c_fstunzip_sample(void *fld, void *zfld, int ni, int nj, int step, int nbits, word *header);
 void c_fstzip(unsigned int *zfld, int *zlng, unsigned int *fld, int ni, int nj, int code_methode, int degre, int step, int nbits, int bzip);
 void c_fstzip_minimum(unsigned int *zfld, int *zlng, unsigned short *fld, int ni, int nj, int step, int nbits, word *header);
 int c_fstzip_parallelogram(unsigned int *zfld, int *zlng, unsigned short *fld, int ni, int nj, int step, int nbits, word *header);
@@ -201,8 +206,6 @@ void f77name(armn_compress_setlevel)(wordint *level);
 void make_shorts(unsigned short *z16, unsigned int *z32, int npts);
 void unpack_tokens(unsigned int *ufld, unsigned int *z, int ni, int nj, int nbits);
 
-void packTokensParallelogramOLD(unsigned int z[], int *zlng, unsigned short ufld[], int ni, int nj, int nbits, int istep, word *header);
-void packTokensMinimumOLD(unsigned int z[], int *zlng, unsigned short ufld[], int ni, int nj, int nbits, int istep, word *header);
 
 static int USE_NEW=1;
 
@@ -488,8 +491,11 @@ void c_fstzip_minimum(unsigned int *zfld, int *zlng, unsigned short *fld, int ni
   if(USE_NEW)
     packTokensMinimum(zfld, zlng, fld, ni, nj, nbits, step, header);
   else
+#if defined(TEST_TURBO)
     packTokensMinimumOLD(zfld, zlng, fld, ni, nj, nbits, step, header);
-
+#else
+    ;
+#endif
   }
 
 /**********************************************************************************************************************************/
@@ -499,8 +505,11 @@ int c_fstzip_parallelogram(unsigned int *zfld, int *zlng, unsigned short *fld, i
   if(USE_NEW)
     packTokensParallelogram(zfld, zlng, fld, ni, nj, nbits, step, header);
   else
+#if defined(TEST_TURBO)
     packTokensParallelogramOLD(zfld, zlng, fld, ni, nj, nbits, step, header);
-
+#else
+    ;
+#endif
   }
 
 /**********************************************************************************************************************************/
@@ -510,7 +519,11 @@ void c_fstunzip_minimum(void *fld, void *zfld, int ni, int nj, int step, int nbi
   if(USE_NEW)
     unpackTokensMinimum(fld, zfld, ni, nj, nbits, step, header);
   else
+#if defined(TEST_TURBO)
     unpackTokensMinimumOLD(fld, zfld, ni, nj, nbits, step, header);
+#else
+    ;
+#endif
   }
 
 void c_fstunzip_parallelogram(void *fld, void *zfld, int ni, int nj, int step, int nbits, word *header)
@@ -518,8 +531,12 @@ void c_fstunzip_parallelogram(void *fld, void *zfld, int ni, int nj, int step, i
   if(USE_NEW)
     unpackTokensParallelogram(fld, zfld, ni, nj, nbits, step, header);
   else
+#if defined(TEST_TURBO)
     unpackTokensParallelogramOLD(fld, zfld, ni, nj, nbits, step, header);
 //    unpackTokensParallelogramOLDOLD(fld, zfld, ni, nj, nbits, step, header);
+#else
+    ;
+#endif
   }
 
 /**********************************************************************************************************************************/
@@ -791,7 +808,7 @@ void c_fstunzip_sample(unsigned short *fld, unsigned int *zfld, int ni, int nj, 
    header : contents of the zfstzip structure for info about compression parameters
 */
 
-
+#if defined(TEST_TURBO)
 void packTokensMinimumOLD(unsigned int z[], int *zlng, unsigned short ufld[], int ni, int nj, int nbits, int istep, word *header)
 {
   unsigned int i, j, k, m, n;
@@ -993,7 +1010,7 @@ void packTokensMinimum32(unsigned int z[], int *zlng, unsigned short ufld[], int
    *zlng = 1 + (int) (cur-z) * 4;
 
 }
-
+#endif
 
 void packTokensMinimum(unsigned int *z, int *zlng, unsigned short *ufld, int ni, int nj, int nbits, int istep, word *header)
 {
@@ -1097,6 +1114,7 @@ void packTokensMinimum(unsigned int *z, int *zlng, unsigned short *ufld, int ni,
 /**********************************************************************************************************************************/
 /* See the documentation of "packTokensMinimum" for the structure of the compressed stream */
 
+#if defined(TEST_TURBO)
 void unpackTokensMinimumOLD(void *ufld_in, void *z_in, int ni, int nj, int nbits, int istep, word *header)
 {
   unsigned short *ufld = (unsigned short *)ufld_in;
@@ -1165,7 +1183,7 @@ void unpackTokensMinimumOLD(void *ufld_in, void *z_in, int ni, int nj, int nbits
     }
 
 }
-
+#endif
 void unpackTokensMinimum(void *ufld_in, void *z_in, int ni, int nj, int nbits, int istep, word *header)
 {
   unsigned short *ufld = (unsigned short *)ufld_in;
@@ -1240,6 +1258,7 @@ void unpackTokensMinimum(void *ufld_in, void *z_in, int ni, int nj, int nbits, i
 /**********************************************************************************************************************************/
 /* See the documentation of "packTokensMinimum" for the structure of the compressed stream */
 
+#if defined(TEST_TURBO)
 void packTokensParallelogramOLD(unsigned int z[], int *zlng, unsigned short ufld[], int ni, int nj, int nbits, int istep, word *header)
 {
   unsigned int i, j, k, m, n;
@@ -1452,7 +1471,7 @@ if (debug)
   printf("---- npts : %d\n", lsum);
   }
 }
-
+#endif
 void packTokensParallelogram(unsigned int *z, int *zlng, unsigned short *ufld, int ni, int nj, int nbits, int istep, word *header)
 {
   unsigned int i, j, k, m, n;
@@ -1571,7 +1590,7 @@ void packTokensParallelogram(unsigned int *z, int *zlng, unsigned short *ufld, i
   *zlng = 1 + (int) (cur-z) * 4;         /* return length */
 }
 
-
+#if defined(TEST_TURBO)
 void unpackTokensParallelogramOLDOLD(void *ufld_in, void *z_in, int ni, int nj, int nbits, int istep, word *header)
 {
   unsigned short *ufld = ufld_in;
@@ -1766,7 +1785,7 @@ void unpackTokensParallelogramOLD(void *ufld_in, void *z_in, int ni, int nj, int
       }
     }
 }
-
+#endif
 int ParallelogramDaTa = 0;
 int *unpackTokensParallelogramDATA = &ParallelogramDaTa;
 
