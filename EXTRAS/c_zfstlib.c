@@ -1,5 +1,5 @@
 /* RMNLIB - Library of useful routines for C and FORTRAN programming
- * Copyright (C) 1975-2004  Division de Recherche en Prevision Numerique
+ * Copyright (C) 1975-2014  Division de Recherche en Prevision Numerique
  *                          Environnement Canada
  *
  * This library is free software; you can redistribute it and/or
@@ -150,6 +150,7 @@
   Version 1.0 - Juillet 2004
   Version 2.0 - Avril 2006
   Yves Chartier - RPN - Juillet 2004
+  Michel Valin - RPN - 2014 : Optimisations (minimum et parallelogram)
 --------------------------------------------------------------------------
 */
 
