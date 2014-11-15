@@ -192,6 +192,7 @@ void c_fstunzip_parallelogram(void *fld, void *zfld, int ni, int nj, int step, i
 void c_fstunzip_sample(void *fld, void *zfld, int ni, int nj, int step, int nbits, word *header);
 void c_fstzip(unsigned int *zfld, int *zlng, unsigned int *fld, int ni, int nj, int code_methode, int degre, int step, int nbits, int bzip);
 void c_fstzip_minimum(unsigned int *zfld, int *zlng, unsigned short *fld, int ni, int nj, int step, int nbits, word *header);
+int c_fstzip_parallelogram(unsigned int *zfld, int *zlng, unsigned short *fld, int ni, int nj, int step, int nbits, word *header);
 void c_fstzip_sample(unsigned int *zfld, int *zlng, unsigned short *fld, int ni, int nj, int step, int nbits, word *header);
 void c_fstzip_setlevel(int level);
 void calcul_ajusxy(int *ajus_x, int *ajus_y, int ni, int nj, int istep);
@@ -2747,7 +2748,7 @@ int main()
   for (i=0 ; i<NI*NJ ; i++) { if(zi[i] != zo[i]) { errors++; if(errors<10) printf(" expected %d, got %d at %d \n",zi[i],zo[i],i); } }
   printf("INFO: decompression errors = %d / %d\n",errors,NI*NJ);
 //  for (i=0 ; i<=16 ; i++) { printf("%d:%d ",i,bit_tab[i]);} printf("\n");
-  return (0) ;
+#if defined(EXTRA_TEST_CODE)
   for (i=2 ; i<=17 ; i+=5) {
     pbuf=buffer;
     curword=*pbuf;
@@ -2763,6 +2764,7 @@ int main()
     duree = T2-T1;
     printf("extracting %d bit slices time = %d usec\n",i,duree);
   }
+#endif
   return (0) ;
 }
 #endif
