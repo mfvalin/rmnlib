@@ -17,10 +17,10 @@
         temp <<= nbits;                                 \
         bleft -= nbits;
         
-#define get_bits_64_signed(unpacked,nbits,temp,bleft)       \
+#define get_bits_64_signed(unpacked,nbits,nbits32,temp,bleft)       \
         unpacked = (temp >> 32)   ;                         \
         temp <<= nbits;                                     \
-        unpacked = (unpacked >> (32 - nbits)) WITH_OFFSET ; \
+        unpacked = (unpacked >> (nbits32)) WITH_OFFSET ; \
         bleft -= nbits;
 
 
