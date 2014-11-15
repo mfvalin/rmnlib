@@ -207,7 +207,7 @@ void make_shorts(unsigned short *z16, unsigned int *z32, int npts);
 void unpack_tokens(unsigned int *ufld, unsigned int *z, int ni, int nj, int nbits);
 
 
-static int USE_NEW=1;
+static int USE_NEW=1;   /* use new code , USE_NEW=0 only used for regression and speed tests */
 
 static int fstcompression_level = -1;
 static int swapStream           =  1;
