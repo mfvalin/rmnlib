@@ -376,7 +376,7 @@ int c_fnom(int *iun,char *nom,char *type,int lrec)
     }
   }
   if (liun == 6) {
-    close(1);
+    fclose(stdout);
     if (minus && majus)
       freopen(nom,"a",stdout);
     else
@@ -386,7 +386,7 @@ int c_fnom(int *iun,char *nom,char *type,int lrec)
     return(0);
   }
   else if (liun == -2) {
-    close(2);
+    fclose(stderr);
     if (minus && majus)
       freopen(nom,"a",stderr);
     else
