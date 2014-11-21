@@ -575,7 +575,7 @@ int main()
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
-  printf("packing time = %d usec\n",duree);
+  printf("packing time = %d usec, %dMtok/s\n",duree,NPTS/duree);
 
   for ( i=0 ; i<NPTS ; i++ ) { source2[i]=-2000.; };
   gettimeofday(&t1,NULL);
@@ -584,7 +584,7 @@ int main()
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
-  printf("unpacking time = %d usec\n",duree);
+  printf("unpacking time = %d usec, %dMtok/s\n",duree,NPTS/duree);
 #ifndef ORIGINAL
 #ifdef FULL
   for ( i=0 ; i<NPTS ; i++ ) { source2[i]=-2000.; };
@@ -594,7 +594,7 @@ int main()
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
-  printf("unpacking orig time = %d usec\n",duree);
+  printf("unpacking orig time = %d usec, %dMtok/s\n",duree,NPTS/duree);
 #endif
 #endif
   for ( i=0 ; i<NPTS ; i++ ) { source2[i]=-2000.; };
@@ -604,7 +604,7 @@ int main()
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
-  printf("unpacking time = %d usec\n",duree);
+  printf("unpacking time = %d usec, %dMtok/s\n",duree,NPTS/duree);
 
   printf("source2[0],source2[1],source2[2],source2[NPTS-1]=%f,%f,%f,%f\n",source2[0],source2[1],source2[2],source2[NPTS-1]);
   printf("nbits = %d ,nbits from unpacker = %d\n",nbits,NBITS);
@@ -639,7 +639,7 @@ int main()
     T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
     T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
     duree = T2-T1;
-    printf("packing time = %d usec\n",duree);
+    printf("packing time = %d usec, %dMtok/s\n",duree,NPTS/duree);
 /*
     for ( i=0 ; i<NPTS ; i++ ) source2[i]=0;
 */
@@ -651,7 +651,7 @@ int main()
     T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
     T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
     duree = T2-T1;
-    printf("unpacking orig time = %d usec\n",duree);
+    printf("unpacking orig time = %d usec, %dMtok/s\n",duree,NPTS/duree);
 #endif
 #endif
     gettimeofday(&t1,NULL);
@@ -660,7 +660,7 @@ int main()
     T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
     T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
     duree = T2-T1;
-    printf("unpacking time = %d usec\n",duree);
+    printf("unpacking time = %d usec, %dMtok/s\n",duree,NPTS/duree);
     }
 
   errormax=0;
