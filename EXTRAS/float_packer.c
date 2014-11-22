@@ -2,6 +2,11 @@
 #include <stdio.h>
 #include <rpnmacros.h>
 
+#ifdef USE_SSE
+#include <immintrin.h>
+#define VLEN 4
+#endif
+
 typedef union {
  INT_32 i;
  float f;
@@ -35,6 +40,99 @@ typedef union {
    data : one 16 bit token for each float value
 
    ===================================================================================================== */
+#ifdef USE_SSE
+#define VECTOR 8
+int float_unpacker_sse2(float *dest, void *src, int n, const int Shift2, const int Minimum_, const int MaxExp_)
+{
+  unsigned int   *stream32 = (unsigned int   *)src;
+  unsigned short *stream16 = (unsigned short *)src;
+  int   __attribute__ ((aligned(64))) Mantis_[VECTOR];
+  float __attribute__ ((aligned(64))) Temp_[VECTOR];
+  __m128i Mantis0, Mantis1;
+  __m128i Temp0, Temp1, Temp02, Temp12, X0, X1, Mask0, Mask1;
+  __m128i Minimum, M23, Shift1_31, Xffffff, X7fffff;
+  int i, i0, in, m23, shift1_31, xffffff, x7fffff;
+
+  m23 = MaxExp_ << 23;                        // IEEE exponent for 32 bit float
+  M23 = _mm_set1_epi32(m23);
+  shift1_31 = 1 << 31;
+  Shift1_31 = _mm_set1_epi32(shift1_31);
+  Minimum = _mm_set1_epi32(Minimum_);
+  xffffff = 0xFFFFFF;
+  Xffffff = _mm_set1_epi32(xffffff);
+  x7fffff = 0x7FFFFF;
+  X7fffff = _mm_set1_epi32(x7fffff);
+
+  for (i0 = 0 ; i0 < n ; i0 += VECTOR){
+    in = i0 + VECTOR;
+    in = (in > n) ? n : in;
+
+    for (i = 0 ; i+i0 < in ; i += 2){          // load Mantis
+      Mantis_[i  ] = stream16[i+i0+1] ;        // little endian swap as SSE means X86
+      Mantis_[i+1] = stream16[i+i0  ] ;
+    }
+
+    Mantis0 = (__m128i)_mm_load_ps((const float *)&Mantis_[0]);   // load mantissa
+    Mantis1 = (__m128i)_mm_load_ps((const float *)&Mantis_[4]);
+
+    Mantis0 = _mm_slli_epi32(Mantis0,Shift2);     // mantis = mantis << shift2
+    Mantis1 = _mm_slli_epi32(Mantis1,Shift2);
+    Mantis0 = _mm_add_epi32(Mantis0,Minimum);     // mantis = mantis + minimum
+    Mantis1 = _mm_add_epi32(Mantis1,Minimum);
+    Temp02  = _mm_and_si128(Mantis0,Shift1_31);   // temp2 = mantis & (1 << 31)
+    Temp12  = _mm_and_si128(Mantis1,Shift1_31);
+
+    Mask0   = _mm_srai_epi32(Mantis0,31);         // abs(mantis)
+    Mask1   = _mm_srai_epi32(Mantis1,31);
+    Mantis0 = _mm_add_epi32(Mantis0,Mask0);
+    Mantis1 = _mm_add_epi32(Mantis1,Mask1);
+    Mantis0 = _mm_xor_si128(Mantis0,Mask0);
+    Mantis1 = _mm_xor_si128(Mantis1,Mask1);
+
+    X0      = Xffffff;                            // min(mantis,0xFFFFFF)
+    X1      = Xffffff;
+    X0      = _mm_sub_epi32(X0,Mantis0);
+    X1      = _mm_sub_epi32(X1,Mantis1);
+    Mask0   = _mm_srai_epi32(X0,31);
+    Mask1   = _mm_srai_epi32(X1,31);
+    X0      = _mm_and_si128(X0,Mask0);
+    X1      = _mm_and_si128(X1,Mask1);
+    Mantis0 = _mm_add_epi32(Mantis0,X0);
+    Mantis1 = _mm_add_epi32(Mantis1,X1);
+
+    Temp02  = _mm_or_si128(Temp02,M23);           // temp2 = temp2 | m23
+    Temp12  = _mm_or_si128(Temp12,M23);
+    Temp0   = Temp02;                             // temp = temp2
+    Temp1   = Temp12;
+    Mask0   = _mm_slli_epi32(Mantis0,8);          // mask = (mantis <<8) >> 31
+    Mask1   = _mm_slli_epi32(Mantis1,8);
+    Mask0   = _mm_srai_epi32(Mask0,31);
+    Mask1   = _mm_srai_epi32(Mask1,31);
+    Mask0   = _mm_andnot_si128(Mask0,Temp02);     // mask = (~mask) & temp2
+    Mask1   = _mm_andnot_si128(Mask1,Temp12);
+    Mantis0 = _mm_and_si128(Mantis0,X7fffff);     // mantis = mantis & 0x7FFFFF
+    Mantis1 = _mm_and_si128(Mantis1,X7fffff);
+    Temp0   = _mm_or_si128(Temp0,Mantis0);        // temp = temp | mantis
+    Temp1   = _mm_or_si128(Temp1,Mantis1);
+    Temp0   = (__m128i)_mm_sub_ps((__m128)Temp0,(__m128)Mask0);
+    Temp1   = (__m128i)_mm_sub_ps((__m128)Temp1,(__m128)Mask1);
+
+    if(in<n){
+      _mm_storeu_ps(&dest[i0  ],(__m128)Temp0);                                // store result
+      _mm_storeu_ps(&dest[i0+4],(__m128)Temp1);
+    }else{
+      _mm_store_ps(&Temp_[0],(__m128)Temp0);                                // store result
+      _mm_store_ps(&Temp_[4],(__m128)Temp1);
+
+      for (i = 0 ; i+i0 < in ; i++){             //store result
+      dest[i+i0] = Temp_[i] ;
+      }
+    }
+  }
+  return (0) ;
+}
+#endif
+
 /*
     SINGLE BLOCK floating point unpacker
     dest    : pointer to output array of floating point numbers
@@ -49,10 +147,6 @@ typedef union {
 
 float dummy[4];
 /* stream is really INT32 but addressed as INT16, one MUST account for endianness of machines */
-#ifdef USE_SSE
-#include <xmmintrin.h>
-#define VLEN 4
-#endif
 
 #ifdef ORIGINAL
 static INT_32 float_unpacker_new(float *dest, INT_32 *header, INT_32 *stream, INT_32 npts)
@@ -60,9 +154,10 @@ static INT_32 float_unpacker_new(float *dest, INT_32 *header, INT_32 *stream, IN
 static INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_32 npts)
 #endif
 {
-  floatint temp,temp2;
+  floatint Temp0,Temp1,Temp2,Temp3,temp0,temp1,temp2,temp3;
   INT_32 n, shft1_23, shft1_31, m23, mask24;
   INT_32 MaxExp, Mantis, Mantis0, Mantis1, Mantis2, Mantis3, Sgn, Sgn0, Sgn1, Sgn2, Sgn3, Minimum, Shift2, i0;
+  int Mask0, Mask1, Mask2, Mask3;
   INT_32 StReAm[3];
 #ifdef USE_SSE
   int  __attribute__ ((aligned (16))) Mantis_[VLEN];
@@ -90,6 +185,8 @@ static INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_
     }
 
 #ifdef USE_SSE
+int junk = float_unpacker_sse2(dest, stream, n, Shift2, Minimum, MaxExp);
+return;
   M23v = (__m128i)_mm_load_ss((const float *)&m23);
   M23v = (__m128i)_mm_shuffle_ps((__m128)M23v,(__m128)M23v,0);
   Mb24v = (__m128i)_mm_load_ss((const float *)&mask24);
@@ -114,24 +211,25 @@ static INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_
     Mantisv = _mm_slli_epi32(Mantisv,Shift2);                 /* shift left by shift2 */
     Temp2v = _mm_xor_si128(Temp2v,Temp2v);                    /* zero  */
     Mantisv = _mm_add_epi32 (Mantisv,Minimumv);               /* add minimum value */
-    Signv = _mm_and_si128(Bit31v,Mantisv);                     /* isolate sign bit */
-                                                              /* compute absolute value of mantissa */
-    Temp1v = _mm_cmplt_epi32(Mantisv,Temp1v);                 /*  all ones  where mantissa is negative */
-    Temp2v = _mm_sub_epi32(Temp2v,Mantisv);                   /* - mantissa */
-    Mantisv = _mm_andnot_si128(Temp1v,Mantisv);               /* keep mantissa where it was positive, wipe where negative*/
-    Temp2v = _mm_and_si128(Temp2v,Temp1v);                    /* keep -mantissa where it was negative, wipe where positive */
-    Mantisv = _mm_or_si128(Mantisv,Temp2v);                   /* put mantissa back together (abs value) */
-//    Mantisv = _mm_min_epi32 (Mantisv,Mb24v);          /* min not available, we have a problem */
+    Signv = Mantisv;                                          /* Signv = signt bit | m23 */
+    Signv = _mm_and_si128(Signv,Bit31v);                      /* isolate sign bit */
+    Signv = _mm_or_si128(Signv,M23v);                         /* add exponent */
 
-    Hiddenv = _mm_srli_epi32(Mantisv,23);
-    Temp1v = _mm_xor_si128(Temp1v,Temp1v);                    /* zero  */
-    Temp2v = M23v;
+    Temp1v = Mantisv;                                         /* compute absolute value of mantissa */
+    Temp1v = _mm_srai_epi32(Temp1v,31);                       /* Mask = Mantisv >>a 31   */
+    Mantisv = _mm_add_epi32 (Mantisv,Temp1v);                 /* Mantisv = (Mantisv+Mask) ^ Mask */
+    Mantisv = _mm_xor_si128(Mantisv,Temp1v);                  /* we have the absolute value */
+
+    Hiddenv = Mantisv;
+    Hiddenv = _mm_srli_epi32(Hiddenv,23);                     /* hidden one */
+    Mantisv = _mm_slli_epi32(Mantisv,9);                      /* send hidden one to sign position */
+    Temp1v = _mm_xor_si128(Temp1v,Temp1v);                    /* Temp1v = zero  */
     Hiddenv = _mm_cmpeq_epi32(Hiddenv,Temp1v);                /* all ones where hidden 1 is zero */
 
-    Mantisv = _mm_slli_epi32(Mantisv,9);
-    Temp2v = _mm_or_si128(Temp2v,Signv);                      /* m23 + sign */
-    Mantisv = _mm_srli_epi32(Mantisv,9);
-    Temp1v = _mm_or_si128(Temp2v,Mantisv);
+    Mantisv = _mm_srli_epi32(Mantisv,9);                      /* hidden one erased */
+    Temp2v = Signv;
+    Temp1v = Signv;
+    Temp1v = _mm_or_si128(Temp1v,Mantisv);                    /* add mantissa */
     Temp2v = _mm_and_si128(Temp2v,Hiddenv);                   /* zero out where hidden 1 present */
     Temp1v = (__m128i)_mm_sub_ps((__m128)Temp1v,(__m128)Temp2v);                       /* subtract hidden one where present, sero otherwise */
 
@@ -153,42 +251,30 @@ static INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_
     Mantis1 = Mantis1 + Minimum;                         /* regenerate mantissa, possibly not normalized */
     Mantis2 = Mantis2 + Minimum;                         /* regenerate mantissa, possibly not normalized */
     Mantis3 = Mantis3 + Minimum;                         /* regenerate mantissa, possibly not normalized */
-    Sgn0 = 0;
-    Sgn1 = 0;
-    Sgn2 = 0;
-    Sgn3 = 0;
-    if(Mantis0 < 0) { Mantis0 =- Mantis0; Sgn0 = shft1_31; }                         /* need absolute value of Mantis */
-    if(Mantis1 < 0) { Mantis1 =- Mantis1; Sgn1 = shft1_31; }                         /* need absolute value of Mantis */
-    if(Mantis2 < 0) { Mantis2 =- Mantis2; Sgn2 = shft1_31; }                         /* need absolute value of Mantis */
-    if(Mantis3 < 0) { Mantis3 =- Mantis3; Sgn3 = shft1_31; }                         /* need absolute value of Mantis */
+    Sgn0 = (Mantis0 & shft1_31) | m23;
+    Sgn1 = (Mantis1 & shft1_31) | m23;
+    Sgn2 = (Mantis2 & shft1_31) | m23;
+    Sgn3 = (Mantis3 & shft1_31) | m23;
+    if(Mantis0 < 0) { Mantis0 =- Mantis0; }                         /* need absolute value of Mantis */
+    if(Mantis1 < 0) { Mantis1 =- Mantis1; }                         /* need absolute value of Mantis */
+    if(Mantis2 < 0) { Mantis2 =- Mantis2; }                         /* need absolute value of Mantis */
+    if(Mantis3 < 0) { Mantis3 =- Mantis3; }                         /* need absolute value of Mantis */
     if(Mantis0 > 0xFFFFFF) Mantis0 = 0xFFFFFF;
     if(Mantis1 > 0xFFFFFF) Mantis1 = 0xFFFFFF;
     if(Mantis2 > 0xFFFFFF) Mantis2 = 0xFFFFFF;
     if(Mantis3 > 0xFFFFFF) Mantis3 = 0xFFFFFF;
-    temp2.i = m23 | Sgn0 ;
-    temp.i  = (Mantis0 & 0x7FFFFF) | temp2.i;  /* eliminate bit 23 (hidden 1) and add exponent */
-    if(Mantis0 & shft1_23) {
-      temp2.i = 0;                                /* hidden 1 is genuine */
-    }
-    *dest++ = temp.f - temp2.f;                      /* hidden 1 was not present, subtract it */
-    temp2.i = m23 | Sgn1 ;
-    temp.i  = (Mantis1 & 0x7FFFFF) | temp2.i;  /* eliminate bit 23 (hidden 1) and add exponent */
-    if(Mantis1 & shft1_23) {
-      temp2.i = 0;                                /* hidden 1 is genuine */
-    }
-    *dest++ = temp.f - temp2.f;                      /* hidden 1 was not present, subtract it */
-    temp2.i = m23 | Sgn2 ;
-    temp.i  = (Mantis2 & 0x7FFFFF) | temp2.i;  /* eliminate bit 23 (hidden 1) and add exponent */
-    if(Mantis2 & shft1_23) {
-      temp2.i = 0;                                /* hidden 1 is genuine */
-    }
-    *dest++ = temp.f - temp2.f;                      /* hidden 1 was not present, subtract it */
-    temp2.i = m23 | Sgn3 ;
-    temp.i  = (Mantis3 & 0x7FFFFF) | temp2.i;  /* eliminate bit 23 (hidden 1) and add exponent */
-    if(Mantis3 & shft1_23) {
-      temp2.i = 0;                                /* hidden 1 is genuine */
-    }
-    *dest++ = temp.f - temp2.f;                      /* hidden 1 was not present, subtract it */
+    temp0.i = (Mantis0 & shft1_23) ? 0 : Sgn0 ;
+    Temp0.i = (Mantis0 & 0x7FFFFF) | Sgn0;  /* eliminate bit 23 (hidden 1) and add exponent and sign */
+    *dest++ = Temp0.f - temp0.f;            /* hidden 1 was not present, subtract it */
+    temp1.i = (Mantis1 & shft1_23) ? 0 : Sgn1 ;
+    Temp1.i = (Mantis1 & 0x7FFFFF) | Sgn1;  /* eliminate bit 23 (hidden 1) and add exponent and sign */
+    *dest++ = Temp1.f - temp1.f;            /* hidden 1 was not present, subtract it */
+    temp2.i = (Mantis2 & shft1_23) ? 0 : Sgn2 ;
+    Temp2.i = (Mantis2 & 0x7FFFFF) | Sgn2;  /* eliminate bit 23 (hidden 1) and add exponent and sign */
+    *dest++ = Temp2.f - temp2.f;            /* hidden 1 was not present, subtract it */
+    temp3.i = (Mantis3 & shft1_23) ? 0 : Sgn3 ;
+    Temp3.i = (Mantis3 & 0x7FFFFF) | Sgn3;  /* eliminate bit 23 (hidden 1) and add exponent and sign */
+    *dest++ = Temp3.f - temp3.f;            /* hidden 1 was not present, subtract it */
 #endif
     n -=4;
   }
@@ -204,13 +290,12 @@ static INT_32 float_unpacker_1(float *dest, INT_32 *header, INT_32 *stream, INT_
     Mantis = StReAm[i0++] ;
     Mantis = Mantis << Shift2;
     Mantis = Mantis + Minimum;                         /* regenerate mantissa, possibly not normalized */
-    Sgn = 0;
-    if(Mantis < 0) { Mantis =- Mantis; Sgn = shft1_31; }                         /* need absolute value of Mantis */
+    Sgn = (Mantis & shft1_31) | m23;
+    if(Mantis < 0) { Mantis =- Mantis; }               /* need absolute value of Mantis */
     if(Mantis > 0xFFFFFF) Mantis = 0xFFFFFF;
-    temp2.i = m23 | Sgn ;
-    temp.i  = (Mantis & 0x7FFFFF) | temp2.i;  /* eliminate bit 23 (hidden 1) and add exponent */
-    if(Mantis & shft1_23) temp2.i = 0;        /* hidden 1 is genuine, nothing to subtract */
-    *dest++ = temp.f - temp2.f;               /* if hidden 1 was not present, subtract it */
+    temp0.i = (Mantis & shft1_23) ? 0 : Sgn ;
+    Temp0.i = (Mantis & 0x7FFFFF) | Sgn;       /* eliminate bit 23 (hidden 1) and add exponent and sign */
+    *dest++ = Temp0.f - temp0.f;               /* if hidden 1 was not present, subtract it */
   }
   return 0;
 }
