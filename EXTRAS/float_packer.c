@@ -89,9 +89,10 @@ int float_unpacker_sse2(float *dest, void *src, int n, const int Shift2, const i
     Mantis0 = _mm_xor_si128(Mantis0,Mask0);
     Mantis1 = _mm_xor_si128(Mantis1,Mask1);
 
-    X0      = Xffffff;                            // min(mantis,0xFFFFFF)
+    X0      = Xffffff;
     X1      = Xffffff;
-    X0      = _mm_sub_epi32(X0,Mantis0);
+#ifdef original_min
+    X0      = _mm_sub_epi32(X0,Mantis0);          // min(mantis,0xFFFFFF)
     X1      = _mm_sub_epi32(X1,Mantis1);
     Mask0   = _mm_srai_epi32(X0,31);
     Mask1   = _mm_srai_epi32(X1,31);
@@ -99,6 +100,14 @@ int float_unpacker_sse2(float *dest, void *src, int n, const int Shift2, const i
     X1      = _mm_and_si128(X1,Mask1);
     Mantis0 = _mm_add_epi32(Mantis0,X0);
     Mantis1 = _mm_add_epi32(Mantis1,X1);
+#else
+    X0      = _mm_cmplt_epi32(X0,Mantis0);        // all ones if X < mantis
+    X1      = _mm_cmplt_epi32(X1,Mantis1);
+    Mantis0 = _mm_or_si128(Mantis0,X0);           // set mantis to all ones if > ffffff
+    Mantis1 = _mm_or_si128(Mantis1,X1);
+    Mantis0 = _mm_and_si128(Mantis0,Xffffff);     // keep lower 24 bits
+    Mantis1 = _mm_and_si128(Mantis1,Xffffff);
+#endif
 
     Temp02  = _mm_or_si128(Temp02,M23);           // temp2 = temp2 | m23
     Temp12  = _mm_or_si128(Temp12,M23);
