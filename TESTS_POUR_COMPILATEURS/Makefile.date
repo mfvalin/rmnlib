@@ -1,0 +1,28 @@
+
+#FC      = ifort
+#FC      = gfortran
+FC       = ifort
+FCFLAGS = -g -O0 -c #-Wall 
+LDFLAGS = -g
+
+
+# Object list
+OBJS = datetime.o datetime_tests.o
+
+# Rules
+all: tests
+
+tests: $(OBJS)
+	$(FC) -o $@ $(OBJS)
+	 
+# Dependencies
+datetime_tests.o: datetime_tests.f90
+	$(FC) $(FCFLAGS) datetime_tests.f90 -o $@
+
+
+datetime.o: datetime.f90
+	$(FC) $(FCFLAGS) datetime.f90 -o $@
+
+.PHONY:
+clean:
+	rm -f tests *.o *.mod
