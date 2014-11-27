@@ -344,9 +344,9 @@ static INT_32 float_packer_1(float *source, INT_32 nbits, INT_32 *header, INT_32
 #endif
 
   n=npts;
-#if defined(__SSE2__)
+#if defined(__FUTURE_SSE2__)
   {
-    float tmin[4], tmax[4];
+    float tmin[4], tmax[4];     // not much of a gain so far, wait for avx2
     __m128 ssemin, ssemax, z03, z47;
     ssemin = _mm_loadu_ps(z);
     ssemax = ssemin;
