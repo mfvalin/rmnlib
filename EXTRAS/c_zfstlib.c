@@ -113,7 +113,7 @@ static int USE_NEW=1;   /* use new code , USE_NEW=0 only used for regression and
 static int fstcompression_level = -1;
 static int swapStream           =  1;
 #define FASTLOG_SIZE 257
-static unsigned char fastlog[FASTLOG_SIZE];
+static unsigned char fastlog[FASTLOG_SIZE];   // fast way to get base 2 log of 1 thru 255 (special twist for 0)
 static int once = 0;
 int zfst_msglevel = 2;
 
@@ -161,7 +161,7 @@ if (once == 0)
 //      }
    nbits_needed = 1;
    i = 1; fastlog[0] = 0; fastlog[FASTLOG_SIZE-1] = 9;
-   for(j=2 ; j<FASTLOG_SIZE ; j*=2 , nbits_needed++) {
+   for(j=2 ; j<FASTLOG_SIZE ; j*=2 , nbits_needed++) {  // get rid of need for -lm when loading
      while(i<j) {
        fastlog[i++] = nbits_needed;
 //       if(fastlog[i]  != nbits_needed) {
@@ -1189,7 +1189,7 @@ void packTokensParallelogramOLD(unsigned int z[], int *zlng, unsigned short ufld
       nbits_needed = 1;
       i = 1; fastlog[0] = 0;
       k = 2;
-      for(k=2 ; k<FASTLOG_SIZE ; k*=2 , nbits_needed++) {
+      for(k=2 ; k<FASTLOG_SIZE ; k*=2 , nbits_needed++) {  // get rid of need for -lm when loading
         while(i<k) {
           fastlog[i++] = nbits_needed;
         }
@@ -1401,7 +1401,7 @@ void packTokensParallelogram(unsigned int *z, int *zlng, unsigned short *ufld, i
     i=0 ; n = 0 ; k = 1;
     while( k < 257 )
       {
-      while(i < k) fastlog[i++] = n;
+      while(i < k) fastlog[i++] = n;  // get rid of need for -lm when loading
       k <<= 1;
       n++;
       }
@@ -2535,7 +2535,7 @@ int main()
 //     }
    nbits_needed = 1;
    i = 1; fastlog[0] = 0; fastlog[FASTLOG_SIZE-1] = 9;
-   for(j=2 ; j<FASTLOG_SIZE ; j*=2 , nbits_needed++) {
+   for(j=2 ; j<FASTLOG_SIZE ; j*=2 , nbits_needed++) {  // get rid of need for -lm when loading
      while(i<j) {
        fastlog[i++]  = nbits_needed;
      }
