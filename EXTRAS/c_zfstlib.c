@@ -91,6 +91,7 @@ void calcul_ajusxy(int *ajus_x, int *ajus_y, int ni, int nj, int istep);
 int armn_compress(void *fld, int ni, int nj, int nk, int nbits, int op_code);
 void c_armn_compress_setlevel(int level);
 int  c_armn_compress_getlevel();
+int c_armn_compress_getlevel_hint(int ni, int nj, int nk, int nbits);
 void c_armn_compress_setswap(int swapState);
 int  c_armn_compress_getswap();
 void c_armn_compress_option(char *option, char *value);
@@ -108,7 +109,9 @@ void unpackTokensParallelogram(void *ufld, void *z, int ni, int nj, int nbits, i
 void init_comp_settings(char *comp_settings);
 
 
+#if defined(TEST_TURBO)
 static int USE_NEW=1;   /* use new code , USE_NEW=0 only used for regression and speed tests */
+#endif
 
 static int fstcompression_level = -1;
 static int swapStream           =  1;
@@ -135,19 +138,19 @@ int armn_compress(void *fld, int ni, int nj, int nk, int nbits, int op_code_in)
 
   int limite = (1 + ni*nj)/2;
 
-  int initial_compression_level;
+//  int initial_compression_level;
   
   if(op_code_in > 256) {
       op_code = op_code_in & 0xFF;
       data_len = op_code_in >> 8;
   }
 
-  initial_compression_level = c_armn_compress_getlevel();
+//  initial_compression_level = c_armn_compress_getlevel();
   lng_origin = (1+ni*nj*nk*16/8);
 
-  if (initial_compression_level == -1) {
-    fstcompression_level = BEST;
-  }
+//  if (initial_compression_level == -1) {   // redundant, fstcompression_level is initialized by c_armn_compress_getlevel
+//    fstcompression_level = BEST;
+//  }
 
   if (once == 0) {
    nbits_needed = 1;
@@ -180,7 +183,8 @@ int armn_compress(void *fld, int ni, int nj, int nk, int nbits, int op_code_in)
         }
       }
 
-      if (0 == fstcompression_level || (ni < 16) || (nj < 16) || (nbits <= 4)) {   /* it does not make sense to use parallelogram method */
+//      if (FAST == fstcompression_level || (ni < 16) || (nj < 16) || (nbits <= 4)) {   /* do not use parallelogram method */
+        if (FAST == c_armn_compress_getlevel_hint(ni,nj,nk,nbits) ) {   /* do not use parallelogram method */
         zfld_minimum = (unsigned int *) malloc(sizeof(unsigned int)*ni*nj*nk);     /* this needed space can be computed less aggressively */
         c_fstzip(zfld_minimum, &zlng_minimum, us_fld, ni, nj, MINIMUM, 0, 5, nbits, 0);
         if (zlng_minimum >= lng_origin) {
@@ -265,10 +269,16 @@ void c_fstzip(void *zfld, int *zlng, void *fld, int ni, int nj, int methode, int
    void *junk;
 
   junk = memset(&zfstzip, (int) 0, sizeof(_fstzip));
+  
+  if(methode == AUTO) { 
+    methode = c_armn_compress_getlevel_hint(ni, nj, 1, nbits);   /* pass nk = 1 to c_armn_compress_getlevel_hint */
+    step = (methode == MINIMUM)       ? 5 : step; 
+    step = (methode == PARALLELOGRAM) ? 3 : step; 
+  }
 
   zfstzip.predictor_type = methode;
-  zfstzip.step           = step;
-  zfstzip.degree         = degre;
+  zfstzip.step           = step;     /* usually 5 for MINIMUM and 3 for PARALLELOGRAM */
+  zfstzip.degree         = degre;    /* no longer used since deprecation of SAMPLE option */
   zfstzip.nbits          = nbits;
   zfstzip.levels         = 1;        /* no longer used since deprecation of SAMPLE option */
   zfstzip.version        = 0;
@@ -919,8 +929,8 @@ void unpackTokensMinimum(void *ufld_in, void *z_in, int ni, int nj, int nbits, i
 #endif
 
   cur = z;
-  junk = memcpy(header, cur, sizeof(unsigned int));
-  cur++;
+//  junk = memcpy(header, cur, sizeof(unsigned int));
+  cur++;   /* skip header */
   temp = *cur++;
   temp = (temp << 32)  | *cur++;
   bitPackInWord = 32;
@@ -2067,11 +2077,11 @@ env_info = getenv("ARMN_COMPRESS");
 if (env_info == NULL)
   {
   strcpy(comp_settings, "fast");
-  fstcompression_level = 0;
+  fstcompression_level = FAST;
   }
 else
   {
-  fstcompression_level = 1;
+  fstcompression_level = BEST;
   }
 
 }
@@ -2292,8 +2302,14 @@ return  c_armn_compress_getlevel();
 }
 
 /**********************************************************************************************************************/
+int c_armn_compress_getlevel_hint(int ni, int nj, int nk, int nbits)
+{
+  if (FAST == fstcompression_level || (ni < 16) || (nj < 16) || (nbits <= 4)) return (FAST) ;
+  return (BEST) ;
+}
 int c_armn_compress_getlevel()
 {
+  if(fstcompression_level == -1) fstcompression_level = BEST;
   return fstcompression_level;
 }
 
