@@ -201,7 +201,7 @@ void MinMax(float *z_in, int n, float *Max, float *Min)
   return;
 }
 #endif
-#define NPTS (20000*1024+5)
+#define NPTS (200000*1024+5)
 #include <sys/time.h>
 main()
 {
@@ -214,9 +214,9 @@ main()
 
   Div = NPTS;
   for(i=0 ; i<NPTS; i++) Z[i] = ((i-0.5*Div)/Div)*4.0*((i-0.5*Div)/Div);
-  printf("z[0]=%f,z[NPTS/2]=%f,z[NPTS-1]=%f\n",Z[0],Z[NPTS/2],Z[NPTS-1]);
+  printf("NPTS=%d, z[0]=%f,z[NPTS/2]=%f,z[NPTS-1]=%f\n",NPTS,Z[0],Z[NPTS/2],Z[NPTS-1]);
 
-#ifdef __SSE2__XX
+#ifdef __SSE2__
   printf("Test with sse2\n");
   MinMaxSums(Z, NPTS, &Max, &Min, &Sum, &Sum2);
   MinMaxSums(Z, NPTS, &Max, &Min, &Sum, &Sum2);
@@ -232,7 +232,6 @@ main()
 #else
   MinMaxSums(Z, NPTS, &Max, &Min, &Sum, &Sum2);
 #endif
-
   gettimeofday(&t2,NULL);
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
@@ -246,7 +245,6 @@ main()
 #else
   MinMax(Z, NPTS, &Max, &Min);
 #endif
-
   gettimeofday(&t2,NULL);
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
@@ -263,8 +261,8 @@ main()
   duree = T2-T1;
   printf("MinMaxSums time = %d usec, %dMtok/s\n",duree,NPTS/duree);
   printf("Min=%f, Max=%f, Sum=%f, Sum2=%f \n",Min,Max,Sum,Sum2);
-  gettimeofday(&t1,NULL);
 
+  gettimeofday(&t1,NULL);
   MinMax(Z, NPTS, &Max, &Min);
   gettimeofday(&t2,NULL);
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
