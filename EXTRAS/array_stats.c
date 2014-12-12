@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #ifdef __SSE2__
 #include <immintrin.h>
 #endif
@@ -123,6 +124,14 @@ void MinMaxSums(float *z_in, int n, float *Max, float *Min, float *Sum, float *S
   smin = (smin < zmin[3]) ? smin : zmin[3] ;
   ssum = ysum[0] + ysum[1] + ysum[2] + ysum[3] ;
   ssum2 = ysum2[0] + ysum2[1] + ysum2[2] + ysum2[3] ;
+
+  while(i<n){
+    smax = (smax > z_in[i]) ? smax : z_in[i] ;
+    smin = (smin < z_in[i]) ? smin : z_in[i] ;
+    ssum = ssum + z_in[i] ;
+    ssum2 = ssum2 + z_in[i]*z_in[i] ;
+    i++ ;
+  }
   *Max=smax;
   *Min=smin;
   *Sum=ssum;
@@ -181,12 +190,18 @@ void MinMax(float *z_in, int n, float *Max, float *Min)
   smin = (smin < zmin[5]) ? smin : zmin[5] ;
   smin = (smin < zmin[6]) ? smin : zmin[6] ;
   smin = (smin < zmin[7]) ? smin : zmin[7] ;
+
+  while(i<n){
+    smax = (smax > z_in[i]) ? smax : z_in[i] ;
+    smin = (smin < z_in[i]) ? smin : z_in[i] ;
+    i++ ;
+  }
   *Max=smax;
   *Min=smin;
   return;
 }
 #endif
-#define NPTS 20000*1024
+#define NPTS (20000*1024+5)
 #include <sys/time.h>
 main()
 {
@@ -201,7 +216,7 @@ main()
   for(i=0 ; i<NPTS; i++) Z[i] = ((i-0.5*Div)/Div)*4.0*((i-0.5*Div)/Div);
   printf("z[0]=%f,z[NPTS/2]=%f,z[NPTS-1]=%f\n",Z[0],Z[NPTS/2],Z[NPTS-1]);
 
-#ifdef __SSE2__
+#ifdef __SSE2__XX
   printf("Test with sse2\n");
   MinMaxSums(Z, NPTS, &Max, &Min, &Sum, &Sum2);
   MinMaxSums(Z, NPTS, &Max, &Min, &Sum, &Sum2);
