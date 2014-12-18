@@ -217,7 +217,6 @@ main()
 #else
   MinMaxSums(Z, NPTS, &Max, &Min, &Sum, &Sum2);
 #endif
-
   gettimeofday(&t2,NULL);
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
@@ -231,7 +230,6 @@ main()
 #else
   MinMax(Z, NPTS, &Max, &Min);
 #endif
-
   gettimeofday(&t2,NULL);
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
@@ -248,8 +246,8 @@ main()
   duree = T2-T1;
   printf("MinMaxSums time = %d usec, %dMtok/s\n",duree,NPTS/duree);
   printf("Min=%f, Max=%f, Sum=%f, Sum2=%f \n",Min,Max,Sum,Sum2);
-  gettimeofday(&t1,NULL);
 
+  gettimeofday(&t1,NULL);
   MinMax(Z, NPTS, &Max, &Min);
   gettimeofday(&t2,NULL);
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
