@@ -80,6 +80,39 @@ void MinMaxIndex(float *z_in, int n, float *Max, float *Min, int *Imax, int *Imi
 }
 
 #ifdef __AVX2__
+void MinMaxIndexSumsC(float *z_in, int n, float *Max, float *Min, int *Imax, int *Imin, float *Sum, float *Sum2)
+#else
+void MinMaxIndexSums(float *z_in, int n, float *Max, float *Min, int *Imax, int *Imin, float *Sum, float *Sum2)
+#endif
+{
+  int i;
+  float tmax, tmin;
+  double tsum, tsum2;
+  int imin, imax;
+
+  tmax = z_in[0];
+  tmin = z_in[0];
+  imax = 0;
+  imin = 0;
+  tsum = 0.0;
+  tsum2 = 0.0;
+
+  for (i=1 ; i<n ; i++){
+    if(z_in[i] > tmax) { tmax = z_in[i] ; imax = i ; };
+    if(z_in[i] < tmin) { tmin = z_in[i] ; imin = i ; };
+    tsum = tsum + z_in[i] ;
+    tsum2 = tsum2 + z_in[i]*z_in[i] ;
+  }
+
+  *Max  = tmax;
+  *Min  = tmin;
+  *Imax = imax;
+  *Imin = imin;
+  *Sum  = tsum;
+  *Sum2 = tsum2;
+}
+
+#ifdef __AVX2__
 void MinMaxSums(float *z_in, int n, float *Max, float *Min, float *Sum, float *Sum2)
 {
   float zmin[4], zmax[4];
@@ -461,6 +494,19 @@ main()
   duree = T2-T1;
   printf("MinMaxIndexC time = %d usec, %dMtok/s\n",duree,NPTS/duree);
   printf("Min=%f, Max=%f, Imin=%d, Imax=%d, %f, %f \n",Min,Max,Imin,Imax,Z[Imin],Z[Imax]);
+
+  gettimeofday(&t1,NULL);
+#ifdef __AVX2__
+  MinMaxIndexSumsC(Z, NPTS, &Max, &Min, &Imax, &Imin, &Sum, &Sum2);
+#else
+  MinMaxIndexSums(Z, NPTS, &Max, &Min, &Imax, &Imin, &Sum, &Sum2);
+#endif
+  gettimeofday(&t2,NULL);
+  T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
+  T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
+  duree = T2-T1;
+  printf("MinMaxIndexSumsC time = %d usec, %dMtok/s\n",duree,NPTS/duree);
+  printf("Min=%f, Max=%f, Imin=%d, Imax=%d, Sum=%f, Sum2=%f \n",Min,Max,Imin,Imax,Sum,Sum2);
 
 #ifdef __AVX2__
 
