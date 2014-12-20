@@ -115,72 +115,67 @@ void MinMaxIndexSums(float *z_in, int n, float *Max, float *Min, int *Imax, int 
 #ifdef __AVX2__
 void MinMaxSums(float *z_in, int n, float *Max, float *Min, float *Sum, float *Sum2)
 {
-  float zmin[4], zmax[4];
+  float xmin[8], xmax[8];
   double ysum[4], ysum2[4];
   float smin, smax ;
   double ssum, ssum2;
   float *z = z_in;
-  __m128 z0, z1, z2, z3, zzmin, zzmax, zzsum, zzsum2;
+  __m128 lo128, hi128;
+  __m256  x0, x1, xxmin, xxmax;
   __m256d y0, y1, y2, y3, yysum, yysum2;
-  int i;
+  int i, j;
   int limit = n - 15;
 
-  zzmin  = _mm_loadu_ps(&z[00]);
-  zzmax  = _mm_loadu_ps(&z[00]);
+  xxmin  = _mm256_loadu_ps(&z[ 0]);
+  xxmax  = _mm256_loadu_ps(&z[ 0]);
   yysum  = _mm256_set1_pd(0.0D);
   yysum2 = _mm256_set1_pd(0.0D);
 
   for (i = 0 ; i < limit ; i += 16){
 
-    z0 = _mm_loadu_ps(&z[ 0]);
-    z1 = _mm_loadu_ps(&z[ 4]);
-    z2 = _mm_loadu_ps(&z[ 8]);
-    z3 = _mm_loadu_ps(&z[12]);
+    x0 = _mm256_loadu_ps(&z[i  ]);
+    x1 = _mm256_loadu_ps(&z[i+8]);
+    xxmax = _mm256_max_ps(xxmax,x0);
+    xxmin = _mm256_min_ps(xxmin,x0);
+    xxmax = _mm256_max_ps(xxmax,x1);
+    xxmin = _mm256_min_ps(xxmin,x1);
 
-    y0 = _mm256_cvtps_pd(z0);           // convert single precision to double for sums
-    y1 = _mm256_cvtps_pd(z1);
-    y2 = _mm256_cvtps_pd(z2);
-    y3 = _mm256_cvtps_pd(z3);
+    lo128 = _mm256_extractf128_ps(x0,0);  // convert 16 floats to 16 doubles
+    hi128 = _mm256_extractf128_ps(x0,1);
+    y0    = _mm256_cvtps_pd(lo128);
+    y1    = _mm256_cvtps_pd(hi128);
+    lo128 = _mm256_extractf128_ps(x1,0);
+    hi128 = _mm256_extractf128_ps(x1,1);
+    y2    = _mm256_cvtps_pd(lo128);
+    y3    = _mm256_cvtps_pd(hi128);
 
     yysum = _mm256_add_pd(yysum,y0);    // double precision sum
     y0 = _mm256_mul_pd(y0,y0);          // square of value
-    zzmin = _mm_min_ps(zzmin,z0);       // min
-    zzmax = _mm_max_ps(zzmax,z0);       // max
     yysum2 = _mm256_add_pd(yysum2,y0);  // sum of squares
 
     yysum = _mm256_add_pd(yysum,y1);
     y1 = _mm256_mul_pd(y1,y1);
-    zzmin = _mm_min_ps(zzmin,z1);
-    zzmax = _mm_max_ps(zzmax,z1);
     yysum2 = _mm256_add_pd(yysum2,y1);
 
     yysum = _mm256_add_pd(yysum,y2);
     y2 = _mm256_mul_pd(y2,y2);
-    zzmin = _mm_min_ps(zzmin,z2);
-    zzmax = _mm_max_ps(zzmax,z2);
     yysum2 = _mm256_add_pd(yysum2,y2);
 
     yysum = _mm256_add_pd(yysum,y3);
     y3 = _mm256_mul_pd(y3,y3);
-    zzmin = _mm_min_ps(zzmin,z3);
-    zzmax = _mm_max_ps(zzmax,z3);
     yysum2 = _mm256_add_pd(yysum2,y3);
 
-    z += 16;
-
   }
-  _mm_storeu_ps(zmin,zzmin);
-  _mm_storeu_ps(zmax,zzmax);
+  _mm256_storeu_ps(xmin,xxmin);
+  _mm256_storeu_ps(xmax,xxmax);
   _mm256_storeu_pd(ysum,yysum);
   _mm256_storeu_pd(ysum2,yysum2);
-  smax = zmax[0];
-  smax = (smax > zmax[1]) ? smax : zmax[1] ;
-  smax = (smax > zmax[2]) ? smax : zmax[2] ;
-  smax = (smax > zmax[3]) ? smax : zmax[3] ;
-  smin = zmin[0];
-  smin = (smin < zmin[1]) ? smin : zmin[1] ;
-  smin = (smin < zmin[2]) ? smin : zmin[2] ;
-  smin = (smin < zmin[3]) ? smin : zmin[3] ;
+  smax = xmax[0];
+  smin = xmin[0];
+  for (j=1 ; j<8 ; j++){
+    smax = (smax > xmax[1]) ? smax : xmax[1] ;
+    smin = (smin < xmin[1]) ? smin : xmin[1] ;
+  }
   ssum = ysum[0] + ysum[1] + ysum[2] + ysum[3] ;
   ssum2 = ysum2[0] + ysum2[1] + ysum2[2] + ysum2[3] ;
 
@@ -203,20 +198,16 @@ void MinMax(float *z_in, int n, float *Max, float *Min)
   float smin, smax ;
   float *z = z_in;
   __m256 z0, z1, z2, z3, zzmin, zzmax;
-  int i;
-//  int limit = n - 31;
+  int i, j;
   int limit = n - 15;
 
   zzmin  = _mm256_loadu_ps(&z[0]);
   zzmax  = _mm256_loadu_ps(&z[0]);
 
-//  for (i = 0 ; i < limit ; i += 32){
   for (i = 0 ; i < limit ; i += 16){
 
-    z0 = _mm256_loadu_ps(&z[ 0]);
-    z1 = _mm256_loadu_ps(&z[ 8]);
-//    z2 = _mm256_loadu_ps(&z[16]);
-//    z3 = _mm256_loadu_ps(&z[24]);
+    z0 = _mm256_loadu_ps(&z[i  ]);
+    z1 = _mm256_loadu_ps(&z[i+8]);
 
     zzmin = _mm256_min_ps(zzmin,z0);       // min
     zzmax = _mm256_max_ps(zzmax,z0);       // max
@@ -224,34 +215,15 @@ void MinMax(float *z_in, int n, float *Max, float *Min)
     zzmin = _mm256_min_ps(zzmin,z1);
     zzmax = _mm256_max_ps(zzmax,z1);
 
-//    zzmin = _mm256_min_ps(zzmin,z2);
-//    zzmax = _mm256_max_ps(zzmax,z2);
-
-//    zzmin = _mm256_min_ps(zzmin,z3);
-//    zzmax = _mm256_max_ps(zzmax,z3);
-
-//    z += 32;
-    z += 16;
-
   }
   _mm256_storeu_ps(zmin,zzmin);
   _mm256_storeu_ps(zmax,zzmax);
   smax = zmax[0];
-  smax = (smax > zmax[1]) ? smax : zmax[1] ;
-  smax = (smax > zmax[2]) ? smax : zmax[2] ;
-  smax = (smax > zmax[3]) ? smax : zmax[3] ;
-  smax = (smax > zmax[4]) ? smax : zmax[4] ;
-  smax = (smax > zmax[5]) ? smax : zmax[5] ;
-  smax = (smax > zmax[6]) ? smax : zmax[6] ;
-  smax = (smax > zmax[7]) ? smax : zmax[7] ;
   smin = zmin[0];
-  smin = (smin < zmin[1]) ? smin : zmin[1] ;
-  smin = (smin < zmin[2]) ? smin : zmin[2] ;
-  smin = (smin < zmin[3]) ? smin : zmin[3] ;
-  smin = (smin < zmin[4]) ? smin : zmin[4] ;
-  smin = (smin < zmin[5]) ? smin : zmin[5] ;
-  smin = (smin < zmin[6]) ? smin : zmin[6] ;
-  smin = (smin < zmin[7]) ? smin : zmin[7] ;
+  for (j=1 ; j<8 ; j++){
+    smax = (smax > zmax[i]) ? smax : zmax[i] ;
+    smin = (smin < zmin[i]) ? smin : zmin[i] ;
+  }
 
   while(i<n){
     smax = (smax > z_in[i]) ? smax : z_in[i] ;
