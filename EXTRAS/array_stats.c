@@ -197,27 +197,46 @@ void MinMax(float *z_in, int n, float *Max, float *Min)
   float zmin[8], zmax[8];
   float smin, smax ;
   float *z = z_in;
-  __m256 z0, z1, z2, z3, zzmin, zzmax;
+  __m256 z0, z1, zzmin0, zzmax0, zzmin1, zzmax1;
+//  __m256 z2, z3, zzmin2, zzmax2, zzmin3, zzmax3 ;
   int i, j;
-  int limit = n - 15;
+  int block = 16;
+  int limit = n - block + 1;
 
-  zzmin  = _mm256_loadu_ps(&z[0]);
-  zzmax  = _mm256_loadu_ps(&z[0]);
+  zzmin0 = _mm256_loadu_ps(&z[0]);
+  zzmax0 = zzmin0;
+  zzmin1 = zzmin0;
+  zzmax1 = zzmax0;
+//  zzmin2 = zzmin0;
+//  zzmax2 = zzmax0;
+//  zzmin3 = zzmin0;
+//  zzmax3 = zzmax0;
 
-  for (i = 0 ; i < limit ; i += 16){
+  for (i = 0 ; i < limit ; i += block){
 
-    z0 = _mm256_loadu_ps(&z[i  ]);
-    z1 = _mm256_loadu_ps(&z[i+8]);
+    z0 = _mm256_loadu_ps(&z[i   ]);
+    z1 = _mm256_loadu_ps(&z[i+ 8]);
+//    z2 = _mm256_loadu_ps(&z[i+16]);
+//    z3 = _mm256_loadu_ps(&z[i+24]);
 
-    zzmin = _mm256_min_ps(zzmin,z0);       // min
-    zzmax = _mm256_max_ps(zzmax,z0);       // max
-
-    zzmin = _mm256_min_ps(zzmin,z1);
-    zzmax = _mm256_max_ps(zzmax,z1);
-
+    zzmin0 = _mm256_min_ps(zzmin0,z0);       // min
+    zzmax0 = _mm256_max_ps(zzmax0,z0);       // max
+    zzmin1 = _mm256_min_ps(zzmin1,z1);
+    zzmax1 = _mm256_max_ps(zzmax1,z1);
+//    zzmin2 = _mm256_min_ps(zzmin2,z2);
+//    zzmax2 = _mm256_max_ps(zzmax2,z2);
+//    zzmin3 = _mm256_min_ps(zzmin3,z3);
+//    zzmax3 = _mm256_max_ps(zzmax3,z3);
   }
-  _mm256_storeu_ps(zmin,zzmin);
-  _mm256_storeu_ps(zmax,zzmax);
+
+  zzmin0 = _mm256_min_ps(zzmin0,zzmin1);
+  zzmax0 = _mm256_max_ps(zzmax0,zzmax1);
+//  zzmin0 = _mm256_min_ps(zzmin0,zzmin2);
+//  zzmax0 = _mm256_max_ps(zzmax0,zzmax2);
+//  zzmin0 = _mm256_min_ps(zzmin0,zzmin3);
+//  zzmax0 = _mm256_max_ps(zzmax0,zzmax3);
+  _mm256_storeu_ps(zmin,zzmin0);
+  _mm256_storeu_ps(zmax,zzmax0);
   smax = zmax[0];
   smin = zmin[0];
   for (j=1 ; j<8 ; j++){
