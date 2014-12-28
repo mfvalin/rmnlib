@@ -532,17 +532,18 @@ main()
 #ifdef __AVX2__
 
   printf("=================== Accelerated Timings ===================\n\n");
-
-  gettimeofday(&t1,NULL);
-  MinMaxSums(Z, NPTS, &Max, &Min, &Sum, &Sum2);
-  gettimeofday(&t2,NULL);
-  T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
-  T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
-  duree = T2-T1;
-  printf("MinMaxSums time = %d usec, %dMtok/s\n",duree,NPTS/duree);
-  printf("Min=%f, Max=%f, Sum=%f, Sum2=%f \n",Min,Max,Sum,Sum2);
-
   for (j=0 ; j < NREP ; j++) {
+
+    printf("\n");
+    gettimeofday(&t1,NULL);
+    MinMaxSums(Z, NPTS, &Max, &Min, &Sum, &Sum2);
+    gettimeofday(&t2,NULL);
+    T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
+    T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
+    duree = T2-T1;
+    printf("MinMaxSums time = %d usec, %dMtok/s\n",duree,NPTS/duree);
+    if (j==0) printf("Min=%f, Max=%f, Sum=%f, Sum2=%f \n",Min,Max,Sum,Sum2);
+
     gettimeofday(&t1,NULL);
     MinMax(Z, NPTS, &Max, &Min);
     gettimeofday(&t2,NULL);
@@ -551,17 +552,17 @@ main()
     duree = T2-T1;
     printf("MinMax time = %d usec, %dMtok/s\n",duree,NPTS/duree);
     if (j==0) printf("Min=%f, Max=%f \n",Min,Max);
-  }
 
-  gettimeofday(&t1,NULL);
-  MinMaxIndex(Z, NPTS, &Max, &Min, &Imax, &Imin);
-  gettimeofday(&t2,NULL);
-  T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
-  T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
-  duree = T2-T1;
-  printf("MinMaxIndex time = %d usec, %dMtok/s\n",duree,NPTS/duree);
-  printf("Min=%f, Max=%f, Imin=%d, Imax=%d \n",Min,Max,Imin,Imax);
-  printf("Min=%f, Max=%f, Imin=%d, Imax=%d, %f, %f \n",Min,Max,Imin,Imax,Z[Imin],Z[Imax]);
+    gettimeofday(&t1,NULL);
+    MinMaxIndex(Z, NPTS, &Max, &Min, &Imax, &Imin);
+    gettimeofday(&t2,NULL);
+    T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
+    T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
+    duree = T2-T1;
+    printf("MinMaxIndex time = %d usec, %dMtok/s\n",duree,NPTS/duree);
+    // if (j==0) printf("Min=%f, Max=%f, Imin=%d, Imax=%d \n",Min,Max,Imin,Imax);
+    if (j==0) printf("Min=%f, Max=%f, Imin=%d, Imax=%d, %f, %f \n",Min,Max,Imin,Imax,Z[Imin],Z[Imax]);
+  }
 
   gettimeofday(&t1,NULL);
   MinMaxIndexSums(Z, NPTS, &Max, &Min, &Imax, &Imin, &Sum, &Sum2);
@@ -570,8 +571,7 @@ main()
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
   printf("MinMaxIndexSums time = %d usec, %dMtok/s\n",duree,NPTS/duree);
-  printf("Min=%f, Max=%f, Imin=%d, Imax=%d \n",Min,Max,Imin,Imax);
-  printf("Min=%f, Max=%f, Imin=%d, Imax=%d, Sum=%f, Sum2=%f \n",Min,Max,Imin,Imax,Sum,Sum2);
+  if (j==0) printf("Min=%f, Max=%f, Imin=%d, Imax=%d, Sum=%f, Sum2=%f \n",Min,Max,Imin,Imax,Sum,Sum2);
 
 #endif
 
