@@ -123,68 +123,82 @@ void MinMaxSums(float *z_in, int n, float *Max, float *Min, float *Sum, float *S
   __m128 lo128, hi128;
   __m256  x0, x1, xxmin, xxmax;
   __m256d y0, y1, y2, y3, yysum, yysum2;
-  int i, j;
-  int limit = n - 15;
+  int i, i0, i1, j;
+  int block = 8;
+  int limit ;
+  int nminus ;
 
-  xxmin  = _mm256_loadu_ps(&z[ 0]);
-  xxmax  = _mm256_loadu_ps(&z[ 0]);
-  yysum  = _mm256_set1_pd(0.0D);
-  yysum2 = _mm256_set1_pd(0.0D);
+  nminus = (n / (2*block)) * (2*block);  // multiple of block * 2
+  i1 = nminus/2;                         // multiple of block
+  limit = i1 - block + 1;
 
-  for (i = 0 ; i < limit ; i += 16){
+  if(n > 2*block){
+    xxmin  = _mm256_loadu_ps(&z[ 0]);
+    xxmax  = xxmin;
+    yysum  = _mm256_set1_pd(0.0D);
+    yysum2 = _mm256_set1_pd(0.0D);
 
-    x0 = _mm256_loadu_ps(&z[i  ]);
-    x1 = _mm256_loadu_ps(&z[i+8]);
-    xxmax = _mm256_max_ps(xxmax,x0);
-    xxmin = _mm256_min_ps(xxmin,x0);
-    xxmax = _mm256_max_ps(xxmax,x1);
-    xxmin = _mm256_min_ps(xxmin,x1);
+    for (i0 = 0 ; i0 < limit ; i0 += block, i1 += block){
 
-    lo128 = _mm256_extractf128_ps(x0,0);  // convert 16 floats to 16 doubles
-    hi128 = _mm256_extractf128_ps(x0,1);
-    y0    = _mm256_cvtps_pd(lo128);
-    y1    = _mm256_cvtps_pd(hi128);
-    lo128 = _mm256_extractf128_ps(x1,0);
-    hi128 = _mm256_extractf128_ps(x1,1);
-    y2    = _mm256_cvtps_pd(lo128);
-    y3    = _mm256_cvtps_pd(hi128);
+      x0 = _mm256_loadu_ps(&z[i0]);   // stream from beginning
+      x1 = _mm256_loadu_ps(&z[i1]);   // stream from half way point
 
-    yysum = _mm256_add_pd(yysum,y0);    // double precision sum
-    y0 = _mm256_mul_pd(y0,y0);          // square of value
-    yysum2 = _mm256_add_pd(yysum2,y0);  // sum of squares
+      lo128 = _mm256_extractf128_ps(x0,0);  // convert 16 floats to 16 doubles
+      hi128 = _mm256_extractf128_ps(x0,1);
+      xxmax = _mm256_max_ps(xxmax,x0);
+      xxmin = _mm256_min_ps(xxmin,x0);
+      y0    = _mm256_cvtps_pd(lo128);
+      y1    = _mm256_cvtps_pd(hi128);
 
-    yysum = _mm256_add_pd(yysum,y1);
-    y1 = _mm256_mul_pd(y1,y1);
-    yysum2 = _mm256_add_pd(yysum2,y1);
+      lo128 = _mm256_extractf128_ps(x1,0);
+      hi128 = _mm256_extractf128_ps(x1,1);
+      xxmax = _mm256_max_ps(xxmax,x1);
+      xxmin = _mm256_min_ps(xxmin,x1);
+      y2    = _mm256_cvtps_pd(lo128);
+      y3    = _mm256_cvtps_pd(hi128);
 
-    yysum = _mm256_add_pd(yysum,y2);
-    y2 = _mm256_mul_pd(y2,y2);
-    yysum2 = _mm256_add_pd(yysum2,y2);
+      yysum = _mm256_add_pd(yysum,y0);    // double precision sum
+      y0 = _mm256_mul_pd(y0,y0);          // square of value
+      yysum2 = _mm256_add_pd(yysum2,y0);  // sum of squares
 
-    yysum = _mm256_add_pd(yysum,y3);
-    y3 = _mm256_mul_pd(y3,y3);
-    yysum2 = _mm256_add_pd(yysum2,y3);
+      yysum = _mm256_add_pd(yysum,y1);
+      y1 = _mm256_mul_pd(y1,y1);
+      yysum2 = _mm256_add_pd(yysum2,y1);
 
+      yysum = _mm256_add_pd(yysum,y2);
+      y2 = _mm256_mul_pd(y2,y2);
+      yysum2 = _mm256_add_pd(yysum2,y2);
+
+      yysum = _mm256_add_pd(yysum,y3);
+      y3 = _mm256_mul_pd(y3,y3);
+      yysum2 = _mm256_add_pd(yysum2,y3);
+
+    }
+    _mm256_storeu_ps(xmin,xxmin);
+    _mm256_storeu_ps(xmax,xxmax);
+    _mm256_storeu_pd(ysum,yysum);
+    _mm256_storeu_pd(ysum2,yysum2);
+    smax = xmax[0];
+    smin = xmin[0];
+    for (j=1 ; j<8 ; j++){
+      smax = (smax > xmax[j]) ? smax : xmax[j] ;
+      smin = (smin < xmin[j]) ? smin : xmin[j] ;
+    }
+    ssum = ysum[0] + ysum[1] + ysum[2] + ysum[3] ;
+    ssum2 = ysum2[0] + ysum2[1] + ysum2[2] + ysum2[3] ;
+  }else{   // n is less than 2 * blocks
+    i1 = 0;
+    smax = z_in[0] ;
+    smin = z_in[0] ;
+    ssum = 0.0;
+    ssum2 = 0.0;
   }
-  _mm256_storeu_ps(xmin,xxmin);
-  _mm256_storeu_ps(xmax,xxmax);
-  _mm256_storeu_pd(ysum,yysum);
-  _mm256_storeu_pd(ysum2,yysum2);
-  smax = xmax[0];
-  smin = xmin[0];
-  for (j=1 ; j<8 ; j++){
-    smax = (smax > xmax[1]) ? smax : xmax[1] ;
-    smin = (smin < xmin[1]) ? smin : xmin[1] ;
-  }
-  ssum = ysum[0] + ysum[1] + ysum[2] + ysum[3] ;
-  ssum2 = ysum2[0] + ysum2[1] + ysum2[2] + ysum2[3] ;
 
-  while(i<n){
+  for(i = i1 ; i < n ; i++){
     smax = (smax > z_in[i]) ? smax : z_in[i] ;
     smin = (smin < z_in[i]) ? smin : z_in[i] ;
     ssum = ssum + z_in[i] ;
     ssum2 = ssum2 + z_in[i]*z_in[i] ;
-    i++ ;
   }
   *Max=smax;
   *Min=smin;
@@ -198,56 +212,52 @@ void MinMax(float *z_in, int n, float *Max, float *Min)
   float smin, smax ;
   float *z = z_in;
   __m256 z0, z1, zzmin0, zzmax0, zzmin1, zzmax1;
-//  __m256 z2, z3, zzmin2, zzmax2, zzmin3, zzmax3 ;
   int i, j;
-  int block = 16;
-  int limit = n - block + 1;
+  int i0, i1;
+  int block = 8;
+  int limit ;              //         = n - block + 1;
+  int nminus ;
 
-  zzmin0 = _mm256_loadu_ps(&z[0]);
-  zzmax0 = zzmin0;
-  zzmin1 = zzmin0;
-  zzmax1 = zzmax0;
-//  zzmin2 = zzmin0;
-//  zzmax2 = zzmax0;
-//  zzmin3 = zzmin0;
-//  zzmax3 = zzmax0;
+  if(n > 2*block){
+    nminus = (n / (2*block)) * (2*block);  // multiple of block * 2
+    i1 = nminus/2;                         // multiple of block
+    limit = i1 - block + 1;
 
-  for (i = 0 ; i < limit ; i += block){
+    zzmin0 = _mm256_loadu_ps(&z[0]);
+    zzmax0 = zzmin0;
+    zzmin1 = zzmin0;
+    zzmax1 = zzmax0;
 
-    z0 = _mm256_loadu_ps(&z[i   ]);
-    z1 = _mm256_loadu_ps(&z[i+ 8]);
-//    z2 = _mm256_loadu_ps(&z[i+16]);
-//    z3 = _mm256_loadu_ps(&z[i+24]);
+    for (i0 = 0 ; i0 < limit ; i0 += block, i1 += block){
 
-    zzmin0 = _mm256_min_ps(zzmin0,z0);       // min
-    zzmax0 = _mm256_max_ps(zzmax0,z0);       // max
-    zzmin1 = _mm256_min_ps(zzmin1,z1);
-    zzmax1 = _mm256_max_ps(zzmax1,z1);
-//    zzmin2 = _mm256_min_ps(zzmin2,z2);
-//    zzmax2 = _mm256_max_ps(zzmax2,z2);
-//    zzmin3 = _mm256_min_ps(zzmin3,z3);
-//    zzmax3 = _mm256_max_ps(zzmax3,z3);
+      z0 = _mm256_loadu_ps(&z[i0]);   // stream from beginning
+      z1 = _mm256_loadu_ps(&z[i1]);   // stream from half way point
+
+      zzmin0 = _mm256_min_ps(zzmin0,z0);       // min
+      zzmax0 = _mm256_max_ps(zzmax0,z0);       // max
+      zzmin1 = _mm256_min_ps(zzmin1,z1);
+      zzmax1 = _mm256_max_ps(zzmax1,z1);
+    }
+
+    zzmin0 = _mm256_min_ps(zzmin0,zzmin1);
+    zzmax0 = _mm256_max_ps(zzmax0,zzmax1);
+    _mm256_storeu_ps(zmin,zzmin0);
+    _mm256_storeu_ps(zmax,zzmax0);
+    smax = zmax[0];
+    smin = zmin[0];
+    for (j=1 ; j<8 ; j++){
+      smax = (smax > zmax[j]) ? smax : zmax[j] ;
+      smin = (smin < zmin[j]) ? smin : zmin[j] ;
+    }
+  }else {   // n is less than 2 * blocks
+    i1 = 0;
+    smax = z_in[0] ;
+    smin = z_in[0] ;
   }
 
-  zzmin0 = _mm256_min_ps(zzmin0,zzmin1);
-  zzmax0 = _mm256_max_ps(zzmax0,zzmax1);
-//  zzmin0 = _mm256_min_ps(zzmin0,zzmin2);
-//  zzmax0 = _mm256_max_ps(zzmax0,zzmax2);
-//  zzmin0 = _mm256_min_ps(zzmin0,zzmin3);
-//  zzmax0 = _mm256_max_ps(zzmax0,zzmax3);
-  _mm256_storeu_ps(zmin,zzmin0);
-  _mm256_storeu_ps(zmax,zzmax0);
-  smax = zmax[0];
-  smin = zmin[0];
-  for (j=1 ; j<8 ; j++){
-    smax = (smax > zmax[i]) ? smax : zmax[i] ;
-    smin = (smin < zmin[i]) ? smin : zmin[i] ;
-  }
-
-  while(i<n){
+  for (i=i1 ; i<n ; i++){
     smax = (smax > z_in[i]) ? smax : z_in[i] ;
     smin = (smin < z_in[i]) ? smin : z_in[i] ;
-    i++ ;
   }
   *Max=smax;
   *Min=smin;
@@ -260,37 +270,52 @@ void MinMaxIndex(float *z_in, int n, float *Max, float *Min, int *Imax, int *Imi
   int   in07[8] = { 0, 1, 2, 3, 4, 5, 6, 7};
   float smin, smax ;
   int   xmin, xmax ;
-  float *z = z_in;
-  __m256 z0, zzmin, zzmax;
-  __m256i index, ixmax, ixmin, c8, msmin, msmax;
-  int i, j;
+  __m256 z0, z1, zzmin, zzmax;
+  __m256i index0, index1, ixmax, ixmin, c8, msmin, msmax;
+  int i, i0, i1, j;
   const int block = 8;
-  const int limit = n - block + 1;
+  int limit ;
+  int nminus ;
 
-  if(n < block) {
+  if(n < 2 * block) {
     smax = z_in[0];
     smin = smax;
     xmin = 0;
     xmax = 0;
-    i = 1;
-  }else{
-    zzmin  = _mm256_loadu_ps(&z[0]);
-    zzmax  = _mm256_loadu_ps(&z[0]);
-    index  = _mm256_loadu_si256((__m256i const *)&in07[0]);
-    ixmin  = _mm256_loadu_si256((__m256i const *)&in07[0]);
-    ixmax  = _mm256_loadu_si256((__m256i const *)&in07[0]);
+    i1 = 0;
+  }else{   // n is more than 2 blocks
+    nminus = (n / (2*block)) * (2*block);  // multiple of block * 2
+    i1 = nminus/2;                         // multiple of block
+    limit = i1 - block + 1;
+
+    zzmin  = _mm256_loadu_ps(&z_in[0]);
+    zzmax  = zzmin;
+    index0 = _mm256_loadu_si256((__m256i const *)&in07[0]);
+    index1 = _mm256_set1_epi32(i1);
+    index1 = _mm256_add_epi32(index1,index0);
+    ixmin  = index0;
+    ixmax  = index0;
     c8     = _mm256_set1_epi32(8);
 
-    for (i = 0 ; i < limit ; i += block){
-      z0 = _mm256_load_ps(z+i);
+    for (i0 = 0 ; i0 < limit ; i0 += block, i1 += block){
+      z0 = _mm256_loadu_ps(&z_in[i0]);
+      z1 = _mm256_loadu_ps(&z_in[i1]);
 
       msmin = (__m256i)_mm256_cmp_ps(zzmin,z0,_CMP_GT_OS);
       msmax = (__m256i)_mm256_cmp_ps(zzmax,z0,_CMP_LT_OS);
       zzmin = _mm256_min_ps(zzmin,z0);
       zzmax = _mm256_max_ps(zzmax,z0);
-      ixmin = _mm256_blendv_epi8(ixmin,index,msmin);
-      ixmax = _mm256_blendv_epi8(ixmax,index,msmax);
-      index = _mm256_add_epi32(index,c8);    // bump index
+      ixmin = _mm256_blendv_epi8(ixmin,index0,msmin);
+      ixmax = _mm256_blendv_epi8(ixmax,index0,msmax);
+      index0 = _mm256_add_epi32(index0,c8);    // bump index
+
+      msmin = (__m256i)_mm256_cmp_ps(zzmin,z1,_CMP_GT_OS);
+      msmax = (__m256i)_mm256_cmp_ps(zzmax,z1,_CMP_LT_OS);
+      zzmin = _mm256_min_ps(zzmin,z1);
+      zzmax = _mm256_max_ps(zzmax,z1);
+      ixmin = _mm256_blendv_epi8(ixmin,index1,msmin);
+      ixmax = _mm256_blendv_epi8(ixmax,index1,msmax);
+      index1 = _mm256_add_epi32(index1,c8);    // bump index
     }
     _mm256_storeu_ps(zmin,zzmin);
     _mm256_storeu_ps(zmax,zzmax);
@@ -310,7 +335,7 @@ void MinMaxIndex(float *z_in, int n, float *Max, float *Min, int *Imax, int *Imi
     xmin = imin[xmin];
   }
 
-  for( ; i < n ; i++ ){
+  for(i = i1 ; i < n ; i++ ){
     if(smax < z_in[i]) { smax = z_in[i] ; xmax = i ; };
     if(smin > z_in[i]) { smin = z_in[i] ; xmin = i ; };
   }
@@ -330,10 +355,9 @@ void MinMaxIndexSums(float *z_in, int n, float *Max, float *Min, int *Imax, int 
   float smin, smax;
   double sum1, sum2 ;
   int   xmin, xmax ;
-  float *z = z_in;
   __m256 z0, zzmin, zzmax;
   __m128 lo128, hi128;
-  __m256i index, ixmax, ixmin, c8, msmin, msmax;
+  __m256i index0, ixmax, ixmin, c8, msmin, msmax;
   __m256d lo128d, hi128d, sumd, sumsqr;
   int i, j;
   const int block = 8;
@@ -347,12 +371,12 @@ void MinMaxIndexSums(float *z_in, int n, float *Max, float *Min, int *Imax, int 
     xmin = 0;
     xmax = 0;
     i = 1;
-  }else{
-    zzmin  = _mm256_loadu_ps(&z[0]);
-    zzmax  = _mm256_loadu_ps(&z[0]);
-    index  = _mm256_loadu_si256((__m256i const *)&in07[0]);
-    ixmin  = _mm256_loadu_si256((__m256i const *)&in07[0]);
-    ixmax  = _mm256_loadu_si256((__m256i const *)&in07[0]);
+  }else{   // more than one block
+    zzmin  = _mm256_loadu_ps(&z_in[0]);
+    zzmax  = zzmin;
+    index0  = _mm256_loadu_si256((__m256i const *)&in07[0]);
+    ixmin  = index0;
+    ixmax  = index0;
     c8     = _mm256_set1_epi32(8);
     sumd   = _mm256_set1_pd(0.0D);   // sums starts at 0.0
     sumsqr = _mm256_set1_pd(0.0D);
@@ -360,26 +384,26 @@ void MinMaxIndexSums(float *z_in, int n, float *Max, float *Min, int *Imax, int 
     sum2 = 0;
 
     for (i = 0 ; i < limit ; i += block){
-      z0    = _mm256_load_ps(z+i);
+      z0    = _mm256_loadu_ps(&z_in[i]);
       lo128 = _mm256_extractf128_ps(z0,0);
       hi128 = _mm256_extractf128_ps(z0,1);
+      msmin = (__m256i)_mm256_cmp_ps(zzmin,z0,_CMP_GT_OS);
+      msmax = (__m256i)_mm256_cmp_ps(zzmax,z0,_CMP_LT_OS);
       lo128d= _mm256_cvtps_pd(lo128);
       hi128d= _mm256_cvtps_pd(hi128);
 
       sumd  = _mm256_add_pd(sumd,lo128d);
       lo128d= _mm256_mul_pd(lo128d,lo128d);
+      zzmin = _mm256_min_ps(zzmin,z0);
       sumd  = _mm256_add_pd(sumd,hi128d);
       hi128d= _mm256_mul_pd(hi128d,hi128d);
+      zzmax = _mm256_max_ps(zzmax,z0);
+      ixmin = _mm256_blendv_epi8(ixmin,index0,msmin);
+      ixmax = _mm256_blendv_epi8(ixmax,index0,msmax);
       sumsqr= _mm256_add_pd(sumsqr,lo128d);
       sumsqr= _mm256_add_pd(sumsqr,hi128d);
 
-      msmin = (__m256i)_mm256_cmp_ps(zzmin,z0,_CMP_GT_OS);
-      msmax = (__m256i)_mm256_cmp_ps(zzmax,z0,_CMP_LT_OS);
-      zzmin = _mm256_min_ps(zzmin,z0);
-      zzmax = _mm256_max_ps(zzmax,z0);
-      ixmin = _mm256_blendv_epi8(ixmin,index,msmin);
-      ixmax = _mm256_blendv_epi8(ixmax,index,msmax);
-      index = _mm256_add_epi32(index,c8);    // bump index
+      index0 = _mm256_add_epi32(index0,c8);    // bump index
     }
     _mm256_storeu_ps(zmin,zzmin);
     _mm256_storeu_ps(zmax,zzmax);
@@ -429,12 +453,18 @@ main()
   float Max, Min, Sum, Sum2;
   double Div;
   int Imax, Imin;
-  int i;
+  int i, j;
 
   Div = NPTS;
+  gettimeofday(&t1,NULL);
   for(i=0 ; i<NPTS; i++) Z[i] = (((i-0.5*Div)/Div)*4.0*((i-0.5*Div)/Div)) ;
   Z[0] = .5 ; Z[3] = .5 ; Z[5] = .5 ; Z[7] = 0;
+  gettimeofday(&t2,NULL);
+  T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
+  T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
+  duree = T2-T1;
   printf("NPTS=%d, z[0]=%f,z[NPTS/2]=%f,z[NPTS-1]=%f\n",NPTS,Z[0],Z[NPTS/2],Z[NPTS-1]);
+  printf("Initialization time = %d usec, %dMtok/s\n",duree,NPTS/duree);
 
 #ifdef BENCH
   MinMaxSums(Z, NPTS, &Max, &Min, &Sum, &Sum2);
@@ -512,14 +542,16 @@ main()
   printf("MinMaxSums time = %d usec, %dMtok/s\n",duree,NPTS/duree);
   printf("Min=%f, Max=%f, Sum=%f, Sum2=%f \n",Min,Max,Sum,Sum2);
 
-  gettimeofday(&t1,NULL);
-  MinMax(Z, NPTS, &Max, &Min);
-  gettimeofday(&t2,NULL);
-  T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
-  T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
-  duree = T2-T1;
-  printf("MinMax time = %d usec, %dMtok/s\n",duree,NPTS/duree);
-  printf("Min=%f, Max=%f \n",Min,Max);
+  for (j=0 ; j < NREP ; j++) {
+    gettimeofday(&t1,NULL);
+    MinMax(Z, NPTS, &Max, &Min);
+    gettimeofday(&t2,NULL);
+    T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
+    T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
+    duree = T2-T1;
+    printf("MinMax time = %d usec, %dMtok/s\n",duree,NPTS/duree);
+    if (j==0) printf("Min=%f, Max=%f \n",Min,Max);
+  }
 
   gettimeofday(&t1,NULL);
   MinMaxIndex(Z, NPTS, &Max, &Min, &Imax, &Imin);
