@@ -4,7 +4,7 @@ DISTDIR=..
 # EXTRAS  : load in local library
 EXTRAS = fstd98.o  fst_missing.o  xdf98.o
 # EXTRAS2 : do not load yet
-EXTRAS2 = float_packer.o  c_zfstlib.o vmm.o excdes_new.o mgilib2.o mgi_watch.o mgi_test.o mgi_shm.o
+EXTRAS2 = float_packer.o  c_zfstlib.o vmm.o excdes_new.o mgilib2.o mgi_watch.o mgi_test.o mgi_shm.o f_time_of_day.o
 TESTS = test_z test_p test_f test_ff test_d test_c test_excdes
 
 #RMNLIB = librmnbeta_14.819u.a
@@ -16,6 +16,9 @@ TEST_RMNLIB := Locallib/$(EC_ARCH)/lib$(NEW_RMNLIB).a
 EXTRA_LOCAL := -ILocalinclude -ILocalinclude/$(EC_ARCH) -LLocallib/$(EC_ARCH) -l$(NEW_RMNLIB)
 EXTRA_LOCAL_R := -ILocalinclude -ILocalinclude/$(EC_ARCH) -LLocallib/$(EC_ARCH) -l$(BASE_RMNLIB)
 all:	obj
+
+f_time_of_day.o:	f_time_of_day.F90
+	s.f90 -c -O 2 $<
 
 # dynamic loader interface
 mgilib2.o:	mgilib2.c
