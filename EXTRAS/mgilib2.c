@@ -765,7 +765,8 @@ int retry_connect( int chan )
  * write into shared memory buffer, character version
  ********************************************************************************************/
 static int shm_write_c(mgi_shm_buf *shm,void *buf,int nelem,int timeout){
-  volatile int in, out, limit, inplus;
+  volatile int in, out, inplus;
+  int limit;
   int ntok=nelem;
   unsigned char *str = (unsigned char *) buf;
   unsigned int token;
@@ -800,8 +801,9 @@ static int shm_write_c(mgi_shm_buf *shm,void *buf,int nelem,int timeout){
  * write into shared memory buffer, integer/real/double/character version
  ********************************************************************************************/
 static int shm_write(mgi_shm_buf *shm,void *buf,int nelem,int type,int timeout){
-  volatile int in, out, limit, inplus;
-  int ntok;
+  volatile int in, out, inplus;
+  int limit;
+  int ntok, navail;
   unsigned int *buffer = (unsigned int *) buf ;
   int maxiter = timeout*1000 ; /* 1000 iterations is one second */
   int iter;
@@ -814,6 +816,7 @@ static int shm_write(mgi_shm_buf *shm,void *buf,int nelem,int type,int timeout){
   if(type == 'D') ntok = nelem*2 ;                 /* 8 byte tokens */
 
   in = shm->in ; out = shm->out ; limit = shm->limit;
+//  fprintf(stderr,"DEBUG: Write ntok=%d\n",ntok);
   while(ntok > 0){
     inplus = (in+1 > limit) ? 0 : in+1 ;
     iter = maxiter;
@@ -822,12 +825,21 @@ static int shm_write(mgi_shm_buf *shm,void *buf,int nelem,int type,int timeout){
       usleep(1000);              /* sleep for 1 millisecond */
       out = shm->out;            /* update out pointer from shared memory */
       iter--;                    /* decrement timeout counter */
-    if(iter <= 0) return(WRITE_TIMEOUT);
+      if(iter <= 0) return(WRITE_TIMEOUT);
     }
-    shm->data[in] = *buffer;
-    in = inplus;
-    ntok--;
-    buffer++;
+    if(in >= out){   /* can write into  in -> limit except if out == 0 (can only use in -> limit-1)*/
+      navail = (limit+1) - in;
+      if(out == 0) navail--;
+    }else{          /* can write into  in -> out-1   */
+      navail = (out-1) - in;
+    }
+    navail = (navail > ntok) ? ntok : navail;             /* only need to write ntok tokens */
+    memcpy(&shm->data[in],buffer,sizeof(int)*navail);     //    shm->data[in] = *buffer;
+//    fprintf(stderr,"DEBUG: Write navail=%d, buffer = %d, %d, %d\n",navail,buffer[0],shm->data[in],in);
+    in += navail;
+    if(in > limit) in = 0;  //    in = inplus;
+    ntok -= navail;         //    ntok--;
+    buffer += navail;       //    buffer++;
   }
   shm->in = in;  /* update in pointer in shared memory */
   return(ntok*sizeof(unsigned int));
@@ -839,7 +851,8 @@ int ShmWriteBuf(mgi_shm_buf *shm,void *buf,int nelem,int type,int timeout){
  * read from shared memory buffer, character version
  ********************************************************************************************/
 static int shm_read_c(mgi_shm_buf *shm,void *buf,int nelem, int len,int timeout){
-  volatile int in, out, limit;
+  volatile int in, out;
+  int limit;
   int ntok=nelem;
   unsigned char *str = (unsigned char *) buf;
   unsigned int token;
@@ -875,8 +888,9 @@ static int shm_read_c(mgi_shm_buf *shm,void *buf,int nelem, int len,int timeout)
  * read from shared memory buffer, integer/real/double/character version
  ********************************************************************************************/
 static int shm_read(mgi_shm_buf *shm,void *buf,int nelem,int type, int len,int timeout){
-  volatile int in, out, limit;
-  int ntok, factor=1;
+  volatile int in, out;
+  int limit;
+  int ntok, navail;
   unsigned int *buffer = (unsigned int *) buf ;
   int maxiter = timeout*1000 ; /* 1000 iterations is one second */
   int iter;
@@ -885,10 +899,11 @@ static int shm_read(mgi_shm_buf *shm,void *buf,int nelem,int type, int len,int t
 
   if(type == 'C') return ( shm_read_c(shm,buf,nelem,len,timeout) );        /* characters */
   if(type != 'I' && type != 'R' && type != 'D') return(READ_ERROR) ;       /* unsupported type */
-  if(type == 'D') factor =2 ;                 /* 8 byte tokens */
-  ntok = nelem * factor;
+  ntok = nelem ;
+  if(type == 'D') ntok = nelem*2 ;                 /* 8 byte tokens */
 
   in = shm->in ; out = shm->out ; limit = shm->limit;
+//  fprintf(stderr,"DEBUG: Read ntok=%d\n",ntok);
   while(ntok > 0){
     iter = maxiter;
     while(in == out && iter > 0) {           /* shared memory circular buffer is empty */
@@ -896,15 +911,24 @@ static int shm_read(mgi_shm_buf *shm,void *buf,int nelem,int type, int len,int t
       usleep(1000);              /* sleep for 1 millisecond */
       in = shm->in;              /* update in pointer from shared memory */
       iter--;                    /* decrement timeout counter */
+      if(iter <= 0) return(READ_TIMEOUT);
     }
-    if(iter <= 0) return(READ_TIMEOUT);
-    *buffer = shm->data[out] ;
-    out = (out+1 > limit) ? 0 : out+1;   /* bump out */
-    ntok--;
-    buffer++;
+    /* at this point out cannot be equal to in */
+    if(out < in){   /* can get out -> in-1 */
+      navail = in - out;
+    }else{  /* can get out -> limit */
+      navail = (limit + 1) - out;
+    }
+    navail = (navail > ntok) ? ntok : navail;             /* only need to read ntok tokens */
+    memcpy(buffer,&shm->data[out],sizeof(int)*navail);    //    *buffer = shm->data[out] ;
+//    fprintf(stderr,"DEBUG: Read navail=%d, buffer = %d, %d, %d\n",navail,buffer[0],shm->data[out],out);
+    out += navail;                     /* bump out */
+    out = (out > limit) ? 0 : out;     //    out = (out+1 > limit) ? 0 : out+1;
+    ntok -= navail;                    //    ntok--;
+    buffer += navail;                  //    buffer++;
   }
   shm->out = out;  /* update out pointer in shared memory */
-  return(nelem*factor);
+  return(nelem);
 }
 int ShmReadBuf(mgi_shm_buf *shm,void *buf,int nelem,int type, int len,int timeout){
   return( shm_read(shm,buf,nelem,type,len,timeout) );
