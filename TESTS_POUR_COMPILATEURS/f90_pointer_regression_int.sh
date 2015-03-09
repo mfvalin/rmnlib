@@ -137,7 +137,7 @@ locarray=loc(p1d(1))
 call print_ptr1d(copy_in,locarray,p1d(1),10,1,1)
 print 100,copy_in//'p1d=>ptr1d(10), passing p1d(1)'
 
-do I=5,8,3
+do I=5,5,3
 
 print 100,'--------------------- I=',I,' ---------------------'
 100 format(A,I1,A)
