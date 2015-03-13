@@ -100,5 +100,17 @@ main()
   DateFromJulian(stamp,&yyyymmdd,&hhmmss);
   fprintf(stdout,"new date = %8.8d:%6.6d\n",yyyymmdd,hhmmss);
   fprintf(stdout,"expected = %8.8d:%6.6d\n",20160229,1530) ; /* feb 1 2015 00:1530 */
+
+  stamp = JulianSecond(2000,02,28,22,45,15) ; /* feb 28 2016 22:45:15 , leap year test */
+  stamp = stamp + 5415 ;                      /* + 1:30:15   */
+  DateFromJulian(stamp,&yyyymmdd,&hhmmss);
+  fprintf(stdout,"new date = %8.8d:%6.6d\n",yyyymmdd,hhmmss);
+  fprintf(stdout,"expected = %8.8d:%6.6d\n",20000229,1530) ; /* feb 1 2000 00:1530 */
+
+  stamp = JulianSecond(2100,02,28,22,45,15) ; /* feb 28 2100 22:45:15 , leap year test */
+  stamp = stamp + 5415 ;                      /* + 1:30:15   */
+  DateFromJulian(stamp,&yyyymmdd,&hhmmss);
+  fprintf(stdout,"new date = %8.8d:%6.6d\n",yyyymmdd,hhmmss);
+  fprintf(stdout,"expected = %8.8d:%6.6d\n",21000301,1530) ; /* feb 1 2015 00:1530 */
 }
 #endif
