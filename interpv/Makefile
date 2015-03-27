@@ -50,7 +50,7 @@ TARRLS = beta
 
 default: obj
 
-include $(ARMNLIB)/include/makefile_suffix_rules.inc
+include $(RPN_TEMPLATE_LIBS)/include/makefile_suffix_rules.inc
 
 Interp1D_Arguments_X.cdk : Interp1D_Arguments.cdk
 Interp1D_Constants.o : Interp1D_Constants.ftn90 Interp1D_Arguments_X.cdk

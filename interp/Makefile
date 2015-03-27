@@ -20,12 +20,12 @@ DEFINE = -DFICHSTD98
 
 SUPP_OPT = -openmp
 
-#OPTIMIZ = -O 2
+OPTIMIZ = -O 2
 #OPTIMIZ = -O 3 -fast
-C_OPTIMIZ = -O 2
-F_OPTIMIZ = -O 2
+#C_OPTIMIZ = -O 2
+#F_OPTIMIZ = -O 2
 
-CPPFLAGS = -I$(ARMNLIB)/include
+CPPFLAGS = -I$(RPN_TEMPLATE_LIBS)/include
 
 MYLIB = $(ARMNLIB)/lib/$(EC_ARCH)$(ABI)/librmnbeta.a
 
@@ -42,7 +42,7 @@ default: obj
 .DEFAULT:
 	co $@
 
-include $(ARMNLIB)/include/makefile_suffix_rules.inc
+include $(RPN_TEMPLATE_LIBS)/include/makefile_suffix_rules.inc
 
 OBJET = f_ezscint.o c_ezscint.o
 
@@ -61,14 +61,14 @@ ez_funcdef.h   ezscint.h
 
 FICHIERS = $(FICHIERS_FTN90) $(FICHIERS_C)
 
-libezscint: f_ezscint.o c_ezscint.o
-	ar rv libezscint-590.a.fl c_ezscint.o f_ezscint.o
+#libezscint: f_ezscint.o c_ezscint.o
+#	ar rv libezscint-590.a.fl c_ezscint.o f_ezscint.o
 
-f_ezscint.o: f_ezscint.ftn90
-	s.compile -src f_ezscint.ftn90 $(F_OPTIMIZ)
+#f_ezscint.o: f_ezscint.ftn90
+##	s.compile -src f_ezscint.ftn90 $(F_OPTIMIZ)
 
-c_ezscint.o: c_ezscint.c
-	s.compile -src c_ezscint.c $(C_OPTIMIZ)
+#c_ezscint.o: c_ezscint.c
+#	s.compile -src c_ezscint.c $(C_OPTIMIZ)
 
 obj: $(OBJET)
 #Produire les fichiers objets (.o) pour tous les fichiers
