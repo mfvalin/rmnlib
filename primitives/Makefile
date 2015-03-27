@@ -2,7 +2,7 @@
 
 .SUFFIXES : .ftn90 .f90 .ftn .f .c .o .a
 
-include rmnlib_version.inc
+include ../rmnlib_version.inc
 
 SHELL = /bin/sh
 
