@@ -16,7 +16,7 @@ cat <<EOT >rmnlib_version.f
 *
         version = 
      %  "  RMNLIB  -  Release:"//
-     %  " 15.2"//
+     %  " ${1:-unknown}"//
      %  " ${EC_ARCH} $(date)"
 	if (prnt) print *,version
 	return
