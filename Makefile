@@ -1,6 +1,8 @@
 SHELL = /bin/sh
 
-LIBNAME = librmnbeta
+include rmnlib_version.inc
+
+LIBNAME = librmn_$(RMNLIB_VERSION)
 
 WORKDIR = ./WorkDir
 
