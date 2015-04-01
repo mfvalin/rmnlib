@@ -61,6 +61,7 @@
 *
 *------------------------------------------------------------------------
 *
+      REAL*8 A, B, VIJ, FIJ, FI1J, VI1J, FIJ1, VIJ1
       S1 = 99999.
 *
       IF (IGL.NE.1.AND.IGL.NE.2) RETURN
@@ -88,8 +89,8 @@
       VIJ1 = V(I,J+1)
       A = A + ABS(FIJ-FI1J-VIJ+VI1J)
      1      + ABS(FIJ-FIJ1-VIJ+VIJ1)
-      B = B + AMAX1( ABS(FIJ-FI1J), ABS(VIJ-VI1J))
-     1      + AMAX1( ABS(FIJ-FIJ1), ABS(VIJ-VIJ1))
+      B = B + MAX( ABS(FIJ-FI1J), ABS(VIJ-VI1J))
+     1      + MAX( ABS(FIJ-FIJ1), ABS(VIJ-VIJ1))
    10 CONTINUE
 *
       IF (B.NE.0.) S1 = (A/B) * 100.
