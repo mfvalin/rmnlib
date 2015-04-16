@@ -2,6 +2,8 @@
 
 .SUFFIXES : .ftn90 .f90 .ftn .f .c .o .a
 
+include ../rmnlib_version.inc
+
 SHELL = /bin/sh
 
 CPP = /lib/cpp
@@ -20,7 +22,7 @@ FTN_SUPP_OPT = -ignorempty
 
 RMNLIB_BASE_PATH=$(ARMNLIB)
 
-CPPFLAGS = -I$(ARMNLIB)/include
+CPPFLAGS = -I$(RPN_TEMPLATE_LIBS)/include
 
 MYLIB = $(RMNLIB_BASE_PATH)/lib/$(EC_ARCH)$(ABI)/librmnbeta.a
 
@@ -38,20 +40,26 @@ default: obj
 
 rmnlib_v:
 	-rm rmnlib_version.f
-	./rmnlib_version
+	./rmnlib_version $(RMNLIB_VERSION)
 
+rmnlib_version.f: rmnlib_v
+	
 rmnlib_v_sed: 
 	sed "s@EC_ARCH_VAR Date_of_Build@$(EC_ARCH) `date +%c| cut -d' ' -f1-6`@" rmnlib_version.f > rmnlib_version_new.f
 	mv rmnlib_version_new.f rmnlib_version.f
 
-rmnlib_version.o: rmnlib_v_sed
-$(TEMPLIB)(rmnlib_version.o): rmnlib_v_sed rmnlib_version.o
+#rmnlib_version.o: rmnlib_v_sed
+rmnlib_version.o: rmnlib_v rmnlib_version.f
+
+#$(TEMPLIB)(rmnlib_version.o): rmnlib_v_sed rmnlib_version.o
+$(TEMPLIB)(rmnlib_version.o): rmnlib_v rmnlib_version.o
+
 #	-rm rmnlib_version.f
 #	./rmnlib_version
 #	r.compile -arch $(EC_ARCH) -abi $(ABI) $(OPTIMIZ) -opt "=$(FFLAGS)" -src $*.f
 
-include $(ARMNLIB)/include/makefile_suffix_rules.inc
-#include /users/dor/armn/lib/utils/new_makefile_suffix_rules.inc
+include $(RPN_TEMPLATE_LIBS)/include/makefile_suffix_rules.inc
+#include $(RPN_TEMPLATE_LIBS)/include/new_makefile_suffix_rules.inc
 
 FTNDECKS= \
          ieeepak.ftn \
@@ -190,4 +198,4 @@ clean:
 	rm -f $$fn.f; \
 	done \
 	fi
-	rm -f *.o
+	rm -f *.o rmnlib_version.f

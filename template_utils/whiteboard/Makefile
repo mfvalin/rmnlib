@@ -19,7 +19,7 @@ FICHIERS = whiteboard_interface_st.cdk whiteboard_interface_omp.cdk whiteboard.t
 
 OBJECTS = whiteboard_omp.o whiteboard_st.o WhiteBoard.o
 
-include $(ARMNLIB)/include/makefile_suffix_rules.inc
+include $(RPN_TEMPLATE_LIBS)/include/makefile_suffix_rules.inc
 
 all:	whiteboard_st.o whiteboard_omp.o WhiteBoard.o whiteboard_interface_st.cdk whiteboard_interface_omp.cdk
 
@@ -57,9 +57,9 @@ whiteboard_interface_omp.cdk: whiteboard_interface.cdk90
 	mv whiteboard_interface.f90 whiteboard_interface_omp.cdk
 
 check: whiteboard_interface_st.cdk whiteboard_interface_omp.cdk WhiteBoard.h
-	-diff whiteboard_interface_st.cdk $(ARMNLIB)/include/whiteboard_interface_st.cdk
-	-diff whiteboard_interface_omp.cdk $(ARMNLIB)/include/whiteboard_interface_omp.cdk
-	-diff WhiteBoard.h $(ARMNLIB)/include/WhiteBoard.h
+	-diff whiteboard_interface_st.cdk $(RPN_TEMPLATE_LIBS)/include/whiteboard_interface_st.cdk
+	-diff whiteboard_interface_omp.cdk $(RPN_TEMPLATE_LIBS)/include/whiteboard_interface_omp.cdk
+	-diff WhiteBoard.h $(RPN_TEMPLATE_LIBS)/include/WhiteBoard.h
 
 dist: $(FICHIERS)
 	ls -al $(FICHIERS) Makefile
