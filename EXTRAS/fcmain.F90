@@ -70,6 +70,7 @@ program fcmain
 ! }
 !==================================================================================
 ! example for python interpreter
+! s.f90 "-DMY_C_MAIN='test_main'"  fcmain.F90 mypython.o -lpython2.7
 !
 ! cat mypython.c
 ! test_main(int argc, char** argv)
