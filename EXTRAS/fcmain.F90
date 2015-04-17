@@ -110,6 +110,6 @@ program fcmain
     argv(i) = C_LOC(arg1(1))                                  ! put pointer into slot i of array of argument pointers
   enddo
   argtab = C_LOC(argv(0))          ! pointer to array of pointers to individual arguments
-  status = c_main(nargs,argtab)    ! call our C main, ginving it what it expects (int argc, char**argv)
+  status = c_main(nargs+1,argtab)    ! call our C main, ginving it what it expects (int argc, char**argv)
   stop
 end
