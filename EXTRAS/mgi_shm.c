@@ -18,7 +18,7 @@
  */
 
 /*
-Author: Michel Valin, UQAM, 2014/03/10
+Author: Michel Valin, UQAM, 2015/06/30
 
 This program runs in the background and terminates when the parent process terminates.
 It will also terminate if a specified number of "attaches" to the memory segment occurred.
@@ -26,7 +26,7 @@ It will also terminate if a specified number of "attaches" to the memory segment
 Before it terminates, the program will mark the memory segment for destruction
 
 It expects two or three input parameters:
-Arg1  : -q    (quiet monitoring mode)
+Arg1  : -v    (verbose monitoring mode)
 Arg1/2: size of a shared memory segment to create and watch
 Arg2/3: channel name for mgi
 
@@ -51,7 +51,7 @@ The program will wait 20 milliseconds between checks of parent process existence
 
 static void usage(char *my_name)
 {
-  fprintf(stderr,"usage: %s [-q] shm_size[M] mgi_channel_name\n",my_name);
+  fprintf(stderr,"usage: %s [-vdelay_ms] shm_size[M] mgi_channel_name\n",my_name);
   fprintf(stderr,"   shm_size = shared memory segment size in [K/M]Bytes\n");
   exit(1);
 }
@@ -92,9 +92,11 @@ stddiag = stderr;
 
 if(argc < 2) usage(my_name);
 
-if(strcmp("-v",argv[1])==0) {
-  fprintf(stderr,"INFO: verbose mode active\n");
+if(strncmp("-v",argv[1],2)==0) {
+  char *duration=argv[1]+2;
   verbose = 1;
+  if(*duration != '\0') sleep_duration=1000*atoi(duration);
+  fprintf(stderr,"INFO: verbose mode active, delay= %d microseconds\n",sleep_duration);
   argv++;
   argc--;
 }
