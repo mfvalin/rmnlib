@@ -394,7 +394,7 @@ static INT_32 FloatPacker_1_new(float *source, INT_32 nbits, INT_32 *header, INT
   floatint fmin,fmax,temp,temp2;
   float decoded;
   INT_32 n;  // npts < 0 if outgoing stream is 16 bit tokens (shorts)
-  INT_32 MaxExp, Exp, Mask, Mantis, Shift, Minimum, Maximum, Src, Shift2, Store, Accu, Round, Sgn, MaxMax;
+  INT_32 MaxExp, Exp, Mask, Mantis, Shift, Minimum, Maximum, Src, Shift2, Store, Accu, Round, Sgn, MaxMax, Range;
   int stream_16bit = 0;
 
 #if defined(__SSE2__)
@@ -683,7 +683,7 @@ static INT_32 FloatPacker_1(float *source, INT_32 nbits, INT_32 *header, void *s
   floatint fmin,fmax,temp,temp2;
   float decoded;
   INT_32 n;  // npts < 0 if outgoing stream is 16 bit tokens (shorts)
-  INT_32 MaxExp, Exp, Mask, Mantis, Shift, Minimum, Maximum, Shift2, Store, Round, Sgn, MaxMax ;
+  INT_32 MaxExp, Exp, Mask, Mantis, Shift, Minimum, Maximum, Shift2, Store, Round, Sgn, MaxMax, Range ;
   int Src, Src2, Src3;
   int stream_16bit = 0;
   int ShiftMantis, ShiftAccu;
@@ -725,19 +725,22 @@ static INT_32 FloatPacker_1(float *source, INT_32 nbits, INT_32 *header, void *s
   Minimum= Mantis;
   if (Exp < 1) Minimum = 0;
 
-  Maximum = Maximum - Minimum;              /* largest integer left after subtracting minimum mantissa */
+//  Maximum = Maximum - Minimum;
   Shift2 = 0;
   Round  = 1;                               /* rounding quantity */
   Mask   = ~( -1 << nbits);                /* right mask of nbits bits */
-  while ( Maximum > Mask ) {               /* Maximum must fit within *nbits bits */
-    Maximum = Maximum >> 1;
+  Range = Maximum - Minimum;             /* largest integer left after subtracting minimum mantissa */
+fprintf(stderr,"range = %d, mask = %8.8x, Minimum = %8.8x, Minimum = %8.8x \n",Range,Mask,Minimum,(Minimum>>Shift2)<<Shift2);
+  while ( Range > Mask ) {               /* Maximum must fit within *nbits bits */
     Round = Round << 1;
     Shift2++;
+    Minimum = (Minimum >> Shift2) << Shift2;   /* get rid of low order bits (rounded minimum) */
+    Range   = (Maximum - Minimum) >> Shift2;
     }
   Round = Round >> 1;                       /* this bit ends up vis a vis last bit shifted out */
+fprintf(stderr,"shift2 = %d, round = %8.8x, Minimum = %8.8x, Minimum = %8.8x \n",Shift2,Round,Minimum,(Minimum>>Shift2)<<Shift2);
   header[1] = Minimum;                      /* store minimum, maxexp, shift2, npts into header (64 bits) */
   header[0] = header[0] | ((MaxExp & 0xFF) << 8) | (Shift2 & 0xFF);
-
   /* encode then decode max value to see if decoded value > original max */
   Src = fmax.i;                           /* encode maximum value */
 
@@ -816,15 +819,14 @@ static INT_32 FloatPacker_1(float *source, INT_32 nbits, INT_32 *header, void *s
     dest[i+high] = Mantis ;
     Src = Src3;
   }
-  if(n3 < n){    /* n was odd, process las number */
+  if(n3 < n){    /* n was odd, process last number */
     Mantis = (1 << 23) | ( 0x7FFFFF & Src );
     Exp    = (Src >> 23) & 0xFF;
     Shift  = MaxExp - Exp;
     if (Shift > 31) Shift = 31;
     Mantis = Mantis >> Shift;
     if( Src  & 0x80000000 ) Mantis = - Mantis;
-//    Mantis = Mantis - Minimum;              /* subtract minimum from mantissa */
-    Mantis = Mantis + Round;                /* add rounding term */
+    Mantis = Mantis + Round;                /* subtract minimum from mantissa while rounding */
     Mantis = Mantis >> Shift2;              /* force to fit within nbits bits */
     if (Mantis > Mask) Mantis = Mask;
 
@@ -956,7 +958,8 @@ int main()
   FloatPacker_params(&header_size, &stream_size, &p1, &p2, npts);
   printf("header_size,stream_size=%d,%d\n",header_size,stream_size);
 
-  for ( i=0 ; i<NPTS ; i++ ) { source[i]=i*1.234-1123.123; };
+//  for ( i=0 ; i<NPTS ; i++ ) { source[i]=i*1.234-1123.123; }; source[10] = 0.0;
+  for ( i=0 ; i<NPTS ; i++ ) { source[i]=i*1.234-300000.1; }; source[10] = 0.0;
   printf("source[0],source[1],source[NPTS-2],source[NPTS-1]=%f,%f,%f,%f\n",source[0],source[1],source[NPTS-2],source[NPTS-1]);
 
   gettimeofday(&t1,NULL);
@@ -1006,6 +1009,7 @@ int main()
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
+  printf("source[10] = %f, expected 0.0 \n",source2[10]);
   printf("ORIGINAL unpacking time = %d usec, %dMtok/s, npts=%d\n",duree,NPTS/duree,npts);
   printf("source2[0],source2[1],source2[NPTS-2],source2[NPTS-1]=%f,%f,%f,%f\n",source2[0],source2[1],source2[NPTS-2],source2[NPTS-1]);
 
@@ -1033,6 +1037,7 @@ int main()
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
+  printf("source[10] = %f, expected 0.0 \n",source2[10]);
   printf("NEW unpacking time = %d usec, %dMtok/s, npts=%d\n",duree,NPTS/duree,npts);
   printf("source2[0],source2[1],source2[NPTS-2],source2[NPTS-1]=%f,%f,%f,%f\n",source2[0],source2[1],source2[NPTS-2],source2[NPTS-1]);
 
@@ -1055,6 +1060,7 @@ int main()
   T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
   T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
   duree = T2-T1;
+  printf("source[10] = %f, expected 0.0 \n",source2[10]);
   printf("unpacking time = %d usec, %dMtok/s\n",duree,NPTS/duree);
 
   printf("source2[0],source2[1],source2[NPTS-2],source2[NPTS-1]=%f,%f,%f,%f\n",source2[0],source2[1],source2[NPTS-2],source2[NPTS-1]);
