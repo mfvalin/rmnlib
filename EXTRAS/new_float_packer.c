@@ -551,7 +551,14 @@ static INT_32 FloatPacker_1_new(float *source, INT_32 nbits, INT_32 *header, INT
       shift = _mm_sub_epi32(shift,exp);
       shift = _mm_min_epi16(shift,x1F);    // shift = min(shift,31) (works because number < 16 bits)
       mantis = _mm_srl_epi32(mantis,shift);  // wrong instruction , need avx2 _mm[256]_srlv_epi32
-      exp = _mm_xor_si128(exp,exp);
+//    (if sign == -1) mantis = -mantis
+                                           // in 2's complement -a = ~a + 1
+      mantis = _mm_xor_si128(mantis,sign); // mantis XOR sign  if sign is -1, mantis XOR sign = ~mantis, mantis - sign = ~mantis +1 = -mantis
+      mantis = _mm_sub_epi32(mantis,sign); // mantis-sign      if sign is 0,  mantis XOR sign = mantis,  mantis - sign = mantis
+      mantis = _mm_sub_epi32(mantis,minimum);   // mantis-minimum
+      mantis = _mm_add_epi32(mantis,round);     // mantis-minimum + round
+//    (if sign == -1) mantis = -mantis  (old way)
+      exp = _mm_xor_si128(exp,exp);         // 0
       exp = _mm_sub_epi32(exp,mantis);      // -mantis
       exp = _mm_and_si128(exp,sign);        // -mantis where sign is -1, 0 elsewhwere
       sign = _mm_andnot_si128(sign,mantis); // mantis where sign is 0, 0 elsewhwere
@@ -559,7 +566,8 @@ static INT_32 FloatPacker_1_new(float *source, INT_32 nbits, INT_32 *header, INT
       sign = _mm_sub_epi32(sign,minimum);   // -minimum
       sign = _mm_add_epi32(sign,round);     // + round
       mantis = sign;   // should really be min(mantis,Mask)
-      mantis = _mm_shufflelo_epi16(mantis,0xB1);   // 2,3,0,1 order
+//
+      mantis = _mm_shufflelo_epi16(mantis,0xB1);   // 2,3,0,1 order (32/16 bit endian shuffle)
       _mm_storel_pi((__m64 *)stream,(__m128)mantis);
       stream = stream + 2;
     }
