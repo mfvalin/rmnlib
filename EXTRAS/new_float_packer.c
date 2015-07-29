@@ -381,9 +381,9 @@ static INT_32 FloatUnpacker_1(float *dest, INT_32 *header, INT_32 *stream, int n
     header  : pointer to 64 bit header for this block
     stream  : pointer to packed stream (16 bits per token, 32 bit aligned at start)
     npts    : number of values to unpack  ( max 32768)
-            : npts < 0 indicates a stream made of 16 bit tokens of type short arther than int
+            : npts < 0 indicates a stream made of 16 bit tokens of type short rather than int
 
-    return value is 0 if there is no error, the number of point discrepancy otherwise
+    return value is 0 if there is no error, the number of points discrepancy otherwise
 
    ===================================================================================================== */
 
@@ -464,7 +464,7 @@ static INT_32 FloatPacker_1_new(float *source, INT_32 nbits, INT_32 *header, INT
   Mantis = Mantis >> Shift;
   if( Src >> 31 ) Mantis = - Mantis;
   Maximum= Mantis;
-  if (Exp < 1) Maximum = 0;
+  if (Exp < 1) Maximum = 0;                  /* denormalized number */
 
   Src    = fmin.i;                           /* dissect Minimum value */
   Mantis = (1 << 23) | ( 0x7FFFFF & Src );
@@ -474,8 +474,20 @@ static INT_32 FloatPacker_1_new(float *source, INT_32 nbits, INT_32 *header, INT
   Mantis = Mantis >> Shift;
   if( Src >> 31 ) Mantis = - Mantis;
   Minimum= Mantis;
-  if (Exp < 1) Minimum = 0;
+  if (Exp < 1) Minimum = 0;                  /* denormalized number */
 
+#if ! defined(OLD_CODE)
+  Shift2 = 0;
+  Round  = 1;                            /* rounding quantity */
+  Mask   = ~( -1 << nbits);              /* right mask of nbits bits */
+  Range = Maximum - Minimum;             /* largest integer left after subtracting minimum mantissa */
+  while ( Range > Mask ) {               /* Maximum must fit within *nbits bits */
+    Round = Round << 1;
+    Shift2++;
+    Minimum = (Minimum >> Shift2) << Shift2;   /* get rid of low order bits (rounded minimum) */
+    Range   = (Maximum - Minimum) >> Shift2;
+    }
+#else
   Maximum = Maximum - Minimum;              /* largest integer left after subtracting minimum mantissa */
   Shift2 = 0;
   Round  = 1;                               /* rounding quantity */
@@ -485,6 +497,8 @@ static INT_32 FloatPacker_1_new(float *source, INT_32 nbits, INT_32 *header, INT
     Round = Round << 1;
     Shift2++;
     }
+#endif
+
   Round = Round >> 1;                       /* this bit ends up vis a vis last bit shifted out */
   header[1] = Minimum;                      /* store minimum, maxexp, shift2, npts into header (64 bits) */
   header[0] = header[0] | ((MaxExp & 0xFF) << 8) | (Shift2 & 0xFF);
@@ -730,7 +744,7 @@ static INT_32 FloatPacker_1(float *source, INT_32 nbits, INT_32 *header, void *s
   Round  = 1;                               /* rounding quantity */
   Mask   = ~( -1 << nbits);                /* right mask of nbits bits */
   Range = Maximum - Minimum;             /* largest integer left after subtracting minimum mantissa */
-fprintf(stderr,"range = %d, mask = %8.8x, Minimum = %8.8x, Minimum = %8.8x \n",Range,Mask,Minimum,(Minimum>>Shift2)<<Shift2);
+//fprintf(stderr,"range = %d, mask = %8.8x, Minimum = %8.8x, Minimum = %8.8x \n",Range,Mask,Minimum,(Minimum>>Shift2)<<Shift2);
   while ( Range > Mask ) {               /* Maximum must fit within *nbits bits */
     Round = Round << 1;
     Shift2++;
@@ -738,7 +752,7 @@ fprintf(stderr,"range = %d, mask = %8.8x, Minimum = %8.8x, Minimum = %8.8x \n",R
     Range   = (Maximum - Minimum) >> Shift2;
     }
   Round = Round >> 1;                       /* this bit ends up vis a vis last bit shifted out */
-fprintf(stderr,"shift2 = %d, round = %8.8x, Minimum = %8.8x, Minimum = %8.8x \n",Shift2,Round,Minimum,(Minimum>>Shift2)<<Shift2);
+//fprintf(stderr,"shift2 = %d, round = %8.8x, Minimum = %8.8x, Minimum = %8.8x \n",Shift2,Round,Minimum,(Minimum>>Shift2)<<Shift2);
   header[1] = Minimum;                      /* store minimum, maxexp, shift2, npts into header (64 bits) */
   header[0] = header[0] | ((MaxExp & 0xFF) << 8) | (Shift2 & 0xFF);
   /* encode then decode max value to see if decoded value > original max */
@@ -839,9 +853,10 @@ fprintf(stderr,"shift2 = %d, round = %8.8x, Minimum = %8.8x, Minimum = %8.8x \n"
 /* =====================================================================================================
     floating point unpacker (works by making multiple calls to the single block unpacker)
     dest    : pointer to output array of floating point numbers
-    header  : pointer to 64 bit header for this block
-    stream  : pointer to packed stream (16 bits per token, 32 bit aligned at start)
-    npts    : pointer to number of values to unpack
+    header  : pointer to 192 bit header for this block
+    stream  : pointer to packed input stream (16 bits per token, 32 bit aligned at start)
+    npts_in : number of values to unpack (input)
+              npts_in < 0 if outgoing stream is 16 bit tokens (shorts)
     nbits   : pointer to number of useful bits in token (output)
 
     pointers are used where values could have been to make this routine FORTRAN callable
@@ -849,7 +864,7 @@ fprintf(stderr,"shift2 = %d, round = %8.8x, Minimum = %8.8x, Minimum = %8.8x \n"
     subroutine FloatUnpacker(VALUES,HEADER,STREAM,NPTS,NBITS)
     integer *4 NPTS, HEADER(2), STREAM(NPTS/2, NBITS)
     real *4 VALUES(NPTS)
-    return value is zero if OK, error code from FloatUnpacker_1 otherwise
+    return value is zero if OK, error code from FloatUnpacker_1 or -1 otherwise
    ===================================================================================================== */
 
 INT_32 FloatUnpacker(float *dest, INT_32 *header, void *stream, int npts_in, INT_32 *nbits)
@@ -874,11 +889,11 @@ INT_32 FloatUnpacker(float *dest, INT_32 *header, void *stream, int npts_in, INT
 /* =====================================================================================================
     floating point packer (works by making multiple calls to the single block packer)
     source  : pointer to input array of floating point numbers
-    nbits   : pointer to number of useful bits in token
-    header  : pointer to 64 bit header for this block
+    nbits   : number of useful bits in token  (> 0 and <= 16)
+    header  : pointer to 192 bit header for this block
     stream  : pointer to packed stream (16 bits per token, 32 bit aligned at start)
-    npts    : pointer to number of values to unpack
-
+    npts    : number of values to unpack (input)
+              npts < 0 if outgoing stream is 16 bit tokens (shorts)
     pointers are used where values could have been to make this routine FORTRAN callable
 
     integer function FloatPacker(VALUES,NBITS,HEADER,STREAM,NPTS)
@@ -893,18 +908,19 @@ INT_32 FloatPacker(float *source, INT_32 nbits, INT_32 *header, INT_32 *stream, 
     printf("FloatUnpacker: ERROR nbits must be > 0 and <= 16 ,nbits = %d\n",nbits);
     return -1;
     }
-  header[2] = (npts > 0) ? npts : -npts;      /* number of values */
+  header[2] = (npts > 0) ? npts : -npts;            /* number of values */
   header[0] = ( 0xEFF << 20 );
-  header[0] = header[0] | ( ( nbits - 1 ) << 16 );
-//  fprintf(stderr,"FloatPacker: npts=%d\n",header[2]);
+  header[0] = header[0] | ( ( nbits - 1 ) << 16 );  /* max exponent and shift count will be added by FloatPacker_1 */
+  /* header[1] will be set by FloatPacker_1                                   */
+
   if( FloatPacker_1(source, nbits, header, stream, npts) ) return -1;  /* return -1 on error */
   return  0 ;   /* return 0 if no error */
 }
 /* =====================================================================================================
    get lengths of various elements of packed data
-   header_size  : pointer to size of header part
-   stream_size  : pointer to size of stream part
-   npts         : pointer to number of values
+   header_size  : pointer to size of header part (output in bytes)
+   stream_size  : pointer to size of stream part (output in bytes)
+   npts_in      : number of values (the sign of npts_in is ignored) (input)
    p1,p2        : reserved for future expansion, a value of zero is returned now
 
    subroutine FloatPacker_params(HEADER_SIZE,STREAM_SIZE,P1,P2,NPTS)
