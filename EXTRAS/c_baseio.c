@@ -810,7 +810,7 @@ static int qqcclos(int indf)
      return(1);
      }
      
-  if (FGFDT[indf].attr.remote) {
+  if (FGFDT[indf].attr.remote) {      /* remote file */
     int *s_ID, *addr, *nw, *RW_mode, *checksum;
     int sock_comm_ID=0xBABE;
     int demande[5];
@@ -836,8 +836,7 @@ static int qqcclos(int indf)
       fprintf(stderr,"socket qqcclos error: wrote only %d bytes to server\n",nc);
       fflush(stderr);
       }
-  } /* end remote */
-  else {
+  } else {      /* local file */
     if (WA_PAGE_SIZE != 0) {
       wa_pages_flush(ind);
       if (wafile[ind].nb_page_in_use != 0)
@@ -847,8 +846,8 @@ static int qqcclos(int indf)
       wafile[ind].nb_page_in_use = 0;
       if (debug_mode > 1) {
         fprintf(stderr,"Debug fermeture du fichier ind=%d, fd=%d\n",ind,lfd);
-        }
-      }    
+      }
+    }    
   }
   wafile[ind].file_desc = -1;
   FGFDT[indf].fd = -1;

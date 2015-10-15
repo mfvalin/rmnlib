@@ -184,8 +184,10 @@ extern void *read_record (int fclient, void *buf, int *longueur, int maxlongueur
 extern char *get_gossip_dir (int display);
 
 extern void init_client_table ();
+#if ! defined(WITHOUT_GOSSIP)
 extern void set_client_timeout (int fclient, int timeout);
 extern int get_client_timeout (int fclient);
+#endif
 extern int close_channel (int fclient, char *channel);
 
 extern int get_stream_timeout(int gchannel);
@@ -220,11 +222,13 @@ void f77_name (mgi_set_timeout) (ftnword *chan, ftnword *timeout)
   int channel = *chan;
   if(validchan(channel) != 0) return; /* invalid channel */
 
+#if ! defined(WITHOUT_GOSSIP)
   set_client_timeout(chn[channel].gchannel, (int) *timeout);
+#endif
   chn[channel].timeout = *timeout;  /* timeout value useful locally for shared memory communications */
 }
 
-static void strcopy( char *s, char *t, int charlen )
+static void strcopy( char *s, char *t, F2Cl charlen )
 /* to copy a string given by a fortran routine and place the NULL
  *        character at the end of the true (charlen) length of the string */
 {
@@ -337,6 +341,7 @@ static void removepidfile()
 }
 #endif
 
+#if ! defined(WITHOUT_GOSSIP)
 /********************************************************************************************
  * nb = bwrite(chan,buffer,nelem,dtype) : send data to channel "chan"
  * chan   : channel number
@@ -420,7 +425,7 @@ static int bwrite ( int chan, void *buffer, int nelem, char *dtype )
 
   return nb;
 }
-
+#endif
 /********************************************************************************************
  * close a channel and signal that it can be opened in another mode
  *
@@ -465,6 +470,7 @@ ftnword f77_name (mgi_clos) (ftnword *f_chan)
     return 0;
   }  /* shared memory channel  */
 
+#if ! defined(WITHOUT_GOSSIP)
   if(chn[chan].gchannel != 0)   /* TCP/IP channel */
     {
       snprintf(buf, 1023, "%s %s", "END", chn[chan].name);
@@ -478,7 +484,7 @@ ftnword f77_name (mgi_clos) (ftnword *f_chan)
       chn[chan].buffer = NULL;
     }
   return ier;
-
+#endif
 }
 int C_mgi_clos (int c_chan){
   ftnword f_chan=c_chan;
@@ -509,6 +515,7 @@ ftnword f77_name (mgi_term) ()
         continue;
       }
 
+#if ! defined(WITHOUT_GOSSIP)
       if(chn[chan].name && strcmp((char *)chn[chan].name, "") && chn[chan].gchannel > 0)    /* TCP/IP channel */
 	{
 	  ier = send_command("END");
@@ -520,6 +527,7 @@ ftnword f77_name (mgi_term) ()
 	      chn[chan].buffer = NULL;
 	    }
 	}
+#endif
     }
 
   return ier;
@@ -657,34 +665,42 @@ ftnword f77_name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
   if (*mode == 'W')
     {
       if(chn[chan].shmbuf == NULL) {   /* not a shared memory channel */
+#if ! defined(WITHOUT_GOSSIP)
         chn[chan].gchannel = connect_to_subchannel_by_name( get_gossip_dir(0), chn[chan].name, "write" );
 
         if( chn[chan].gchannel < 0 )
           chn[chan].gchannel = retry_connect( chan );
+#endif
       } else {   /* it is  a shared memory channel, initialize it for write  */
         shm = chn[chan].shmbuf;
         if(shm->write_status != MGI_SHM_IDLE && force == 0) return CONNECTION_ERROR;  /* not initialized for write or already connected for write */
         shm->write_status = MGI_SHM_ACTIVE;  /* mark as connected for write */
         chn[chan].gchannel = 100000+chan ;   /* fake fd */
         chn[chan].mode = 'W';
+#if ! defined(WITHOUT_GOSSIP)
         chn[chan].timeout =  get_client_timeout(chn[chan].gchannel);     /* get timeout value for this channel */
+#endif
       }
 
     }
   else if (*mode == 'R')
     {
       if(chn[chan].shmbuf == NULL) {   /* not a shared memory channel */
+#if ! defined(WITHOUT_GOSSIP)
         chn[chan].gchannel = connect_to_subchannel_by_name( get_gossip_dir(0), chn[chan].name, "read" );
 
         if( chn[chan].gchannel < 0 )
           chn[chan].gchannel = retry_connect( chan );
+#endif
       } else {   /* it is  a shared memory channel, initialize it for read */
         shm = chn[chan].shmbuf;
         if(shm->read_status != MGI_SHM_IDLE && force == 0) return CONNECTION_ERROR;  /* not initialized for write or already connected for write */
         shm->read_status = MGI_SHM_ACTIVE;  /* mark as connected for read */
         chn[chan].gchannel = 100000+chan ;   /* fake fd */
         chn[chan].mode = 'R';
+#if ! defined(WITHOUT_GOSSIP)
         chn[chan].timeout =  get_client_timeout(chn[chan].gchannel);     /* get timeout value for this channel */
+#endif
       }
     }
   else if (*mode == 'S')
@@ -702,9 +718,10 @@ ftnword f77_name (mgi_open) (ftnword *f_chan, char *mode, F2Cl lmode)
       return CONNECTION_ERROR;
     }
 
+#if ! defined(WITHOUT_GOSSIP)
   /* initialize timeout table */
   init_client_table( chn[chan].gchannel );
-
+#endif
   if (SIG_ACTIVE)
   {
     fprintf(stderr,"INFO: (mgi_open) Opening channel: '%s' , mode = '%c'\n", chn[chan].name, *mode) ;
@@ -718,6 +735,7 @@ int C_mgi_open (int c_chan, char c_mode){
   return( f77_name (mgi_open) (&f_chan, &mode, lmode) );
 }
 
+#if ! defined(WITHOUT_GOSSIP)
 /********************************************************************************************
  * connection helpers
  * call mgi_set_retry_connect(number_of_retries)
@@ -760,7 +778,7 @@ int retry_connect( int chan )
   return chn[chan].gchannel;
 
 }
-
+#endif
 /********************************************************************************************
  * write into shared memory buffer, character version
  ********************************************************************************************/
@@ -991,6 +1009,7 @@ ftnword f77_name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, c
     }
   }
 
+#if ! defined(WITHOUT_GOSSIP)
   /* if we get here, it is a "gossip" TCP/IP channel */
 
   if ( *dtype == 'C' )
@@ -1060,6 +1079,7 @@ ftnword f77_name (mgi_write) (ftnword *f_chan, void *buffer, ftnword *f_nelem, c
     }
 
   return nb;
+#endif
 }
 int C_mgi_write (ftnword *f_chan, void *buffer, int c_nelem, char c_dtype){
   F2Cl ltype=1;
@@ -1125,6 +1145,7 @@ ftnword f77_name (mgi_read) (ftnword *f_chan, void *buffer, ftnword *f_nelem, ch
     }
   }
 
+#if ! defined(WITHOUT_GOSSIP)
 /* if we get here, it is a "gossip" TCP/IP channel */
 
   ier = send_command_to_server(chn[chan].gchannel, "READ");
@@ -1265,6 +1286,7 @@ ftnword f77_name (mgi_read) (ftnword *f_chan, void *buffer, ftnword *f_nelem, ch
     }
 #endif
   return ier;
+#endif
 }
 int C_mgi_read (int c_chan, void *buffer, int c_nelem, char c_dtype){
   ftnword f_chan=c_chan;
@@ -1273,4 +1295,8 @@ int C_mgi_read (int c_chan, void *buffer, int c_nelem, char c_dtype){
   char dtype=c_dtype;
   return( f77_name (mgi_read) (&f_chan, buffer, &f_nelem, &dtype, ltype) );
 }
-
+#if defined(WITH_MAIN)
+main(int argc, char**argv){
+  printf("Hello World!!\n");
+}
+#endif
