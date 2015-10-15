@@ -62,12 +62,8 @@
 #endif
 
 #define FNOM_OWNER
-#include <fnom.h>
+#include <fnom64.h>
 #include "wafile.h"
-
-#if defined (NEC)
-#define tell(fd) lseek(fd,0,1)
-#endif
 
 #if defined(__linux__) || defined(__AIX__)
 #define tell64(fd) lseek64(fd,0,1)
@@ -76,6 +72,7 @@
 #ifdef __CYGWIN__
 #define lseek64 lseek
 #define open64 open
+#define off64_t off_t
 #define tell(fd) lseek(fd,0,1)
 #endif
 
@@ -93,7 +90,9 @@ static int qqcopen(int indf);
 static void wa_page_read(int fd,word *buf,unsigned int adr,int nmots,int indf);
 static void wa_page_write(int fd,word *buf,unsigned int adr,int nmots,int indf);
 static void qqcwawr(word *buf,unsigned int ladr,int lnmots,int indf);
-static void qqcward(word *buf,unsigned int ladr,int  lnmots,int indf);
+static void qqcwawr64(word *buf,unsigned long long ladr, int lnmots, int indf);
+static void qqcward(word *buf,unsigned int ladr,int  lnmots, int indf);
+static void qqcward64(word *buf,unsigned long long ladr, int lnmots, int indf);
 static INT_32 qqcnblk(int lfd,int indf);
 static void MOVE (word *src, word *dest, int nwords);
 static void ZERO ( word *dest, int nwords);
@@ -144,7 +143,7 @@ static char *armnlibpath=NULL;
 *
 */
 int c_fretour(int iun){ return(0) ; }
-ftnword f77name(fretour)(ftnword *fiun){ return(0) ; }
+// ftnword f77name(fretour)(ftnword *fiun){ return(0) ; }  transferred to f_baseio.F90
 
 
 /****************************************************************************
@@ -164,7 +163,7 @@ void static dump_file_entry(int i)
       fprintf(stderr,"FGFDT[%d] ",i);
       fprintf(stderr,"file_name=%s subname=%s file_type=%s\n",
               FGFDT[i].file_name,FGFDT[i].subname,FGFDT[i].file_type);
-      fprintf(stderr,"iun=%d,fd=%d,size=%d,esize=%d,lrec=%d,flags=%s%s%s%s%s%s%s%s%s%s%s%s\n",
+      fprintf(stderr,"iun=%d,fd=%d,size=%ld,esize=%ld,lrec=%d,flags=%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
               FGFDT[i].iun,
               FGFDT[i].fd,
               FGFDT[i].file_size,
@@ -176,6 +175,7 @@ void static dump_file_entry(int i)
               FGFDT[i].attr.burp?"+BURP":"",
               FGFDT[i].attr.rnd?"+RND":"+SEQ",
               FGFDT[i].attr.wa?"+WA":"",
+              FGFDT[i].attr.wap?"+WAP":"",
               FGFDT[i].attr.ftn?"+FTN":"",
               FGFDT[i].attr.unf?"+UNF":"+FMT",
               FGFDT[i].attr.read_only?"+R/O":"+R/W",
@@ -237,6 +237,7 @@ static void reset_file_entry(int i){
    FGFDT[i].attr.burp      = 0;
    FGFDT[i].attr.rnd       = 0;
    FGFDT[i].attr.wa        = 0;
+   FGFDT[i].attr.wap       = 0;
    FGFDT[i].attr.ftn       = 0;
    FGFDT[i].attr.unf       = 0;
    FGFDT[i].attr.read_only = 0;
@@ -306,7 +307,6 @@ int c_fnom(int *iun,char *nom,char *type,int lrec)
   char *c, *c2, *tmpdir, *cmcarc, *pos2p;
   char remote_mach[256];
   char nom2[1024];
-  unsigned INT_32 hid;
   PTR_AS_INT ptr_as_int;
 
   if(fnom_initialized == 0) {
@@ -322,12 +322,12 @@ int c_fnom(int *iun,char *nom,char *type,int lrec)
 #endif
      ARMNLIB=getenv("ARMNLIB");
      armnlibpath=ARMNLIB;
-     if (armnlibpath == NULL) armnlibpath = usrlocalenv;
+//     if (armnlibpath == NULL) armnlibpath = usrlocalenv;
+     if (armnlibpath == NULL) armnlibpath = LOCALDIR;
      if( ARMNLIB == NULL ) ARMNLIB = LOCALDIR;
      AFSISIO=getenv("AFSISIO");
      if( AFSISIO == NULL ) AFSISIO = LOCALDIR;
      for (i=0; i<MAXFILES; i++) reset_file_entry(i);
-     hid = f77name(check_host_id)();
      fnom_initialized=1;
      }
 
@@ -418,6 +418,7 @@ int c_fnom(int *iun,char *nom,char *type,int lrec)
   FGFDT[i].attr.burp=0;
   FGFDT[i].attr.rnd=0;
   FGFDT[i].attr.wa=0;
+  FGFDT[i].attr.wap=0;
   FGFDT[i].attr.ftn=0;
   FGFDT[i].attr.unf=0;
   FGFDT[i].attr.read_only=0;
@@ -435,6 +436,8 @@ int c_fnom(int *iun,char *nom,char *type,int lrec)
                                                        FGFDT[i].attr.rnd=1; }
   if (strstr(type,"RND")    || strstr(type,"rnd"))     FGFDT[i].attr.rnd=1;
   if (strstr(type,"WA")     || strstr(type,"wa"))      FGFDT[i].attr.rnd=1;   /* wa attribute will be set by waopen */
+  if (strstr(type,"WAP")    || strstr(type,"wap"))   { FGFDT[i].attr.wap=1;
+                                                       FGFDT[i].attr.rnd=1; }
   if (strstr(type,"FTN")    || strstr(type,"ftn"))   { FGFDT[i].attr.ftn=1;
                                                        FGFDT[i].attr.rnd=0; }
   if (strstr(type,"UNF")    || strstr(type,"unf"))   { FGFDT[i].attr.unf=1;
@@ -450,7 +453,7 @@ int c_fnom(int *iun,char *nom,char *type,int lrec)
   if (strstr(type,"SCRATCH") || strstr(type,"scratch")) FGFDT[i].attr.scratch=1;
   if (strstr(type,"REMOTE") || strstr(type,"remote")) { FGFDT[i].attr.remote=1; }
     
-  if (!FGFDT[i].attr.std && !FGFDT[i].attr.burp && 
+  if (!FGFDT[i].attr.std && !FGFDT[i].attr.burp && !FGFDT[i].attr.wap && 
       !FGFDT[i].attr.wa && !FGFDT[i].attr.rnd  && !FGFDT[i].attr.stream)
      FGFDT[i].attr.ftn = 1;
   FGFDT[i].lrec = lrec;
@@ -603,7 +606,7 @@ int c_fnom(int *iun,char *nom,char *type,int lrec)
         }
      else {
         LLSK dimm=0;
-        dimm = LSEEK(ier,dimm,L_XTND);
+        dimm = LSEEK(ier,dimm,SEEK_END);
         FGFDT[i].file_size = dimm / sizeof(word);
         FGFDT[i].eff_file_size = dimm / sizeof(word);
         close(ier);
@@ -702,6 +705,7 @@ int c_fclos(int iun)
    return(ier);
 }
 
+#if defined(USE_DEPRECATED_CODE)
 ftnword f77name(fclos)(ftnword *fiun)
 {
    int iun,ier;
@@ -709,7 +713,7 @@ ftnword f77name(fclos)(ftnword *fiun)
    ier=c_fclos(iun);
    return(ier);
 }
-
+#endif
 
 /****************************************************************************
 *                          C _ Q Q Q F S C R                                *
@@ -833,7 +837,7 @@ static int qqcclos(int indf)
       fflush(stderr);
       }
   } /* end remote */
-	else {
+  else {
     if (WA_PAGE_SIZE != 0) {
       wa_pages_flush(ind);
       if (wafile[ind].nb_page_in_use != 0)
@@ -845,7 +849,7 @@ static int qqcclos(int indf)
         fprintf(stderr,"Debug fermeture du fichier ind=%d, fd=%d\n",ind,lfd);
         }
       }    
-	}
+  }
   wafile[ind].file_desc = -1;
   FGFDT[indf].fd = -1;
   FGFDT[indf].open_flag = 0;
@@ -866,6 +870,10 @@ static int qqcclos(int indf)
 *RETURNS: (only for c_waopen2 and waopen2) zero if file correctly opened, non-zero otherwise
 *
 */
+static int create_wap_file(fd){  /* create a WAP file using parameters from fnom */
+  return(0);
+}
+
 void c_waopen(int iun) { int scrap=c_waopen2(iun); if(scrap<=0) exit(1); }
 int c_waopen2(int iun)   /* open unit iun for WORD ADDRESSABLE access */
 {
@@ -907,6 +915,10 @@ int c_waopen2(int iun)   /* open unit iun for WORD ADDRESSABLE access */
       }
    ier = qqcopen(i);
    if (ier >=0) { FGFDT[i].open_flag = 1; FGFDT[i].attr.wa = 1; FGFDT[i].attr.rnd = 1; }
+// recognize existing WAP file here by its signature
+   if(FGFDT[i].attr.wap) {
+// do what needs to be done when opening WAP file, including creation if new file
+   }
    return ier;
 }
 
@@ -949,10 +961,14 @@ int c_waclos2(int iun)
       fprintf(stderr,"c_waclos error: unit %d is not open\n",iun);
       return(-1);
       }
-
+   if(FGFDT[i].attr.wap) {
+// do what needs to be done when closing WAP file
+// write back WAP tables if they have been overwritten
+   }
    ier = qqcclos(i);
    FGFDT[i].open_flag = 0;
    FGFDT[i].attr.wa = 0;
+   FGFDT[i].attr.wap = 0;
    return(ier);
 }
 ftnword f77name(waclos2)(ftnword *fiun)
@@ -991,8 +1007,50 @@ void c_wawrit(int iun,void *buf,unsigned int adr,int nmots)
 {
   c_wawrit2(iun,buf,adr,nmots);
 }
+int c_wawrit64(int iun,void *buf,unsigned long long adr,unsigned int nmots, unsigned int part)
+{
+#define WA_HOLE 2048
+   int i,ier;
+   word scrap[WA_HOLE];
+   word *bufswap = (word *) buf;
+   unsigned long long nmots64 = nmots;
+   unsigned long long count, ladr;
+
+   if ((i=find_file_entry("c_wawrit",iun)) < 0) return(i);
+
+   if (! FGFDT[i].open_flag) {
+      fprintf(stderr,"c_wawrit error: unit %d is not open\n",iun);
+      return(-1);
+      }
+   if ( FGFDT[i].attr.read_only != 0 ) {
+      fprintf(stderr,"c_wawrit error: unit %d ,file= %s is READ ONLY\n",
+                     iun,FGFDT[i].file_name);
+      return(-1);
+      }
+   if ( adr > FGFDT[i].file_size+WA_HOLE ) {
+      fprintf(stderr,"c_wawrit error: attempt to write beyond EOF+%d\n",WA_HOLE);
+      fprintf(stderr,"                unit = %d, adr=%u > file_size=%d\n",
+                     iun,adr,FGFDT[i].file_size);
+      fprintf(stderr,"                filename=%s\n",FGFDT[i].file_name);
+      exit(1);
+      }
+   if ( adr > FGFDT[i].file_size+1 ){
+      count = adr-FGFDT[i].file_size;
+      ladr = FGFDT[i].file_size+1;
+      qqcwawr64(scrap,ladr,count,i);
+      }
+   if (*little_endian) swap_buffer_endianness(bufswap,nmots)
+   count = nmots;
+   qqcwawr64((word *)buf,adr,nmots,i);
+   if (*little_endian) swap_buffer_endianness(bufswap,nmots)
+   return( nmots>0 ? nmots : 0);
+}
 int c_wawrit2(int iun,void *buf,unsigned int adr,int nmots)
 {
+#if ! defined(USE_OLD_CODE)
+  unsigned long long ladr = adr;
+  return c_wawrit64(iun,buf,ladr,nmots,0);
+#else
 #define WA_HOLE 2048
    int i,ier;
    word scrap[WA_HOLE];
@@ -1023,6 +1081,7 @@ int c_wawrit2(int iun,void *buf,unsigned int adr,int nmots)
    qqcwawr((word *)buf,adr,nmots,i);
    if (*little_endian) swap_buffer_endianness(bufswap,nmots)
    return( nmots>0 ? nmots : 0);
+#endif
 }
 void f77name(wawrit)(ftnword *fiun,void *buf,unsigned ftnword *fadr,ftnword *fnmots){
      f77name(wawrit2)(fiun,buf,fadr,fnmots);
@@ -1071,8 +1130,37 @@ void c_waread(int iun,void *buf,unsigned int adr,int nmots)
   }
 
 }
+int c_waread64(int iun,void *buf,unsigned long long adr,unsigned int nmots,unsigned int part)
+{
+   int i,ier;
+   word *bufswap = (word *) buf;
+   unsigned long long count = nmots;
+
+   if ((i=find_file_entry("c_waread",iun)) < 0) return(i);
+   
+   if (! FGFDT[i].open_flag) {
+      fprintf(stderr,"c_waread error: unit %d is not open\n",iun);
+      return(-1);
+      }
+
+   if ( adr > FGFDT[i].eff_file_size+2 ) return(-2);
+
+   if ( FGFDT[i].eff_file_size == 0 ) return(0);
+
+   if ( adr+nmots-1 > FGFDT[i].eff_file_size ) {
+      nmots -= (adr+nmots-1-FGFDT[i].eff_file_size);
+      }
+   if ( nmots == 0 ) return(0);
+   qqcward64((word *)buf,adr,count,i);
+   if (*little_endian) swap_buffer_endianness(bufswap,nmots)
+   return(nmots);
+}
 int c_waread2(int iun,void *buf,unsigned int adr,int nmots)
 {
+#if ! defined(USE_OLD_CODE)
+  unsigned long long ladr;
+  return c_waread64(iun,buf,ladr,nmots,0);
+#else
    int i,ier;
    word *bufswap = (word *) buf;
 
@@ -1094,6 +1182,7 @@ int c_waread2(int iun,void *buf,unsigned int adr,int nmots)
    qqcward((word *)buf,adr,nmots,i);
    if (*little_endian) swap_buffer_endianness(bufswap,nmots)
    return(nmots);
+#endif
 }
 void f77name(waread)(ftnword *fiun,void *buf,unsigned ftnword *fadr,
                      ftnword *fnmots)
@@ -1151,11 +1240,7 @@ ftnword f77name(wasize)(ftnword *fiun)  /* return file size in FORTRAN WORDS */
 {
    int iun;
    iun = *fiun;
-#if defined (ALL64)
-   return(c_wasize(iun)/2);
-#else
    return(c_wasize(iun));
-#endif
 }
 
 /****************************************************************************
@@ -1500,7 +1585,7 @@ void c_sqrew(int iun) {
 
    fd = c_getfdsc(iun);
    if (fd <= 0) return;
-   lseek(fd,0,L_SET);
+   lseek(fd,(off_t) 0,SEEK_SET);
 }
 void f77name(sqrew)(ftnword *iun) { c_sqrew((int) *iun) ; }
 
@@ -1525,7 +1610,7 @@ void c_sqeoi(int iun) {
 
    fd = c_getfdsc(iun);
    if (fd <= 0) return;
-   lseek(fd,0,L_XTND);
+   lseek(fd,(off_t) 0,SEEK_END);
 }
 void f77name(sqeoi)(ftnword *iun) { c_sqeoi((int) *iun) ; }
 
@@ -1722,7 +1807,7 @@ static void scrap_page(int ind0,int ind1)
 */
    if (wafile[fl0].page[pg0].touch_flag) {
       nm = wafile[fl0].page[pg0].walast - wafile[fl0].page[pg0].wa0 + 1;
-      WSEEK(wafile[fl0].file_desc,wafile[fl0].page[pg0].wa0-1,L_SET);
+      WSEEK(wafile[fl0].file_desc,wafile[fl0].page[pg0].wa0-1,SEEK_SET);
       ier = write(wafile[fl0].file_desc,wafile[fl0].page[pg0].page_adr,sizeof(word)*nm);
       if (ier != sizeof(word)*nm) {
         fprintf(stderr,"scrap_page error: cannot write page, fd=%d\n",wafile[fl0].file_desc);
@@ -1889,7 +1974,7 @@ static int filepos(int indf)
   int retour;
   
   
-  lseek(FGFDT[indf].fd,(off_t) 0,L_SET);
+  lseek(FGFDT[indf].fd,(off_t) 0,SEEK_SET);
   nblu = read(FGFDT[indf].fd,sign,8);
   if (strncmp(sign,CMCARC_SIGN,8) != 0) {
     nblu = read(FGFDT[indf].fd,&sign[8],17);
@@ -1927,7 +2012,7 @@ static int filepos(int indf)
         return(-1);
       }
     lng = (nt *8) - 25;
-    if (lseek(FGFDT[indf].fd,(off_t)lng,L_INCR) == (off_t)(-1)) {
+    if (lseek(FGFDT[indf].fd,(off_t)lng,SEEK_CUR) == (off_t)(-1)) {
       return (-1);
     }
   }
@@ -1982,7 +2067,7 @@ static int filepos(int indf)
     }
     else {              /* sauter les donnees */
       lng64 = (nd64+tail_offset) * 8;
-      if (lseek64(FGFDT[indf].fd,(off_t)lng64,L_INCR) == (off_t)(-1)) {
+      if (lseek64(FGFDT[indf].fd,(off64_t)lng64,SEEK_CUR) == (off_t)(-1)) {
         return (-1);
       }
     }
@@ -2156,11 +2241,11 @@ else {  /* not a CMCARC type file */
 }
 
 dim = 0;
-dim = LSEEK(fd, dim, L_XTND);
+dim = LSEEK(fd, dim, SEEK_END);
 FGFDT[indf].file_size = dim / sizeof(word);
 FGFDT[indf].eff_file_size = dim / sizeof(word);
 dim = 0;
-dim = LSEEK(fd, dim, L_SET);
+dim = LSEEK(fd, dim, SEEK_SET);
 if (subfile_length > 0) 
 FGFDT[indf].eff_file_size = subfile_length;
 subfile_length = 0;
@@ -2181,13 +2266,9 @@ if (WA_PAGE_SIZE != 0) {
   if (debug_mode > 1) {
     fprintf(stderr,"Debug ouverture du fichier %s ind=%d, fd=%d\n",
             FGFDT[indf].file_name,ind,fd);
-#if defined (NEC)
-    fprintf(stderr,"Debug longueur du fichier =%lld Bytes\n",dim);
-#else
     fprintf(stderr,"Debug longueur du fichier =%d Bytes\n",dim);
-#endif
   }      
-    }
+}  /* if  WA_PAGE_SIZE != 0 */
 return(fd);
 }
 
@@ -2275,7 +2356,7 @@ static void wa_page_read(int fd,word *buf,unsigned int adr,int nmots,int indf)
        if (debug_mode > 4) {
           fprintf(stderr,"Debug WA_PAGE_READ obtention d'une page %d\n",i);
           }
-       WSEEK(fd,wafile[ind].page[i].wa0-1,L_SET);
+       WSEEK(fd,wafile[ind].page[i].wa0-1,SEEK_SET);
        if (WA_PAGE_SIZE+wafile[ind].page[i].wa0 > FGFDT[indf].file_size)
           readbytes =  sizeof(word)*(FGFDT[indf].file_size+1-wafile[ind].page[i].wa0);
        else
@@ -2444,7 +2525,7 @@ static void wa_page_write(int fd,word *buf,unsigned int adr,int nmots,int indf)
      if ((adr > wafile[ind].page[i].wa0) || 
           ((adr+nmots != wafile[ind].page[i].wa0+WA_PAGE_SIZE) && 
            (adr+nmots < FGFDT[indf].file_size))) {
-         WSEEK(fd,wafile[ind].page[i].wa0-1,L_SET);
+         WSEEK(fd,wafile[ind].page[i].wa0-1,SEEK_SET);
          if (WA_PAGE_SIZE+wafile[ind].page[i].wa0 > FGFDT[indf].file_size)
             readbytes =  sizeof(word)*(FGFDT[indf].file_size+1-wafile[ind].page[i].wa0);
          else
@@ -2541,15 +2622,139 @@ static void wa_page_write(int fd,word *buf,unsigned int adr,int nmots,int indf)
 *
 */
 
+static void qqcwawr64(word *buf,unsigned long long ladr, int lnmots,int indf)
+{
+
+  int offset,i,adr0,nwritten;
+  int lng, l, lastadr, ind, statut;
+  int lfd=FGFDT[indf].fd;
+  char *cbuf;
+  size_t count,togo;
+
+  ind = 0;
+  while ((wafile[ind].file_desc != lfd) && (ind < MAXWAFILES))
+    ind++;
+  if (ind == MAXWAFILES) {
+    fprintf(stderr,"qqcwawr error: filename=%s , fd=%d not found in table\n",
+                  FGFDT[indf].file_name,lfd);
+    exit(1);
+  }
+
+  if (ladr != 0) 
+    ladr += wafile[ind].offset;
+
+  if (FGFDT[indf].attr.read_only) {
+    fprintf(stderr,"qqcwawr error: no write permission for file %s\n",FGFDT[indf].file_name);
+    exit(1);
+  }
+  
+  if (FGFDT[indf].attr.remote) {   /* remote file ? */
+    int *s_ID, *addr, *nw, *RW_mode, *checksum;
+    int sock_comm_ID=0xBABE;
+    int demande[5];
+    int nc, nelm;
+
+    s_ID = &(demande[0]);
+    addr = &(demande[1]);
+    nw = &(demande[2]);
+    RW_mode = &(demande[3]);
+    checksum = &(demande[4]);
+    *s_ID = sock_comm_ID;
+    *addr = ladr;
+    *nw = lnmots;
+    *RW_mode = 2;  /* write request */
+    *checksum = *s_ID ^ *addr ^ *nw ^ *RW_mode;
+    check_swap_records(demande,5,sizeof(int));
+    nc=write_stream(FGFDT[indf].fd,demande,5*sizeof(int));
+    if (nc != 0) {
+      fprintf(stderr,"socket qqcwawr error: wrote only %i bytes to server\n",nc);
+      fflush(stderr);
+    }
+    nc = lnmots*sizeof(int) ;
+    nelm=write_stream(FGFDT[indf].fd,buf,nc);
+#if defined (DEBUG)  
+    if (nelm == 0) printf("socket qqcwawr wrote %d bytes\n",lnmots*sizeof(int));
+#endif
+    if (ladr+lnmots-1 > FGFDT[indf].file_size) {
+      FGFDT[indf].file_size = ladr+lnmots-1;
+      FGFDT[indf].eff_file_size = ladr+lnmots-1;
+    }
+  }else{  /* not a remote file */
+    if ((WA_PAGE_SIZE == 0) || (ladr == 0) || (wafile[indf].maxpages <= 0)) {   /* not using page buffers */
+      if(ladr!=0) WSEEK(lfd,ladr - 1, SEEK_SET);
+      count = sizeof(word) * lnmots;
+      if ((nwritten=write(lfd, buf, count )) != count) {
+        if (errno == 14) {
+            fprintf(stderr, "qqcwawr error: write error for file %s\n",FGFDT[indf].file_name);
+            fprintf(stderr,"qqcwawr: filename=%s, buf=%0x adr=%u, nmots=%d, nwritten=%d, errno=%d\n",
+                    FGFDT[indf].file_name,buf,ladr,lnmots,nwritten,errno);
+            fprintf(stderr, "*** Contactez un membre de la section informatique de RPN ***\n");
+            fprintf(stderr, "*** Seek support from RPN informatic section ***\n");
+            /*            memorymap(1); */
+            perror("qqcwawr");
+            exit(1);
+        }
+        if (nwritten >= 0) {
+          cbuf = (char *) buf;
+          cbuf += nwritten;
+          togo = (lnmots * sizeof(word)) - nwritten;
+          nwritten = write(lfd,buf,togo);
+          fprintf(stderr,"qqcwawr WARNING: multiple write attempt of file %s last write=%d bytes, total needed=%d bytes\n",
+                  FGFDT[indf].file_name,togo,lnmots*sizeof(word));
+          if (nwritten != togo) {
+            fprintf(stderr, "qqcwawr error: write error for file %s\n",FGFDT[indf].file_name);
+            fprintf(stderr,"qqcwawr: filename=%s, buf=%0x adr=%u, nmots=%d, nwritten=%d, errno=%d\n",
+                    FGFDT[indf].file_name,buf,ladr,lnmots,nwritten,errno);
+            perror("qqcwawr");
+            exit(1);
+          }
+        }else{
+          fprintf(stderr, "qqcwawr error: write error or file not open for write!\n");
+          fprintf(stderr,"qqcwawr: filename=%s, buf=%0x adr=%u, nmots=%d, nwritten=%d, errno=%d\n",
+                  FGFDT[indf].file_name,buf,ladr,lnmots,nwritten,errno);
+          perror("qqcwawr");
+          exit(1);
+        }
+      }
+      if (ladr+lnmots-1 > FGFDT[indf].file_size) {
+        FGFDT[indf].file_size = ladr+lnmots-1;
+        FGFDT[indf].eff_file_size = ladr+lnmots-1;
+      }
+    }else{   /* using page buffers */
+      lng = lnmots;
+      adr0 = ladr;
+      offset = 0;
+      lastadr = (adr0 + WA_PAGE_SIZE -1)/WA_PAGE_SIZE * WA_PAGE_SIZE;
+      while (lng > 0) {
+        if (lng > lastadr-adr0) {
+          l = lastadr - adr0 +1;
+          wa_page_write(lfd,buf+offset,adr0,l,indf);
+          offset = offset + l;
+          adr0 = adr0 +l;
+          lng = lng -l;
+          lastadr = (adr0 + WA_PAGE_SIZE -1)/WA_PAGE_SIZE * WA_PAGE_SIZE;
+        }else{
+          wa_page_write(lfd,buf+offset,adr0,lng,indf);
+          lng = 0;
+        }
+      }
+    }  /* using page buffers ? */
+  } /* end else remote */
+}
+
 static void qqcwawr(word *buf,unsigned int wadr,int lnmots,int indf)
 {
 
 int offset,i,adr0,nwritten,togo;
 int lng, l, lastadr, ind, statut;
 int lfd=FGFDT[indf].fd;
-long long ladr=wadr;
+unsigned long long ladr=wadr;
+unsigned long long count=lnmots;
 char *cbuf;
 
+#if !defined(USE_OLD_CODE)
+qqcwawr64(buf,ladr,count,indf);
+#else
 ind = 0;
 while ((wafile[ind].file_desc != lfd) && (ind < MAXWAFILES))
    ind++;
@@ -2589,7 +2794,8 @@ if (FGFDT[indf].attr.remote) {
     fprintf(stderr,"socket qqcwawr error: wrote only %i bytes to server\n",nc);
     fflush(stderr);
     }
-  nelm=write_stream(FGFDT[indf].fd,buf,lnmots*sizeof(int));
+  nc = lnmots*sizeof(int)
+  nelm=write_stream(FGFDT[indf].fd,buf,nc);
 #if defined (DEBUG)  
   if (nelm == 0) printf("socket qqcwawr wrote %d bytes\n",lnmots*sizeof(int));
 #endif
@@ -2601,7 +2807,7 @@ if (FGFDT[indf].attr.remote) {
 else {
   
   if ((WA_PAGE_SIZE == 0) || (ladr == 0) || (wafile[indf].maxpages <= 0)) {
-    if(ladr!=0) WSEEK(lfd,ladr - 1, L_SET);
+    if(ladr!=0) WSEEK(lfd,ladr - 1, SEEK_SET);
     if ((nwritten=write(lfd, buf, sizeof(word) * lnmots)) != sizeof(word) * lnmots)
         {
           if (errno == 14)
@@ -2664,6 +2870,7 @@ else {
         }
     }
 } /* end else remote */
+#endif
 }
 
 /****************************************************************************
@@ -2682,13 +2889,93 @@ else {
 *           in  indf    index of file in the master file table
 *
 */
+static void qqcward64(word *buf,unsigned long long ladr,int lnmots,int indf)
+{
+  int offset,i,wa0,adr0,lng,l,lastadr;
+  int npages,reste,ind;
+  int lfd=FGFDT[indf].fd;
+  size_t count;
+
+  ind = 0;
+  while ((wafile[ind].file_desc != lfd) && (ind < MAXWAFILES))
+    ind++;
+  if (ind == MAXWAFILES) {
+    fprintf(stderr,"qqcward error: fd=%d not found in table\n",lfd);
+    exit(1);
+  }
+  if (FGFDT[indf].attr.remote) {   /* is it a remote file ? */
+    int *s_ID, *addr, *nw, *RW_mode, *checksum;
+    int sock_comm_ID=0xBABE;
+    int demande[5];
+    int nc, nelm;
+
+    s_ID = &(demande[0]);
+    addr = &(demande[1]);
+    nw = &(demande[2]);
+    RW_mode = &(demande[3]);
+    checksum = &(demande[4]);
+    *s_ID = sock_comm_ID;
+    *addr = ladr;
+    *nw = lnmots;
+    *RW_mode = 1;  /* read request */
+    *checksum = *s_ID ^ *addr ^ *nw ^ *RW_mode;
+    check_swap_records(demande,5,sizeof(int));
+    nc=write_stream(FGFDT[indf].fd,demande,5*sizeof(int));
+    if (nc != 0) {
+      fprintf(stderr,"socket qqcward error: wrote only %d bytes to server\n",nc);
+      fflush(stderr);
+    }
+    nc = lnmots*sizeof(int);
+    nelm=read_stream(FGFDT[indf].fd,buf,nc);
+#if defined (DEBUG)
+    printf("qqcward read %d bytes\n",nelm);
+#endif
+  }else{   /* not a remote file */
+    if (ladr != 0) 
+      ladr += wafile[ind].offset;
+
+    if ((WA_PAGE_SIZE == 0) || (ladr == 0) || (wafile[indf].maxpages <= 0)) {  /* not using buffer pages */
+      if(ladr!=0) WSEEK(lfd, ladr - 1, SEEK_SET);
+      count = sizeof(word) * lnmots;
+      reste=read(lfd, buf, count);
+      if(reste != sizeof(word)*lnmots) {
+          fprintf(stderr,"qqcward error: tried to read %d words, only read %d\n",
+                        sizeof(word)*lnmots,reste);
+          fprintf(stderr,"qqcward: wafile[ind].offset=%d ladr=%Ld\n",wafile[ind].offset,ladr);
+          f77name(tracebck)();
+          exit(1);
+      }
+    }else{  /* we are using buffer pages */
+      lng = lnmots;
+      adr0 = ladr;
+      offset = 0;
+      lastadr = (adr0 + WA_PAGE_SIZE -1)/WA_PAGE_SIZE * WA_PAGE_SIZE;
+      while (lng > 0) {
+        if (lng > lastadr-adr0) {
+          l = lastadr - adr0 +1;
+          wa_page_read(lfd,buf+offset,adr0,l,indf);
+          offset = offset + l;
+          adr0 = adr0 +l;
+          lng = lng -l;
+          lastadr = (adr0 + WA_PAGE_SIZE -1)/WA_PAGE_SIZE * WA_PAGE_SIZE;
+        }else{
+          wa_page_read(lfd,buf+offset,adr0,lng,indf);
+          lng = 0;
+        }
+      } /* end while */
+    } /* end else using buffer pages */
+  } /* end else not a remote file */
+}
 static void qqcward(word *buf,unsigned int wadr,int  lnmots,int indf)
 {
 int offset,i,wa0,adr0,lng,l,lastadr;
 int npages,reste,ind;
 int lfd=FGFDT[indf].fd;
-long long ladr=wadr;
+unsigned long long ladr=wadr;
 
+#if ! defined(USE_OLD_CODE)
+qqcward64(buf, ladr, lnmots, indf);
+#else
 ind = 0;
 while ((wafile[ind].file_desc != lfd) && (ind < MAXWAFILES))
    ind++;
@@ -2718,7 +3005,8 @@ if (FGFDT[indf].attr.remote) {
     fprintf(stderr,"socket qqcward error: wrote only %d bytes to server\n",nc);
     fflush(stderr);
     }
-  nelm=read_stream(FGFDT[indf].fd,buf,lnmots*sizeof(int));
+  nc = lnmots*sizeof(int);
+  nelm=read_stream(FGFDT[indf].fd,buf,nc);
 #if defined (DEBUG)
   printf("qqcward read %d bytes\n",nelm);
 #endif
@@ -2728,7 +3016,7 @@ else {
     ladr += wafile[ind].offset;
 
   if ((WA_PAGE_SIZE == 0) || (ladr == 0) || (wafile[indf].maxpages <= 0)) {
-    if(ladr!=0) WSEEK(lfd, ladr - 1, L_SET);
+    if(ladr!=0) WSEEK(lfd, ladr - 1, SEEK_SET);
     reste=read(lfd, buf, sizeof(word) * lnmots);
     if(reste != sizeof(word)*lnmots) {
         fprintf(stderr,"qqcward error: tried to read %d words, only read %d\n",
@@ -2759,6 +3047,7 @@ else {
     } /* end while */
   } /* end else */
 } /* end else */
+#endif
 }
 /****************************************************************************
 *                              fnom_rem_connect                             *
@@ -2967,7 +3256,9 @@ for (i=0 ; i<nwords ; i++) {dest[i]=0;};
  check_host_id is FORTRAN callable
  check_host_id returns the HOST id as obtained by gethostid
 */
-
+# if !defined(USE_OLD_CODE)
+unsigned INT_32 f77name(check_host_id)() { return(gethostid()); }
+#else
 unsigned INT_32 f77name(check_host_id)()
 {
 #if defined NEC || !defined CHECK_RMNLIB_LIC
@@ -3025,3 +3316,4 @@ if ( domain_ok) {
 }
 #endif
 }
+#endif
