@@ -197,8 +197,11 @@ void static dump_file_entry(int i)
 *ARGUMENTS: none
 *
 */
-
-void f77name(d_fgfdt)()
+#pragma weak d_fgfdt__=d_fgfdt
+#pragma weak d_fgfdt_=d_fgfdt
+void d_fgfdt__();
+void d_fgfdt_();
+void d_fgfdt()
 {
    int i=0;
    fprintf(stderr,"********** DUMP of MASTER FILE TABLE **********\n");
@@ -2284,8 +2287,11 @@ return(fd);
 *
 */
 
-
-void f77name(d_wafdt)()
+#pragma weak d_wafdt__=d_wafdt
+#pragma weak d_wafdt_=d_wafdt
+void d_wafdt__();
+void d_wafdt_();
+void d_wafdt()
 {
 int i;
 fprintf(stderr,"\n   DUMP OF WA CONTROL TABLE \n");
