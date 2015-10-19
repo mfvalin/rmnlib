@@ -40,11 +40,11 @@ function fnom(iun,name,opti,reclen) result (status)
       type(C_FUNPTR), intent(IN), value :: qqqfclos
       integer :: status
     end function cfnom
-    FUNCTION ftnclos(iun) result(status) bind(C)
+    FUNCTION ftnclos(iun) result(status) bind(C,name='ftnclos_for_c')
       integer, intent(IN) :: iun
       integer :: status
     end FUNCTION ftnclos
-    FUNCTION qqqf7op_c(iun,c_name,lrec,rndflag,unfflag,lmult,leng) result(status) bind(C)
+    FUNCTION qqqf7op_c(iun,c_name,lrec,rndflag,unfflag,lmult,leng) result(status) bind(C,name='QQQf7op_for_c')
       import
       integer(C_INT), intent(IN), value :: iun, lrec, rndflag, unfflag, lmult, leng
       character(C_CHAR), dimension(leng), intent(IN) :: c_name
@@ -82,11 +82,11 @@ function fnom_for_c(iun,name,opti,reclen) result(status) bind(C,name='c_fnom')
       type(C_FUNPTR), intent(IN), value :: qqqfclos
       integer :: status
     end function cfnom
-    FUNCTION ftnclos(iun) result(status) bind(C)
+    FUNCTION ftnclos(iun) result(status) bind(C,name='ftnclos_for_c')
       integer, intent(IN) :: iun
       integer :: status
     end FUNCTION ftnclos
-    FUNCTION qqqf7op_c(iun,c_name,lrec,rndflag,unfflag,lmult,leng) result(status) bind(C)
+    FUNCTION qqqf7op_c(iun,c_name,lrec,rndflag,unfflag,lmult,leng) result(status) bind(C,name='QQQf7op_for_c')
       import
       integer(C_INT), intent(IN), value :: iun, lrec, rndflag, unfflag, lmult, leng
       character(C_CHAR), dimension(leng), intent(IN) :: c_name
@@ -141,7 +141,7 @@ end function qqqfnom
 
 ! C callable function (called by c_fnom) to address file open operations
 ! that must be performed by the Fortran library
-function qqqf7op_c(iun,c_name,lrec,rndflag,unfflag,lmult,leng) result(status)
+function qqqf7op_c(iun,c_name,lrec,rndflag,unfflag,lmult,leng) result(status) bind(C,name='QQQf7op_for_c')
   use ISO_C_BINDING
   implicit none
   integer(C_INT), intent(IN), value :: iun, lrec, rndflag, unfflag, lmult, leng
@@ -209,6 +209,13 @@ INTEGER FUNCTION qqqf7op(iun,name,lrec,rndflag,unfflag,lmult)
 end
 ! close a Fortran file (normally used as a callback by c_fnom)
 integer FUNCTION ftnclos(iun)
+  integer iun
+
+  ftnclos = 0
+  CLOSE(iun)
+  return
+end
+integer FUNCTION ftnclos_c(iun) bind(C,name='ftnclos_for_c')
   integer iun
 
   ftnclos = 0
