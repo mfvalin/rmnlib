@@ -17,11 +17,114 @@
 ! * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ! * Boston, MA 02111-1307, USA.
 ! */
+!int c_fnom(int *iun,char *nom,char *type,int lrec)
+!ftnword f77name(fnom)(ftnword *iun,char *nom,char *type,ftnword *flrec,F2Cl l1,F2Cl l2)
+! ====================================================
+! fnom (open a file with attributes), see c_fnom for
+! argument description
+! this is a Fortran interface to the active routine written in C.
+! the fortran functions (qqqfopen,qqqfclos) that c_fnom may have to call
+! are passed as callbacks (address of function to call)
+! this helps isolate c_baseio from any need to know fortran names and types
+! ====================================================
+function fnom(iun,name,opti,reclen) result (status)
+  use ISO_C_BINDING
+  implicit none
+  interface
+    function cfnom(iun,name,opti,reclen,qqqfopen,qqqfclos) result (status) bind(C,name='c_fnom_callback')
+      import
+      integer(C_INT), intent(INOUT) :: iun
+      integer(C_INT), intent(IN), value :: reclen
+      type(C_PTR), intent(IN) :: name,opti
+      type(C_FUNPTR), intent(IN), value :: qqqfopen
+      type(C_FUNPTR), intent(IN), value :: qqqfclos
+      integer :: status
+    end function cfnom
+  end interface
+  integer, intent(INOUT) :: iun
+  integer, intent(IN) :: reclen
+  character(len=*), intent(IN) :: name,opti
+  integer :: status
+
+  character(C_CHAR), dimension(len(trim(name))+1), target :: name1
+  character(C_CHAR), dimension(len(trim(opti))+1), target :: opti1
+  integer, external :: qqqf7op_c, ftnclos
+
+  name1 = transfer(trim(name)//achar(0),name1)
+  opti1 = transfer(trim(opti)//achar(0),opti1)
+
+! int c_fnom(int *iun,char *nom,      char *type,     int lrec, int (*open)()      , int (*clos)()
+  status = cfnom(iun, c_loc(name1(1)), c_loc(opti1(1)), reclen, C_FUNLOC(qqqf7op_c), C_FUNLOC(ftnclos))
+end function fnom
+
+!int c_fnom(int *iun,char *nom,char *type,int lrec) 
+function fnom_for_c(iun,name,opti,reclen) result(status) bind(C,name='c_fnom')
+  use ISO_C_BINDING
+  implicit none
+  interface
+    function cfnom(iun,name,opti,reclen,qqqfopen,qqqfclos) result (status) bind(C,name='c_fnom_callback')
+      import
+      integer(C_INT), intent(INOUT) :: iun
+      integer(C_INT), intent(IN), value :: reclen
+      type(C_PTR), intent(IN) :: name,opti
+      type(C_FUNPTR), intent(IN), value :: qqqfopen
+      type(C_FUNPTR), intent(IN), value :: qqqfclos
+      integer :: status
+    end function cfnom
+  end interface
+  integer(C_INT), intent(INOUT) :: iun
+  integer, intent(IN) :: reclen
+  type(C_PTR), intent(IN) :: name,opti
+  integer :: status
+
+  integer, external :: qqqf7op_c, ftnclos
+
+  status = cfnom(iun,name,opti,reclen, C_FUNLOC(qqqf7op_c), C_FUNLOC(ftnclos))
+  return
+end function fnom_for_c
+
+!int F_qqqfnom(int iun,char *nom,char *type,int *flrec,int l1,int l2)
+function qqqfnom(iun,name,ftyp,flrec) result(status)
+  use ISO_C_BINDING
+  implicit none
+  interface
+    function cqqqfnom(iun,name,ftyp,flrec,lname,lftyp) result(status) bind(C,name='F_qqqfnom')
+      import
+      integer(C_INT), intent(IN), value :: iun, lname, lftyp
+      integer(C_INT), intent(OUT) :: flrec
+      character(C_CHAR), dimension(lname) :: name
+      character(C_CHAR), dimension(lftyp) :: ftyp
+      integer :: status
+    end function cqqqfnom
+  end interface
+  integer, intent(IN) :: iun
+  integer, intent(OUT) :: flrec
+  character(len=*), intent(OUT) :: name,ftyp
+  integer :: status
+
+  character(len=1), dimension(len(name)) :: name1
+  character(len=1), dimension(len(ftyp)) :: ftyp1
+  integer :: lname, lftyp, i
+
+  lname = len(trim(name))
+  lftyp = len(trim(ftyp))
+  status = cqqqfnom(iun,name1,ftyp1,flrec,lname,lftyp)
+  do i = 1 , lftyp
+    ftyp(i:i) = ftyp1(i)
+  enddo
+  do i = 1 , lname
+    name(i:i) = name1(i)
+  enddo
+
+end function qqqfnom
+
+! C callable function (called by c_fnom) to address file open operations
+! that must be performed by the Fortran library
 function qqqf7op_c(iun,c_name,lrec,rndflag,unfflag,lmult,leng) result(status)
   use ISO_C_BINDING
   implicit none
-  integer(C_INT), intent(IN), value :: iun, lrec, leng, rndflag, unfflag, lmult
-  character(len=1), dimension(leng), intent(IN) :: c_name
+  integer(C_INT), intent(IN), value :: iun, lrec, rndflag, unfflag, lmult, leng
+  character(C_CHAR), dimension(leng), intent(IN) :: c_name
   integer :: status
 
   integer lng, i
@@ -37,7 +140,7 @@ function qqqf7op_c(iun,c_name,lrec,rndflag,unfflag,lmult,leng) result(status)
   status = qqqf7op(iun,name(1:lng),lrec,rndflag,unfflag,lmult)
   return
 end function qqqf7op_c
-
+! function to perform file open operations that must be performed by the Fortran library
 INTEGER FUNCTION qqqf7op(iun,name,lrec,rndflag,unfflag,lmult)
   integer, intent(IN) :: iun,lrec
   character(len=*), intent(IN) :: name
@@ -83,7 +186,7 @@ INTEGER FUNCTION qqqf7op(iun,name,lrec,rndflag,unfflag,lmult)
   qqqf7op = -1
   return
 end
-
+! close a Fortran file (normally used as a callback by c_fnom)
 integer FUNCTION ftnclos(iun)
   integer iun
 
@@ -91,7 +194,7 @@ integer FUNCTION ftnclos(iun)
   CLOSE(iun)
   return
 end
-
+! close a file opened by fnom
 integer function fclos(iun)
   use ISO_C_BINDING
   implicit none
@@ -108,7 +211,7 @@ integer function fclos(iun)
 end
 
 integer function fretour(iun)
-! Kept only for backward compatibility.
+! Kept only for backward compatibility. NO-OP
   fretour = 0
   return
 end
@@ -130,36 +233,6 @@ INTEGER FUNCTION LONGUEUR(NOM)
   LONGUEUR = LNG
   RETURN
 END
-! ====================================================
-! fnom (open a file with attributes), see c_fnom for
-! argument description
-! ====================================================
-function fnom(iun,name,opti,reclen) result (status)
-  use ISO_C_BINDING
-  implicit none
-  interface
-    function cfnom(iun,name,opti,reclen) result (status) bind(C,name='c_fnom')
-      import
-      integer(C_INT), intent(INOUT) :: iun
-      integer(C_INT), intent(IN), value :: reclen
-      type(C_PTR), intent(IN) :: name,opti
-      integer :: status
-    end function cfnom
-  end interface
-  integer, intent(INOUT) :: iun
-  integer, intent(IN) :: reclen
-  character(len=*), intent(IN) :: name,opti
-  integer :: status
-
-  character(len=1), dimension(len(trim(name))+1), target :: name1
-  character(len=1), dimension(len(trim(opti))+1), target :: opti1
-
-  name1 = transfer(trim(name)//achar(0),name1)
-  opti1 = transfer(trim(opti)//achar(0),opti1)
-
-  status = cfnom(iun,c_loc(name1(1)),c_loc(opti1(1)),reclen)
-end function fnom
-
 ! ====================================================
 !     openda/closda readda/writda/checda
 !     "asynchronous" random access by block routines
@@ -313,6 +386,25 @@ subroutine wawrit64(iun,buf,adr,nmots,partition)
 
   call cwawrit64(iun,buf,adr,nmots,partition)
 end subroutine wawrit64
+
+function existe(name) result(status)
+  use ISO_C_BINDING
+  implicit none
+  interface
+    function cexiste(name) result(status) bind(C,name='C_existe')
+      import
+      type(C_PTR), intent(IN) :: name
+      integer :: status
+    end function cexiste
+  end interface
+  character(len=*), intent(IN) :: name
+  integer :: status
+  character(C_CHAR), dimension(len(trim(name))+1), target :: name1
+
+  name1 = transfer(trim(name)//achar(0),name1)
+  status = cexiste(C_LOC(name1(1)))
+  return
+end function existe
 !
 ! TODO
 ! qqqfnom, existe, waopen2, waclos2, waread2, wawrit2, wasize, numblks, 
@@ -320,7 +412,7 @@ end subroutine wawrit64
 ! hrjust, hljust, check_host_id
 !
 ! ftnword f77name(qqqfnom)(ftnword *iun,char *nom,char *type,ftnword *flrec,F2Cl l1,F2Cl l2)
-! ftnword f77name(existe)(char *nom,F2Cl llng) 
+! int c_existe(char *nom) 
 ! ftnword f77name(wasize)(ftnword *fiun) 
 ! ftnword f77name(numblks)(ftnword *fiun)
 ! ftnword f77name(getfdsc)( ftnword *iun)

@@ -12,7 +12,7 @@
  {\
   LLSK local_off;\
   local_off = offst;\
-  LSEEK(fdesc,local_off * sizeof(word),posi);\
+  LSEEK(fdesc,local_off * sizeof(int),posi);\
  }
 
 #define CMCARC_SIGN "CMCARCHS"  /* signature du debut d'un fichier cmcarc */
@@ -35,7 +35,7 @@ typedef struct {
 } WAPINFO;
 
 typedef struct {
-   word *page_adr;
+   INT_32 *page_adr;
    int wa0;
    int walast;
    int access_count;
