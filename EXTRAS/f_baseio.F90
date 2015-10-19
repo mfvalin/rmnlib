@@ -17,16 +17,37 @@
 ! * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ! * Boston, MA 02111-1307, USA.
 ! */
+function qqqf7op_c(iun,c_name,lrec,rndflag,unfflag,lmult,leng) result(status)
+  use ISO_C_BINDING
+  implicit none
+  integer(C_INT), intent(IN), value :: iun, lrec, leng, rndflag, unfflag, lmult
+  character(len=1), dimension(leng), intent(IN) :: c_name
+  integer :: status
+
+  integer lng, i
+  character(len=4096) :: name
+  integer, external :: qqqf7op
+
+  name = ' '
+  lng = leng
+  do i=1,lng
+    name(i:i) = c_name(i)
+  enddo
+!          qqqf7op(iun,name       ,lrec,rndflag,unfflag,lmult)
+  status = qqqf7op(iun,name(1:lng),lrec,rndflag,unfflag,lmult)
+  return
+end function qqqf7op_c
+
 INTEGER FUNCTION qqqf7op(iun,name,lrec,rndflag,unfflag,lmult)
-  integer iun,lrec
-  character *(*) name
-  integer rndflag,unfflag
+  integer, intent(IN) :: iun,lrec
+  character(len=*), intent(IN) :: name
+  integer, intent(IN) :: rndflag,unfflag
 
   integer lng
   qqqf7op=0
-  lng = len(name)
+  lng = len(trim(name))
 !  print *,'opening file ',name(1:lng),' as unit ',iun
-!  print *,'lrec=',lrec,' flags = ',rndflag,unfflag
+!  print *,'lrec=',lrec,' flags = ',rndflag,unfflag,' lmult=',lmult
 !  print *,'len=',lng
   if (rndflag.eq.1) then
     if (unfflag.eq.1) then
