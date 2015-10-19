@@ -40,6 +40,17 @@ function fnom(iun,name,opti,reclen) result (status)
       type(C_FUNPTR), intent(IN), value :: qqqfclos
       integer :: status
     end function cfnom
+    FUNCTION ftnclos(iun) result(status) bind(C)
+      integer, intent(IN) :: iun
+      integer :: status
+    end FUNCTION ftnclos
+    FUNCTION qqqf7op_c(iun,c_name,lrec,rndflag,unfflag,lmult,leng) result(status) bind(C)
+      import
+      integer(C_INT), intent(IN), value :: iun, lrec, rndflag, unfflag, lmult, leng
+      character(C_CHAR), dimension(leng), intent(IN) :: c_name
+      integer :: status
+    end FUNCTION qqqf7op_c
+
   end interface
   integer, intent(INOUT) :: iun
   integer, intent(IN) :: reclen
@@ -48,7 +59,7 @@ function fnom(iun,name,opti,reclen) result (status)
 
   character(C_CHAR), dimension(len(trim(name))+1), target :: name1
   character(C_CHAR), dimension(len(trim(opti))+1), target :: opti1
-  integer, external, bind(C) :: qqqf7op_c, ftnclos
+!  integer, external :: qqqf7op_c, ftnclos
 
   name1 = transfer(trim(name)//achar(0),name1)
   opti1 = transfer(trim(opti)//achar(0),opti1)
@@ -71,13 +82,23 @@ function fnom_for_c(iun,name,opti,reclen) result(status) bind(C,name='c_fnom')
       type(C_FUNPTR), intent(IN), value :: qqqfclos
       integer :: status
     end function cfnom
+    FUNCTION ftnclos(iun) result(status) bind(C)
+      integer, intent(IN) :: iun
+      integer :: status
+    end FUNCTION ftnclos
+    FUNCTION qqqf7op_c(iun,c_name,lrec,rndflag,unfflag,lmult,leng) result(status) bind(C)
+      import
+      integer(C_INT), intent(IN), value :: iun, lrec, rndflag, unfflag, lmult, leng
+      character(C_CHAR), dimension(leng), intent(IN) :: c_name
+      integer :: status
+    end FUNCTION qqqf7op_c
   end interface
   integer(C_INT), intent(INOUT) :: iun
   integer, intent(IN) :: reclen
   type(C_PTR), intent(IN) :: name,opti
   integer :: status
 
-  integer, external, bind(C) :: qqqf7op_c, ftnclos
+!  integer, external :: qqqf7op_c, ftnclos
 
   status = cfnom(iun,name,opti,reclen, C_FUNLOC(qqqf7op_c), C_FUNLOC(ftnclos))
   return
