@@ -48,7 +48,7 @@ function fnom(iun,name,opti,reclen) result (status)
 
   character(C_CHAR), dimension(len(trim(name))+1), target :: name1
   character(C_CHAR), dimension(len(trim(opti))+1), target :: opti1
-  integer, external :: qqqf7op_c, ftnclos
+  integer, external, bind(C) :: qqqf7op_c, ftnclos
 
   name1 = transfer(trim(name)//achar(0),name1)
   opti1 = transfer(trim(opti)//achar(0),opti1)
@@ -77,7 +77,7 @@ function fnom_for_c(iun,name,opti,reclen) result(status) bind(C,name='c_fnom')
   type(C_PTR), intent(IN) :: name,opti
   integer :: status
 
-  integer, external :: qqqf7op_c, ftnclos
+  integer, external, bind(C) :: qqqf7op_c, ftnclos
 
   status = cfnom(iun,name,opti,reclen, C_FUNLOC(qqqf7op_c), C_FUNLOC(ftnclos))
   return
