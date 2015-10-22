@@ -1,5 +1,5 @@
 /* RMNLIB - Library of useful routines for C and FORTRAN programming
- * Copyright (C) 1975-2001  Division de Recherche en Prevision Numerique
+ * Copyright (C) 1975-2015  Division de Recherche en Prevision Numerique
  *                          Environnement Canada
  *
  * This library is free software; you can redistribute it and/or
@@ -29,6 +29,11 @@
 #define INT_64 long long
 #define PTR_AS_INT long long
 #define D77MULT 1
+#endif
+
+#if defined(__x86_64__)
+#undef PTR_AS_INT
+#define PTR_AS_INT long long
 #endif
 
 #include <ctype.h>
@@ -70,8 +75,8 @@
 #endif
 
 #define FNOM_OWNER
-#include <fnom64.h>
-#include "wafile.h"
+#include "../common/fnom64.h"
+#include "wafile64.h"
 
 #if defined(__linux__) || defined(__AIX__)
 #define tell64(fd) lseek64(fd,0,1)
@@ -93,7 +98,7 @@ static void scrap_page(int ind0,int ind1);
 static void process_decay();
 static void get_new_page(int ind);
 static void wa_pages_flush(int ind);
-static int filepos(int indf);
+static long long filepos(int indf);
 static int qqcopen(int indf);
 static void wa_page_read(int fd,INT_32 *buf,unsigned int adr,int nmots,int indf);
 static void wa_page_write(int fd,INT_32 *buf,unsigned int adr,int nmots,int indf);
@@ -323,7 +328,6 @@ int c_fnom_callback(int *iun,char *nom,char *type,int lrec,int (*f90open)(), int
   char remote_mach[256];
   char nom2[1024];
   PTR_AS_INT ptr_as_int;
-
 
   if(fnom_initialized == 0) {
     f90_open = f90open;
@@ -1022,19 +1026,19 @@ void f77name(waclos)(ftnword *fiun)
 *
 */
 
-void c_wawrit(int iun,void *buf,unsigned int adr,int nmots)
-{
-  c_wawrit2(iun,buf,adr,nmots);
-}
+#define WA_HOLE 2048
 int c_wawrit64(int iun,void *buf,unsigned long long adr,unsigned int nmots, unsigned int part)
 {
-#define WA_HOLE 2048
    int i,ier;
    INT_32 scrap[WA_HOLE];
    INT_32 *bufswap = (INT_32 *) buf;
-   unsigned long long nmots64 = nmots;
-   unsigned long long count, ladr;
+   unsigned long long ladr;
+   unsigned int count;
 
+   if(part != 0) {
+     fprintf(stderr,"c_wawrit error: invalid partition %d for write\n",part);
+     return(-1);
+   }
    if ((i=find_file_entry("c_wawrit",iun)) < 0) return(i);
 
    if (! FGFDT[i].open_flag) {
@@ -1064,13 +1068,17 @@ int c_wawrit64(int iun,void *buf,unsigned long long adr,unsigned int nmots, unsi
    if (*little_endian) swap_buffer_endianness(bufswap,nmots);
    return( nmots>0 ? nmots : 0);
 }
+void c_wawrit(int iun,void *buf,unsigned int adr,int nmots)
+{
+  unsigned long long ladr = adr;
+  c_wawrit64(iun,buf,ladr,nmots,0);
+}
 int c_wawrit2(int iun,void *buf,unsigned int adr,int nmots)
 {
 #if ! defined(USE_OLD_CODE)
   unsigned long long ladr = adr;
   return c_wawrit64(iun,buf,ladr,nmots,0);
 #else
-#define WA_HOLE 2048
    int i,ier;
    INT_32 scrap[WA_HOLE];
    INT_32 *bufswap = (INT_32 *) buf;
@@ -1140,7 +1148,9 @@ ftnword f77name(wawrit2)(ftnword *fiun,void *buf,unsigned ftnword *fadr,ftnword 
 void c_waread(int iun,void *buf,unsigned int adr,int nmots)
 {
   int ier, i;
-  ier = c_waread2(iun,buf,adr,nmots);
+  long long ladr = adr;
+
+  ier = c_waread64(iun,buf,ladr,nmots,0);
   if (ier == -2) {
     i = find_file_entry("c_waread",iun);
     fprintf(stderr,
@@ -1155,8 +1165,12 @@ int c_waread64(int iun,void *buf,unsigned long long adr,unsigned int nmots,unsig
 {
    int i,ier;
    INT_32 *bufswap = (INT_32 *) buf;
-   unsigned long long count = nmots;
+   unsigned int count = nmots;
 
+   if(part != 0) {
+     fprintf(stderr,"c_waread error: invalid partition %d for read\n",part);
+     return(-1);
+   }
    if ((i=find_file_entry("c_waread",iun)) < 0) return(i);
    
    if (! FGFDT[i].open_flag) {
@@ -1164,7 +1178,9 @@ int c_waread64(int iun,void *buf,unsigned long long adr,unsigned int nmots,unsig
       return(-1);
       }
 
-   if ( adr > FGFDT[i].eff_file_size+2 ) return(-2);
+   if ( adr > FGFDT[i].eff_file_size+2 ) {
+     return(-2);
+   }
 
    if ( FGFDT[i].eff_file_size == 0 ) return(0);
 
@@ -1411,8 +1427,8 @@ void f77name(checda)(ftnword *iun)
 *
 *ARGUMENTS: in  iun      unit number
 *           out bufptr   will contain the data read
-*           in  ns       number of words to read
-*           in  is       word to start from
+*           in  ns       number of sectors to read
+*           in  is       sector to start from (origin 1)
 *
 */
 void c_readda(int iun,int *bufptr,int ns,int is)
@@ -1458,8 +1474,8 @@ void f77name(readda)(ftnword *iun,ftnword *bufptr,ftnword *ns,ftnword *is)
 *
 *ARGUMENTS: in  iun     unit number
 *           in  bufptr  will contain the data read
-*           in  ns      number of words to write
-*           in  is      word to start from 
+*           in  ns      number of sectors to write
+*           in  is      sector to start from  (origin 1)
 *
 */
 void c_writda(int iun,int *bufptr,int ns,int is)
@@ -1980,7 +1996,7 @@ static void wa_pages_flush(int ind)
 *         in a CMCARC file.
 *
 */
-static int filepos(int indf)
+static long long filepos(int indf)
 {
   char sign[25];
 
@@ -2001,8 +2017,7 @@ static int filepos(int indf)
   HEADER_CMCARC *cmcarc_file;
   int nblu,lng,found=0,version=0,tail_offset;
   unsigned int nt,nd;
-  INT_64 nt64, nd64, lng64, nblu64, pos64;
-  int retour;
+  INT_64 nt64, nd64, lng64, nblu64, pos64, retour;
   
   
   lseek(FGFDT[indf].fd,(off_t) 0,SEEK_SET);
@@ -2466,7 +2481,11 @@ static void wa_page_read(int fd,INT_32 *buf,unsigned int adr,int nmots,int indf)
 *RETURNS: the group of characters right justified.
 *
 */
-unsigned INT_32 f_hrjust (unsigned INT_32 *moth, INT_32 *ncar)
+#pragma weak hrjust__=hrjust
+#pragma weak hrjust_=hrjust
+unsigned INT_32 hrjust__ (unsigned INT_32 *moth, INT_32 *ncar);
+unsigned INT_32 hrjust_ (unsigned INT_32 *moth, INT_32 *ncar);
+unsigned INT_32 hrjust (unsigned INT_32 *moth, INT_32 *ncar)
 {
    int sc;
    sc = 8 * ( sizeof(INT_32) - *ncar );
@@ -2487,7 +2506,11 @@ unsigned INT_32 f_hrjust (unsigned INT_32 *moth, INT_32 *ncar)
 *RETURNS: the group of characters left justified.
 *
 */
-unsigned INT_32 f_hljust (unsigned INT_32 *moth, INT_32 *ncar)
+#pragma weak hljust__=hljust
+#pragma weak hljust_=hljust
+unsigned INT_32 hljust__ (unsigned INT_32 *moth, INT_32 *ncar);
+unsigned INT_32 hljust_ (unsigned INT_32 *moth, INT_32 *ncar);
+unsigned INT_32 hljust (unsigned INT_32 *moth, INT_32 *ncar)
 {
    int sc;
    sc = 8 * ( sizeof(INT_32) - *ncar );
@@ -2650,7 +2673,7 @@ static void wa_page_write(int fd,INT_32 *buf,unsigned int adr,int nmots,int indf
 *
 *ARGUMENTS: in lfd    file descriptor
 *           in buf    contains data to write
-*           in wadr   file address in words 
+*           in wadr   file address in words  (origin 1)
 *           in nmots  number of words to write
 *           in indf   index in the master file table
 *
@@ -2918,7 +2941,7 @@ else {
 *
 *ARGUMENTS: in  lfd     file descriptor
 *           out buf     will contain data read
-*           in  wadr    file address in words
+*           in  wadr    file address in words (origin 1)
 *           in  lnmots  number of words to read
 *           in  indf    index of file in the master file table
 *
@@ -2973,7 +2996,7 @@ static void qqcward64(INT_32 *buf,unsigned long long ladr,int lnmots,int indf)
       count = sizeof(INT_32) * lnmots;
       reste=read(lfd, buf, count);
       if(reste != sizeof(INT_32)*lnmots) {
-          fprintf(stderr,"qqcward error: tried to read %d words, only read %d\n",
+          fprintf(stderr,"qqcward error: tried to read %d bytes, only read %d\n",
                         sizeof(INT_32)*lnmots,reste);
           fprintf(stderr,"qqcward: wafile[ind].offset=%d ladr=%Ld\n",wafile[ind].offset,ladr);
           f_tracebck();
@@ -3352,4 +3375,9 @@ if ( domain_ok) {
 #endif
 }
 #endif
+#endif
+#if defined(SELF_TEST)
+main()
+{
+}
 #endif

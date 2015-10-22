@@ -34,7 +34,7 @@ module fnom_helpers
       import
       integer(C_INT), intent(INOUT) :: iun
       integer(C_INT), intent(IN), value :: reclen
-      type(C_PTR), intent(IN) :: name,opti
+      type(C_PTR), intent(IN),value :: name,opti
       type(C_FUNPTR), intent(IN), value :: qqqfopen
       type(C_FUNPTR), intent(IN), value :: qqqfclos
       integer :: status
@@ -49,9 +49,6 @@ module fnom_helpers
       character(C_CHAR), dimension(leng), intent(IN) :: c_name
       integer :: status
     end FUNCTION qqqf7op_c
-
-  end interface
-  interface
     function cqqqfnom(iun,name,ftyp,flrec,lname,lftyp) result(status) bind(C,name='F_qqqfnom')
       import
       integer(C_INT), intent(IN), value :: iun, lname, lftyp
@@ -62,6 +59,11 @@ module fnom_helpers
     end function cqqqfnom
   end interface
 end module fnom_helpers
+
+subroutine traceback_from_c() bind(C,name='f_tracebck') ! C code calls f_tracebck()
+  call tracebck  ! unfortunately does nothing with most compilers
+end subroutine traceback_from_c
+
 function fnom(iun,name,opti,reclen) result (status)
   use ISO_C_BINDING
   use fnom_helpers
@@ -109,8 +111,8 @@ function qqqfnom(iun,name,ftyp,flrec) result(status)  ! get filename, properties
   character(len=1), dimension(len(ftyp)) :: ftyp1
   integer :: lname, lftyp, i
 
-  lname = len(trim(name))
-  lftyp = len(trim(ftyp))
+  lname = len(name)
+  lftyp = len(ftyp)
   status = cqqqfnom(iun,name1,ftyp1,flrec,lname,lftyp)
   do i = 1 , lftyp
     ftyp(i:i) = ftyp1(i)
@@ -143,6 +145,7 @@ function qqqf7op_c(iun,c_name,lrec,rndflag,unfflag,lmult,leng) result(status) bi
   status = qqqf7op(iun,name(1:lng),lrec,rndflag,unfflag,lmult)
   return
 end function qqqf7op_c
+
 ! function to perform file open operations that must be performed by the Fortran library
 INTEGER FUNCTION qqqf7op(iun,name,lrec,rndflag,unfflag,lmult)
   integer, intent(IN) :: iun,lrec
@@ -191,6 +194,7 @@ INTEGER FUNCTION qqqf7op(iun,name,lrec,rndflag,unfflag,lmult)
 end
 ! close a Fortran file (normally used as a callback by c_fnom)
 integer FUNCTION ftnclos(iun)
+  implicit none
   integer iun
 
   ftnclos = 0
@@ -198,9 +202,10 @@ integer FUNCTION ftnclos(iun)
   return
 end
 integer FUNCTION ftnclos_c(iun) bind(C,name='F90clos_for_c') ! for C callback
+  implicit none
   integer iun
 
-  ftnclos = 0
+  ftnclos_c = 0
   CLOSE(iun)
   return
 end
@@ -221,6 +226,8 @@ integer function fclos(iun)
 end
 
 integer function fretour(iun)
+! ARGUMENTS: in iun   unit number, ignored
+! RETURNS: zero.
 ! Kept only for backward compatibility. NO-OP
   fretour = 0
   return
@@ -228,7 +235,10 @@ end
 
 INTEGER FUNCTION LONGUEUR(NOM)
   implicit none
-  CHARACTER * (*) NOM
+  CHARACTER (len=*) NOM
+
+  LONGUEUR = len(trim(NOM))
+#if defined(USE_DEPRECATED_CODE)
   INTEGER LNG,I
 !
   LNG = LEN(NOM)
@@ -241,12 +251,18 @@ INTEGER FUNCTION LONGUEUR(NOM)
   10   CONTINUE
   20   CONTINUE
   LONGUEUR = LNG
+#endif
   RETURN
 END
 ! ====================================================
 !     openda/closda readda/writda/checda
 !     "asynchronous" random access by block routines
 !     (the current implementation is SYNCHRONOUS)
+! IUN(IN)     : fortran unit number
+! BUF(IN/OUT) : array to write from or read into
+! NS          : number of "sectors" (sector = 512 bytes)
+! IS          : address of first "sector" for transfer
+!               file starts at sector #1
 ! ====================================================
 subroutine openda(iun)
   implicit none
@@ -259,8 +275,7 @@ subroutine readda(iun,buf,ns,is)
   implicit none
   integer, intent(IN) :: iun, ns, is
   integer, intent(OUT), dimension(512,ns) :: buf
-
-  call waread(iun,buf,is*512,ns*512)
+  call waread(iun,buf,(is-1)*512+1,ns*512)
 end subroutine readda
 
 subroutine writda(iun,buf,ns,is)
@@ -268,7 +283,7 @@ subroutine writda(iun,buf,ns,is)
   integer, intent(IN) :: iun, ns, is
   integer, intent(IN), dimension(512,ns) :: buf
 
-  call wawrit(iun,buf,is*512,ns*512)
+  call wawrit(iun,buf,(is-1)*512+1,ns*512)
 end subroutine writda
 
 subroutine checda(iun)
@@ -296,6 +311,11 @@ end subroutine closda
 !   random access by word (4 bytes) routines
 !   these routines take care of endian conversion
 !   the file contents are always BIG-ENDIAN (4 bytes)
+! IUN(IN)     : fortran unit number
+! BUF(IN/OUT) : array to write from or read into
+! NMOTS(IN)   : number of "words" to read (word = 4 bytes)
+! ADR(IN)     : address of first word for transfer
+!               file starts at word #1
 ! ====================================================
 subroutine waopen(iun)
   use ISO_C_BINDING
@@ -339,7 +359,7 @@ subroutine waread(iun,buf,adr,nmots)
   integer, intent(IN) :: iun, nmots
   integer, intent(IN) :: adr
   integer, intent(OUT), dimension(nmots) :: buf
-
+print *,'waread, adr, nmots',adr,nmots
   call cwaread(iun,buf,adr,nmots)
 end subroutine waread
 
@@ -418,22 +438,203 @@ end function existe
 !
 ! TODO
 ! qqqfnom, existe, waopen2, waclos2, waread2, wawrit2, wasize, numblks, 
-! getfdsc, sqclos, sqrew, sqeoi, sqgetw, sqputw, sqgets, sqputs, tracebck
-! hrjust, hljust, check_host_id
+! TODO sqgets, sqputs
+subroutine sqopen(iun)
+  use ISO_C_BINDING
+  implicit none
+  interface
+    subroutine csqopen(iun) bind(C,name='c_sqopen')
+      import
+      integer(C_INT), intent(IN), value :: iun
+    end subroutine csqopen
+  end interface
+  integer, intent(IN) :: iun
+
+  call csqopen(iun)
+end subroutine sqopen
+subroutine sqclos(iun)
+  use ISO_C_BINDING
+  implicit none
+  interface
+    subroutine csqclos(iun) bind(C,name='c_sqclos')
+      import
+      integer(C_INT), intent(IN), value :: iun
+    end subroutine csqclos
+  end interface
+  integer, intent(IN) :: iun
+
+  call csqclos(iun)
+end subroutine sqclos
+subroutine sqrew(iun)
+  use ISO_C_BINDING
+  implicit none
+  interface
+    subroutine csqrew(iun) bind(C,name='c_sqrew')
+      import
+      integer(C_INT), intent(IN), value :: iun
+    end subroutine csqrew
+  end interface
+  integer, intent(IN) :: iun
+
+  call csqrew(iun)
+end subroutine sqrew
+subroutine sqeoi(iun)
+  use ISO_C_BINDING
+  implicit none
+  interface
+    subroutine csqeoi(iun) bind(C,name='c_sqeoi')
+      import
+      integer(C_INT), intent(IN), value :: iun
+    end subroutine csqeoi
+  end interface
+  integer, intent(IN) :: iun
+
+  call csqeoi(iun)
+end subroutine sqeoi
+subroutine sqgetw(iun,buf,nmots)
+  use ISO_C_BINDING
+  implicit none
+  interface
+    subroutine csqgetw(iun,buf,nmots) bind(C,name='c_sqgetw')
+      import
+      integer(C_INT), intent(IN), value :: iun,nmots
+      integer(C_INT), intent(OUT) :: buf
+    end subroutine csqgetw
+  end interface
+  integer, intent(IN) :: iun, nmots
+  integer, intent(OUT) :: buf
+
+  call csqgetw(iun,buf,nmots)
+end subroutine sqgetw
+subroutine sqputw(iun,buf,nmots)
+  use ISO_C_BINDING
+  implicit none
+  interface
+    subroutine csqputw(iun,buf,nmots) bind(C,name='c_sqputw')
+      import
+      integer(C_INT), intent(IN), value :: iun,nmots
+      integer(C_INT), intent(IN) :: buf
+    end subroutine csqputw
+  end interface
+  integer, intent(IN) :: iun, nmots
+  integer, intent(IN) :: buf
+
+  call csqputw(iun,buf,nmots)
+end subroutine sqputw
+function getfdsc(iun) result(i)
+  use ISO_C_BINDING
+  implicit none
+  interface
+    function cgetfdsc(iun) result(i) bind(C,name='c_getfdsc')
+      import
+      integer(C_INT), intent(IN), value :: iun
+      integer(C_INT) :: i
+    end function cgetfdsc
+  end interface
+  integer, intent(IN) :: iun
+  integer :: i
+
+  i = cgetfdsc(iun)
+end function getfdsc
+function numblks(iun) result(i)
+  use ISO_C_BINDING
+  implicit none
+  interface
+    function cnumblks(iun) result(i) bind(C,name='c_numblks')
+      import
+      integer(C_INT), intent(IN), value :: iun
+      integer(C_INT) :: i
+    end function cnumblks
+  end interface
+  integer, intent(IN) :: iun
+  integer :: i
+
+  i = cnumblks(iun)
+end function numblks
+function wasize(iun) result(i)
+  use ISO_C_BINDING
+  implicit none
+  interface
+    function cwasize(iun) result(i) bind(C,name='c_wasize')
+      import
+      integer(C_INT), intent(IN), value :: iun
+      integer(C_INT) :: i
+    end function cwasize
+  end interface
+  integer, intent(IN) :: iun
+  integer :: i
+
+  i = cwasize(iun)
+end function wasize
 !
 ! ftnword f77name(qqqfnom)(ftnword *iun,char *nom,char *type,ftnword *flrec,F2Cl l1,F2Cl l2)
-! int c_existe(char *nom) 
-! ftnword f77name(wasize)(ftnword *fiun) 
-! ftnword f77name(numblks)(ftnword *fiun)
-! ftnword f77name(getfdsc)( ftnword *iun)
-! void f77name(sqclos)(ftnword *iun)
-! void f77name(sqrew)
-! void f77name(sqeoi)(ftnword *iun)
-! ftnword f77name(sqgetw)(ftnword *iun, ftnword *bufptr, ftnword *nmots)
-! ftnword f77name(sqputw)(ftnword *iun, ftnword *bufptr, ftnword *nmots)
 ! ftnword f77name(sqgets)(ftnword *iun, char  *bufptr, ftnword *nchar, F2Cl llbuf)
 ! ftnword f77name(sqputs)(ftnword *iun, char  *bufptr, ftnword *nchar, F2Cl llbuf)
-! f77name(tracebck)()
-! unsigned ftnword f77name(hrjust) (unsigned ftnword *moth, ftnword *ncar)
-! unsigned ftnword f77name(hljust) (unsigned ftnword *moth, ftnword *ncar)
 ! unsigned INT_32 f77name(check_host_id)()
+#if defined(SELF_TEST)
+program test
+  integer, external :: fnom, fclos, wawrit64, waread64
+  integer :: iun, status, i, r64, w64
+  integer*8 :: ladr
+  integer, dimension(1024) :: array0, array1, array2
+
+  do i=1,size(array1)
+    array0(i) = i
+  enddo
+  print *,'base IO test'
+  iun = 0
+  status = fnom(iun,'/tmp/Scrap','RND+WA',0)
+  print *,'(fnom) iun,status =',iun,status
+  call waopen(iun)
+  array1 = array0
+  call wawrit(iun,array1,1,size(array0))
+  call waread(iun,array2,1,size(array0))
+  if(any(array1 .ne. array2)) then
+    print *,'did not read what was written'
+  else
+    print *,'read what was written',array2(1),array2(size(array0))
+  endif
+  array1 = array0 + 512
+  ladr = 513
+  w64 = wawrit64(iun,array1,ladr,size(array0),1)
+  print *,'w64=',w64
+  w64 = wawrit64(iun,array1,ladr,size(array0),0)
+  print *,'w64=',w64
+  ladr = 129
+  r64 = waread64(iun,array2,ladr,size(array0),1)
+  print *,'r64=',r64
+  r64 = waread64(iun,array2,ladr,size(array0),0)
+  print *,'r64=',r64
+  if(any(array0+128 .ne. array2)) then
+    print *,'did not read what was written'
+  else
+    print *,'read what was written',array2(1),array2(size(array0))
+  endif
+  call waclos(iun)
+  call openda(iun)
+  array2 = -1
+  array1 = array0 + 1024 + 512
+  call writda(iun,array1,2,4)
+  call checda(iun)
+  call readda(iun,array2,2,3)
+  call checda(iun)
+  if(any(array0+1024 .ne. array2)) then
+    print *,'did not read what was written'
+  else
+    print *,'read what was written',array2(1),array2(size(array0))
+  endif
+  call closda(iun)
+  call waopen(iun)
+  ladr = 1385
+  r64 = waread64(iun,array2,ladr,size(array0),0)
+  print *,'r64=',r64
+  if(any(array0+1384 .ne. array2)) then
+    print *,'did not read what was written'
+  else
+    print *,'read what was written',array2(1),array2(size(array0))
+  endif
+  call waclos(iun)
+  status = fclos(iun)
+  print *,'(fclos) iun,status =',iun,status
+end program
+#endif

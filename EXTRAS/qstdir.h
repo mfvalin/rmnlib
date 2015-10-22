@@ -1,5 +1,5 @@
 #include <rpnmacros.h>
-#include <fnom.h>
+#include "../common/fnom64.h"
 #define WRITE_PAGE(a,b,c)
 
 #define MODE3232

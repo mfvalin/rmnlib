@@ -5,18 +5,20 @@ typedef struct {
      unf:1, read_only:1, old:1, scratch:1, notpaged:1,
      pipe:1, write_mode:1, remote:1, wap:1, padding:17;
 } attributs;
+
 typedef struct {
   INT_64 file_size;              /* file size in words */
   INT_64 eff_file_size;          /* effective file size in words */
-  char * file_name;            /* complete file name */
-  char * subname;              /* sub file name for cmcarc files */
-  char * file_type;            /* file type and options */
+  char * file_name;              /* complete file name */
+  char * subname;                /* sub file name for cmcarc files */
+  char * file_type;              /* file type and options */
   INT_32 iun;                    /* fnom unit number */
   INT_32 fd;                     /* c file descriptor */
   INT_32 lrec;                   /* record length when appliable */
   INT_32 open_flag;              /* open/close flag */
   attributs attr;
 } general_file_info;
+
 #if defined(FNOM_OWNER)
 general_file_info Fnom_General_File_Desc_Table[MAXFILES];
 #else
@@ -46,6 +48,22 @@ int c_waread64(int iun,void *buf,unsigned long long adr,unsigned int nmots,unsig
 INT_32 c_wasize(int iun);
 INT_32 c_numblks(int iun);
 
+void c_openda(int iun);
+void c_closda(int iun);
+void c_checda(int iun);
+void c_readda(int iun,int *bufptr,int ns,int is);
+void c_writda(int iun,int *bufptr,int ns,int is);
+
+int c_getfdsc(int iun);
+void c_sqopen(int iun);
+void c_sqrew(int iun);
+void c_sqeoi(int iun);
+int c_sqgetw(int iun, int *bufptr, int nmots);
+int c_sqputw(int iun, int *bufptr, int nmots);
+int c_sqgets(int iun, char *bufptr, int nchar);
+int c_sqputs(int iun, char *bufptr, int nchar);
+void d_wafdt();  
+
 #if defined(USE_DEPRECATED_CODE)
 ftnword f77name(fretour)(ftnword *fiun);
 ftnword f77name(fnom)(ftnword *iun,char *nom,char *type,ftnword *flrec,F2Cl l1,F2Cl l2);
@@ -61,32 +79,13 @@ void f77name(waread)(ftnword *fiun,void *buf,unsigned ftnword *fadr,ftnword *fnm
 ftnword f77name(waread2)(ftnword *fiun,void *buf,unsigned ftnword *fadr,ftnword *fnmots);
 ftnword f77name(wasize)(ftnword *fiun);
 ftnword f77name(numblks)(ftnword *fiun);
-#endif
 
-void c_openda(int iun);
-void c_closda(int iun);
-void c_checda(int iun);
-void c_readda(int iun,int *bufptr,int ns,int is);
-void c_writda(int iun,int *bufptr,int ns,int is);
-#if defined(USE_DEPRECATED_CODE)
 void f77name(openda)(ftnword *iun);
 void f77name(closda)(ftnword *iun);
 void f77name(checda)(ftnword *iun);
 void f77name(readda)(ftnword *iun,ftnword *bufptr,ftnword *ns,ftnword *is);
 void f77name(writda)(ftnword *iun,ftnword *bufptr,ftnword *ns,ftnword *is);
-#endif
 
-int c_getfdsc(int iun);
-void c_sqopen(int iun);
-void c_sqrew(int iun);
-void c_sqeoi(int iun);
-int c_sqgetw(int iun, int *bufptr, int nmots);
-int c_sqputw(int iun, int *bufptr, int nmots);
-int c_sqgets(int iun, char *bufptr, int nchar);
-int c_sqputs(int iun, char *bufptr, int nchar);
-void d_wafdt();  
-
-#if defined(USE_DEPRECATED_CODE)
 ftnword f77name(getfdsc)( ftnword *iun);
 void f77name(sqopen)(ftnword *iun);
 void f77name(sqclos)(ftnword *iun);
