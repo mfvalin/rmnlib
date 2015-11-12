@@ -32,7 +32,7 @@ module fnom_helpers
   interface
     function cfnom(iun,name,opti,reclen,qqqfopen,qqqfclos) result (status) bind(C,name='c_fnom_callback')
       import
-      integer(C_INT), intent(INOUT) :: iun
+      type(C_PTR), intent(IN), value :: iun
       integer(C_INT), intent(IN), value :: reclen
       type(C_PTR), intent(IN),value :: name,opti
       type(C_FUNPTR), intent(IN), value :: qqqfopen
@@ -68,7 +68,7 @@ function fnom(iun,name,opti,reclen) result (status)
   use ISO_C_BINDING
   use fnom_helpers
   implicit none
-  integer, intent(INOUT) :: iun
+  type(C_PTR), intent(IN), value :: iun
   integer, intent(IN) :: reclen
   character(len=*), intent(IN) :: name,opti
   integer :: status
@@ -88,9 +88,9 @@ function fnom_for_c(iun,name,opti,reclen) result(status) bind(C,name='c_fnom')
   use ISO_C_BINDING
   use fnom_helpers
   implicit none
-  integer(C_INT), intent(INOUT) :: iun
-  integer, intent(IN) :: reclen
-  type(C_PTR), intent(IN) :: name,opti
+  type(C_PTR), intent(IN), value :: iun
+  integer(C_INT), intent(IN), value :: reclen
+  type(C_PTR), intent(IN), value :: name,opti
   integer :: status
 
   status = cfnom(iun,name,opti,reclen, C_FUNLOC(qqqf7op_c), C_FUNLOC(ftnclos))
@@ -153,6 +153,7 @@ INTEGER FUNCTION qqqf7op(iun,name,lrec,rndflag,unfflag,lmult)
   integer, intent(IN) :: rndflag,unfflag
 
   integer lng
+
   qqqf7op=0
   lng = len(trim(name))
 !  print *,'opening file ',name(1:lng),' as unit ',iun
@@ -162,7 +163,6 @@ INTEGER FUNCTION qqqf7op(iun,name,lrec,rndflag,unfflag,lmult)
     if (unfflag.eq.1) then
 !     print *,'ACCESS=DIRECT,RECL=',lrec
       OPEN(iun,FILE=name(1:lng),ACCESS='DIRECT',RECL=lrec*lmult,ERR=77)
-
     else
 !     print *,'ACCESS=DIRECT,RECL=',lrec*4
       OPEN(iun,FILE=name(1:lng),ACCESS='DIRECT',FORM='FORMATTED',RECL=lrec*4,ERR=77)
@@ -574,14 +574,16 @@ end function wasize
 #if defined(SELF_TEST)
 program test
   integer, external :: fnom, fclos, wawrit64, waread64
-  integer :: iun, status, i, r64, w64
+  integer :: iun, status, i, r64, w64, iund77
   integer*8 :: ladr
   integer, dimension(1024) :: array0, array1, array2
+  integer, dimension(100) :: darray
 
   do i=1,size(array1)
     array0(i) = i
   enddo
-  print *,'base IO test'
+  print *,'========== base IO test, c_baseio + f_baseio =========='
+  call test_c_fnom()
   iun = 0
   status = fnom(iun,'/tmp/Scrap','RND+WA',0)
   print *,'(fnom) iun,status =',iun,status
@@ -597,14 +599,14 @@ program test
   array1 = array0 + 512
   ladr = 513
   w64 = wawrit64(iun,array1,ladr,size(array0),1)
-  print *,'w64=',w64
+  print *,'error expected, w64=',w64
   w64 = wawrit64(iun,array1,ladr,size(array0),0)
-  print *,'w64=',w64
+  print *,'OK expected, w64=',w64
   ladr = 129
   r64 = waread64(iun,array2,ladr,size(array0),1)
-  print *,'r64=',r64
+  print *,'error expected, r64=',r64
   r64 = waread64(iun,array2,ladr,size(array0),0)
-  print *,'r64=',r64
+  print *,'OK expected, r64=',r64
   if(any(array0+128 .ne. array2)) then
     print *,'did not read what was written'
   else
@@ -636,5 +638,28 @@ program test
   call waclos(iun)
   status = fclos(iun)
   print *,'(fclos) iun,status =',iun,status
+  iund77 = 0
+  status = fnom(iund77,'/tmp/Scrap','D77+UNF',10)
+  print *,'(fnom) iun,D77 status =',iund77,status
+  darray = -1
+  read(iund77,rec=2)darray(2:11)
+  print *,'expecting -1, 11 to 20, -1'
+  print *,darray(1:12)
+  status = fclos(iund77)
+  print *,'(fclos) iun,D77 status =',iund77,status
+  iun = 0
+  status = fnom(iun,'/tmp/Scrap','FTN+FMT',0)
+  print *,'(fnom) iun SEQ,status =',iun,status
+  write(iun,100)"0123456789"
+  write(iun,100)"abcdefghij"
+100 format(A10)
+  status = fclos(iun)
+  print *,'(fclos) iun,SEQ status =',iund77,status
+  status = fnom(iun,'/tmp/Scrap2','FTN+UNF',0)
+  print *,'(fnom) iun SEQ UNF,status =',iun,status
+  write(iun)"01234567"
+  write(iun)"abcdefgh"
+  status = fclos(iun)
+  print *,'(fclos) iun,SEQ UNF status =',iund77,status
 end program
 #endif

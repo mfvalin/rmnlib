@@ -139,7 +139,7 @@ static char *little_endian=(char *)&endian_int;
 static char *AFSISIO=NULL;
 static char *ARMNLIB=NULL;
 static char *LOCALDIR="./";
-static char *usrlocalenv="/usr/local/env/armnlib";
+//static char *usrlocalenv="/usr/local/env/armnlib";
 static char *armnlibpath=NULL;
 
 static int (*f90_open)() = NULL;
@@ -320,7 +320,7 @@ static int find_file_entry(char *caller, int iun)
 *           sept 2008 - Correction du nom de fichier passe pour fichier cmcarc remote 
 *
 */
-// the original c_fnom entry point has been moved to f_baseio.F90 because of neede forrtan callbacks
+// the original c_fnom entry point has been moved to f_baseio.F90 because of needed fortran callbacks
 int c_fnom_callback(int *iun,char *nom,char *type,int lrec,int (*f90open)(), int (*f90clos)())
 {
   int liun,ier = 0, minus = 0, majus = 0, lng, i, j, pid, rndflag, unfflag, lngt, junk, mode;
@@ -353,13 +353,11 @@ int c_fnom_callback(int *iun,char *nom,char *type,int lrec,int (*f90open)(), int
      fnom_initialized=1;
      }
 
-  if (((PTR_AS_INT) iun > 0) && ((PTR_AS_INT) iun < 1000)) {
-     /* an integer value has been passed to c_fnom as iun */
+  if (((PTR_AS_INT) iun > 0) && ((PTR_AS_INT) iun < 1000)) {     /* an integer value has been passed to c_fnom as iun */
      ptr_as_int = (PTR_AS_INT) iun ;
      liun = ptr_as_int;
      }
-  else {
-     /* a pointer has been passed to c_fnom as iun */
+  else {     /* a pointer has been passed to c_fnom as iun */
      if (*iun == 0)
         *iun = c_qqqfscr(type);
         if (*iun == -1) {
@@ -3381,3 +3379,26 @@ main()
 {
 }
 #endif
+#if defined(TEST)
+//int c_fnom(int *iun,char *nom,char *type,int lrec)
+#pragma weak test_c_fnom__=test_c_fnom
+#pragma weak test_c_fnom_=test_c_fnom
+void test_c_fnom__();
+void test_c_fnom_();
+void test_c_fnom()
+{
+  long iun = 600;
+  int iun2 = 0;
+  int lrec = 0;
+  int status;
+  fprintf(stderr,"========== test_c_fnom START ==========\n");
+  status = c_fnom(iun,"C_file","RND+STD",lrec);
+  fprintf(stderr,"test_c_fnom: status=%d\n",status);
+  status = c_fnom(&iun2,"C_file2","RND+STD",lrec);
+  fprintf(stderr,"test_c_fnom: status=%d, iun=%d\n",status,iun2);
+  fprintf(stderr,"========== test_c_fnom  END  ==========\n");
+}
+#endif
+
+
+
