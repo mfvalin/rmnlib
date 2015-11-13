@@ -5,7 +5,7 @@ typedef struct {
      unf:1, read_only:1, old:1, scratch:1, notpaged:1,
      pipe:1, write_mode:1, remote:1, wap:1, padding:17;
 } attributs;
-
+/* new structure name since 64 bit WA file addressing was implemented */
 typedef struct {
   INT_64 file_size;              /* file size in words */
   INT_64 eff_file_size;          /* effective file size in words */
@@ -17,12 +17,12 @@ typedef struct {
   INT_32 lrec;                   /* record length when appliable */
   INT_32 open_flag;              /* open/close flag */
   attributs attr;
-} general_file_info;
+} general_file_info_64;
 
 #if defined(FNOM_OWNER)
-general_file_info Fnom_General_File_Desc_Table[MAXFILES];
+general_file_info_64 Fnom_General_File_Desc_Table[MAXFILES];
 #else
-extern general_file_info Fnom_General_File_Desc_Table[MAXFILES];
+extern general_file_info_64 Fnom_General_File_Desc_Table[MAXFILES];
 #endif
 #define FGFDT Fnom_General_File_Desc_Table
 
@@ -58,8 +58,8 @@ int c_getfdsc(int iun);
 void c_sqopen(int iun);
 void c_sqrew(int iun);
 void c_sqeoi(int iun);
-int c_sqgetw(int iun, int *bufptr, int nmots);
-int c_sqputw(int iun, int *bufptr, int nmots);
+int c_sqgetw(int iun, word *bufptr, int nmots);
+int c_sqputw(int iun, word *bufptr, int nmots);
 int c_sqgets(int iun, char *bufptr, int nchar);
 int c_sqputs(int iun, char *bufptr, int nchar);
 void d_wafdt();  

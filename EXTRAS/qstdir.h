@@ -4,7 +4,7 @@
 
 #define MODE3232
 
-/*  DEFINITIONS FOR 32 BIT MACHINES IN 32 BIT MODE */
+/*  DEFINITIONS FOR 32 BIT MACHINES IN 32 BIT MODE  (this is the NORMAL mode) */
 #ifdef MODE3232
 #define WDINT64(nwds) (nwds>>1) /* ftnword to 64 bit word conversion */
 #define WD64INT(nw64) (nw64<<1) /* 64 bit word to ftnword conversion */
@@ -18,7 +18,7 @@ typedef unsigned INT_32 word32; /* unsigned 32 bit word */
 #define FWTOwd(nwds) (nwds)     /* Fortran word to 32 bit word conversion */
 #endif
 
-/*  DEFINITIONS FOR 64 BIT MACHINES IN 64 BIT MODE */
+/*  DEFINITIONS FOR 64 BIT MACHINES IN everything is 64 BIT MODE */
 #ifdef MODE6464
 #define WDINT64(nwds) (nwds)    /* ftnword to 64 bit word conversion */
 #define WD64INT(nw64) (nw64)    /* 64 bit word to ftnword conversion */
@@ -667,7 +667,7 @@ typedef struct {
         /* length in 64 bit units of primary keys (including 64 bit header) */
         int info_len;                 /* length in 64 bit units of info keys */
         int link;                     /* file index to next linked file,-1 if none */
-        general_file_info  *cur_info;
+        general_file_info_64  *cur_info;  /* new structure name for larger std files */
                                       /* pointer to current general file desc entry */
         int iun;                      /* FORTRAN unit number, -1 if not open, 0 if C file */
         int file_index;               /* index into file table, -1 if not open */

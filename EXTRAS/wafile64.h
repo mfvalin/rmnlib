@@ -22,7 +22,10 @@ typedef struct{
   int l;      /* last logical page when this entry was created */
   int p;      /* physical page this page is remapped into */
 } REMAP_ENTRY;
-
+/* new structure name since 64 bit WA/WAP file addressing was implemented */
+/* as this gets written to disk, this is why 64 bit tokens are split into 2 parts */
+/* to make big<->little endian conversion easier */
+/* [0] is the MOST significant part, [1] is the LEAST significant part */
 typedef struct {
    unsigned char signature[4];
    unsigned int p0[2];         /* offset to partition 0 for WAP files (split into 2 32 bit tokens) */
