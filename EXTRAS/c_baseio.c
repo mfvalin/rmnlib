@@ -453,10 +453,14 @@ int c_fnom_callback(int *iun,char *nom,char *type,int lrec,int (*f90open)(), int
                                                        FGFDT[i].attr.rnd=1; }
   if (strstr(type,"STD")    || strstr(type,"std"))   { FGFDT[i].attr.std=1;
                                                        FGFDT[i].attr.rnd=1; }
+  if (strstr(type,"STDP")   || strstr(type,"stdp"))  { FGFDT[i].attr.std=1;
+                                                       FGFDT[i].attr.wap=1; /* STDP = STD + WAP  */
+                                                       FGFDT[i].attr.rnd=1; }
   if (strstr(type,"BURP")   || strstr(type,"burp"))  { FGFDT[i].attr.burp=1;
                                                        FGFDT[i].attr.rnd=1; }
   if (strstr(type,"RND")    || strstr(type,"rnd"))     FGFDT[i].attr.rnd=1;
-  if (strstr(type,"WA")     || strstr(type,"wa"))      FGFDT[i].attr.rnd=1;   /* wa attribute will be set by waopen */
+  if (strstr(type,"WA")     || strstr(type,"wa"))    { FGFDT[i].attr.rnd=1;
+                                                       FGFDT[i].attr.wap=0; }/* wa attribute will be set by waopen */
   if (strstr(type,"WAP")    || strstr(type,"wap"))   { FGFDT[i].attr.wap=1;
                                                        FGFDT[i].attr.rnd=1; }
   if (strstr(type,"FTN")    || strstr(type,"ftn"))   { FGFDT[i].attr.ftn=1;
