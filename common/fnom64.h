@@ -3,7 +3,7 @@ typedef struct {
   unsigned int 
      stream:1, std:1, burp:1, rnd:1, wa:1, ftn:1,
      unf:1, read_only:1, old:1, scratch:1, notpaged:1,
-     pipe:1, write_mode:1, remote:1, wap:1, padding:17;
+     pipe:1, write_mode:1, remote:1, wap:1, stdp:1,  padding:16;
 } attributs;
 /* new structure name since 64 bit WA file addressing was implemented */
 typedef struct {

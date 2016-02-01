@@ -44,15 +44,20 @@ typedef struct {
    int access_count;
    int last_access;
    int touch_flag;
-   int not_used_pad_for_word_alignment;
+   int not_used_pad_for_word_alignment;  /* in case pointers are 64 bit wide */
    } PAGEINFO;
 
 typedef struct {
-   long long offset;           /* offset to "official" beginning of WA/WAP file (partition 0) */
-   long long offset_p1;        /* offset to partition 1 for WAP files (unused for WA) */
+   long long last_addr;        /* last logical address for partition */
+   long long offset;           /* offset to partition for WAP files, unused(zero) for WA */
+   } PARTINFO;                 /* partition info */
+
+typedef struct {
+   long long offset;           /* offset to "official" beginning of WA/WAP file */
    PAGEINFO *page;
+   PARTINFO *part;             /* if file is WAP, this will point to the partition table */
    WAPINFO *wap;               /* if file is WAP, this will point to its control table */
-   int *core;                  /* address of file if "in core". WAP partition 0 is normally "in core" */
+   int *core;                  /* address of file if "in core". WAP partition 0 is often "in core" */
    int file_desc;              /* fd for this file */
    int nb_page_in_use;         /* number of pages in use for this file */
    int maxpages;               /* maximum number of pages allowed for this file */

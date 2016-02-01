@@ -2431,6 +2431,11 @@ int c_fstouv(int iun, char *options)
   else
     sprintf(appl,"%s","STDS");      /* standard sequential */
 
+  if ((strstr(options,"STDP"))  || (strstr(options,"stdp"))) {
+    sprintf(appl,"%s","STDP");      /* standard random, STDP subtype */
+    FGFDT[i].attr.stdp = 1;
+  }
+
   FGFDT[i].attr.std = 1;  /* force attribute to standard file */
   if (FGFDT[i].attr.remote) 
     if ((FGFDT[i].eff_file_size == 0) && (! FGFDT[i].attr.old))

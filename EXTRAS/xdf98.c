@@ -1868,6 +1868,7 @@ int c_xdfopn(int iun,char *mode,word_2 *pri,int npri,
   ftnword f_datev;
   double nhours;
   int deet,npas,i_nhours,run,datexx;
+  word STDP_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'P';
   word STDR_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'R';
   word STDS_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'S';
 
@@ -1906,6 +1907,7 @@ int c_xdfopn(int iun,char *mode,word_2 *pri,int npri,
 
   if (strstr(appl,"BRP0")) f->cur_info->attr.burp = 1;
   if (strstr(appl,"STD"))  f->cur_info->attr.std = 1;
+  if (strstr(appl,"STDP"))  f->cur_info->attr.stdp = 1;
 
   if (f->cur_info->attr.burp) {
      f->build_primary = (fn_b_p *) build_burp_prim_keys;
@@ -1941,7 +1943,7 @@ int c_xdfopn(int iun,char *mode,word_2 *pri,int npri,
  *  create new xdf file
  */
      c_waopen(iun);
-     ier = create_new_xdf(index,iun,pri,npri,aux,naux,appl);
+     ier = create_new_xdf(index,iun,pri,npri,aux,naux,appl);  /* expected "BRP0" or "STDF" or "STDP" */
      if (! f->xdf_seq)
        add_dir_page(index,WMODE);
      else {
@@ -1984,7 +1986,7 @@ int c_xdfopn(int iun,char *mode,word_2 *pri,int npri,
       f->nxtadr = W64TOWD(f->header->fsiz) + 1;    /* nxtadr = fsiz +1 */
       wdaddress += wdlng_header;
       if (f->cur_info->attr.std)
-        if ((f->header->sign != STDR_sign) && (f->header->sign != STDS_sign)) {
+        if ((f->header->sign != STDR_sign) && (f->header->sign != STDS_sign) && (f->header->sign != STDP_sign)) {
           sprintf(errmsg,"%s is not a standard file",FGFDT[index_fnom].file_name);
           return(error_msg("c_xdfopn",ERR_WRONG_FTYPE,ERRFATAL));
           }
@@ -2012,7 +2014,8 @@ int c_xdfopn(int iun,char *mode,word_2 *pri,int npri,
       }
 
       if (f->header->nbd ==0) {
-        if ( (f->cur_info->attr.std) && (header64.data[1] == 'STDR' || header64.data[1] == 'stdr') ) {
+        if ( (f->cur_info->attr.std) && (header64.data[1] == 'STDR' || header64.data[1] == 'stdr' || 
+                                         header64.data[1] == 'STDP' || header64.data[1] == 'stdp') ) {
           sprintf(errmsg,"File probably dammaged\n file in error: %s\n",FGFDT[index_fnom].file_name);
           return(error_msg("c_xdfopn",ERR_BAD_DIR,ERROR));
           }
