@@ -39,6 +39,15 @@
 #define XDF_OWNER
 #include "qstdir.h"
 
+static word STDP_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'P';
+static word stdp_sign = 's' << 24 | 't' << 16 | 'd' << 8 | 'p';
+static word STDR_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'R';
+static word stdr_sign = 's' << 24 | 't' << 16 | 'd' << 8 | 'r';
+static word STDS_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'S';
+static word stds_sign = 's' << 24 | 't' << 16 | 'd' << 8 | 's';
+static word XDF0_sign = 'X' << 24 | 'D' << 16 | 'F' << 8 | '0';
+static word xdf0_sign = 'x' << 24 | 'd' << 16 | 'd' << 8 | '0';
+
 static int endian_int=1;
 static char *little_endian=(char *)&endian_int;
 static int req_no=0;
@@ -445,7 +454,7 @@ int c_qdfdiag(int iun)
  */
      c_waopen(iun);
      c_waread(iun,&header64,1,W64TOWD(2));
-     if (header64.data[0] != 'XDF0' && header64.data[0] !='xdf0') {
+     if (header64.data[0] != XDF0_sign && header64.data[0] !=xdf0_sign) {
      /*if (strncmp(&header64.data[0], "XDF0", 4) != 0 && strncmp(&header64.data[0], "xdf0", 4) != 0) {*/
         sprintf(errmsg,"file is not XDF type\n");
         return(error_msg("c_qdfdiag",ERR_NOT_XDF,ERRFATAL));
@@ -640,7 +649,7 @@ int c_qdfrstr(int inp, int outp)
  */
    c_waopen(inp);
    c_waread(inp,&header64,1,W64TOWD(2));
-   if (header64.data[0] != 'XDF0' && header64.data[0] !='xdf0') {
+   if (header64.data[0] != XDF0_sign && header64.data[0] !=xdf0_sign) {
    /*if (strncmp(&header64.data[0], "XDF0", 4) != 0 && strncmp(&header64.data[0], "xdf0", 4) != 0) {*/
      sprintf(errmsg,"file is not XDF type\n");
      return(error_msg("c_qdfrstr",ERR_NOT_XDF,ERRFATAL));
@@ -1870,14 +1879,6 @@ int c_xdfopn(int iun,char *mode,word_2 *pri,int npri,
   ftnword f_datev;
   double nhours;
   int deet,npas,i_nhours,run,datexx;
-  word STDP_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'P';
-  word stdp_sign = 's' << 24 | 't' << 16 | 'd' << 8 | 'p';
-  word STDR_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'R';
-  word stdr_sign = 's' << 24 | 't' << 16 | 'd' << 8 | 'r';
-  word STDS_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'S';
-  word stds_sign = 's' << 24 | 't' << 16 | 'd' << 8 | 's';
-  word XDF0_sign = 'X' << 24 | 'D' << 16 | 'F' << 8 | '0';
-  word xdf0_sign = 'x' << 24 | 'd' << 16 | 'd' << 8 | '0';
 
   if (!init_package_done) {
      init_package();
@@ -2758,7 +2759,7 @@ int c_xdfsta(int iun,word *stat,int nstat,
  */
      c_waopen(iun);
      c_waread(iun,&header64,1,W64TOWD(2));
-     if (header64.data[0] != 'XDF0' && header64.data[0] !='xdf0') {
+     if (header64.data[0] != XDF0_sign && header64.data[0] != xdf0_sign) {
      /*if (strncmp(&header64.data[0], "XDF0", 4) != 0 && strncmp(&header64.data[0], "xdf0", 4) != 0) {*/
         sprintf(errmsg,"file is not XDF type\n");
         return(error_msg("c_xdfsta",ERR_NOT_XDF,ERRFATAL));
