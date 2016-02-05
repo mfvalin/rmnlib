@@ -1969,7 +1969,7 @@ int c_xdfopn(int iun,char *mode,word_2 *pri,int npri,
     stdf_dir_keys *stdf_entry;
     xdf_dir_page * curpage;
 
-    c_waread(unit,&header64,wdaddress,W64TOWD(2));
+    c_waread(unit,&header64,wdaddress,W64TOWD(2));   /* get record length and primary signature */
     if (header64.data[0] == 'XDF0' || header64.data[0] == 'xdf0') {
     /*if (strncmp(&header64.data[0], "XDF0", 4) == 0 || strncmp(&header64.data[0], "xdf0", 4) == 0) {*/
       if ((f->header = calloc(1,header64.lng*8)) == NULL) {
@@ -1980,7 +1980,7 @@ int c_xdfopn(int iun,char *mode,word_2 *pri,int npri,
  * read file header
  */
       wdlng_header = W64TOWD(header64.lng);
-      c_waread(unit,f->header,wdaddress,wdlng_header);
+      c_waread(unit,f->header,wdaddress,wdlng_header);  /* read full header */
       f->primary_len = f->header->lprm;
       f->info_len = f->header->laux;
       f->nxtadr = W64TOWD(f->header->fsiz) + 1;    /* nxtadr = fsiz +1 */
@@ -2036,9 +2036,9 @@ int c_xdfopn(int iun,char *mode,word_2 *pri,int npri,
  */
         for (i=0; i < f->header->nbd; i++) {
           add_dir_page(index,RDMODE);
-          lng64 = f->primary_len * ENTRIES_PER_PAGE + 4;
-          curpage = &((f->dir_page[f->npages-1])->dir);
-          c_waread(unit,curpage,wdaddress,W64TOWD(lng64));
+          lng64 = f->primary_len * ENTRIES_PER_PAGE + 4;     /* 4*64 bits + 4*64 bits per entry for a directory page */
+          curpage = &((f->dir_page[f->npages-1])->dir);      /* to be safe, we should use a value derived from sizeof(xdf_dir_page) */
+          c_waread(unit,curpage,wdaddress,W64TOWD(lng64));   /* act of faith here, we suppose this is a directory record */
           checksum = 0;
           check32 = (word32 *) curpage;
           for (j=4; j < W64TOWD(lng64); j++)
