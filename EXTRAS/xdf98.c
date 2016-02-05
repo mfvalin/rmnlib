@@ -39,6 +39,15 @@
 #define XDF_OWNER
 #include "qstdir.h"
 
+static word STDP_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'P';
+static word stdp_sign = 's' << 24 | 't' << 16 | 'd' << 8 | 'p';
+static word STDR_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'R';
+static word stdr_sign = 's' << 24 | 't' << 16 | 'd' << 8 | 'r';
+static word STDS_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'S';
+static word stds_sign = 's' << 24 | 't' << 16 | 'd' << 8 | 's';
+static word XDF0_sign = 'X' << 24 | 'D' << 16 | 'F' << 8 | '0';
+static word xdf0_sign = 'x' << 24 | 'd' << 16 | 'd' << 8 | '0';
+
 static int endian_int=1;
 static char *little_endian=(char *)&endian_int;
 static int req_no=0;
@@ -445,7 +454,7 @@ int c_qdfdiag(int iun)
  */
      c_waopen(iun);
      c_waread(iun,&header64,1,W64TOWD(2));
-     if (header64.data[0] != 'XDF0' && header64.data[0] !='xdf0') {
+     if (header64.data[0] != XDF0_sign && header64.data[0] !=xdf0_sign) {
      /*if (strncmp(&header64.data[0], "XDF0", 4) != 0 && strncmp(&header64.data[0], "xdf0", 4) != 0) {*/
         sprintf(errmsg,"file is not XDF type\n");
         return(error_msg("c_qdfdiag",ERR_NOT_XDF,ERRFATAL));
@@ -465,8 +474,10 @@ int c_qdfdiag(int iun)
       fh = file_table[index]->header;
       }
    nw = c_wasize(iun);
-   strncpy(vers,(char *)&(fh->vrsn),4);
-   strncpy(appl,(char *)&(fh->sign),4);
+   if(*little_endian){ int  ct=fh->vrsn ; vers[0]=(ct>>24)&&0xFF ; vers[1]=(ct>>16)&&0xFF ; vers[2]=(ct>>8)&&0xFF ; vers[3]=ct&&0xFF ;  }
+   else strncpy(vers,(char *)&(fh->vrsn),4);
+   if(*little_endian){ int  ct=fh->sign ; appl[0]=(ct>>24)&&0xFF ; appl[1]=(ct>>16)&&0xFF ; appl[2]=(ct>>8)&&0xFF ; appl[3]=ct&&0xFF ;  }
+   else strncpy(appl,(char *)&(fh->sign),4);
    vers[4] = '\0';
    appl[4] = '\0';
    readpos = 1 + W64TOwd(header64.lng);
@@ -638,7 +649,7 @@ int c_qdfrstr(int inp, int outp)
  */
    c_waopen(inp);
    c_waread(inp,&header64,1,W64TOWD(2));
-   if (header64.data[0] != 'XDF0' && header64.data[0] !='xdf0') {
+   if (header64.data[0] != XDF0_sign && header64.data[0] !=xdf0_sign) {
    /*if (strncmp(&header64.data[0], "XDF0", 4) != 0 && strncmp(&header64.data[0], "xdf0", 4) != 0) {*/
      sprintf(errmsg,"file is not XDF type\n");
      return(error_msg("c_qdfrstr",ERR_NOT_XDF,ERRFATAL));
@@ -1868,9 +1879,6 @@ int c_xdfopn(int iun,char *mode,word_2 *pri,int npri,
   ftnword f_datev;
   double nhours;
   int deet,npas,i_nhours,run,datexx;
-  word STDP_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'P';
-  word STDR_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'R';
-  word STDS_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'S';
 
   if (!init_package_done) {
      init_package();
@@ -1969,8 +1977,8 @@ int c_xdfopn(int iun,char *mode,word_2 *pri,int npri,
     stdf_dir_keys *stdf_entry;
     xdf_dir_page * curpage;
 
-    c_waread(unit,&header64,wdaddress,W64TOWD(2));   /* get record length and primary signature */
-    if (header64.data[0] == 'XDF0' || header64.data[0] == 'xdf0') {
+    c_waread(unit,&header64,wdaddress,W64TOWD(2));       /* read first 16 bytes of file */
+    if (header64.data[0] == XDF0_sign || header64.data[0] == xdf0_sign) {
     /*if (strncmp(&header64.data[0], "XDF0", 4) == 0 || strncmp(&header64.data[0], "xdf0", 4) == 0) {*/
       if ((f->header = calloc(1,header64.lng*8)) == NULL) {
         sprintf(errmsg,"memory is full");
@@ -2014,8 +2022,8 @@ int c_xdfopn(int iun,char *mode,word_2 *pri,int npri,
       }
 
       if (f->header->nbd ==0) {
-        if ( (f->cur_info->attr.std) && (header64.data[1] == 'STDR' || header64.data[1] == 'stdr' || 
-                                         header64.data[1] == 'STDP' || header64.data[1] == 'stdp') ) {
+        if ( (f->cur_info->attr.std) && (header64.data[1] == STDR_sign || header64.data[1] == stdr_sign || 
+                                         header64.data[1] == STDP_sign || header64.data[1] == stdp_sign ) ) {
           sprintf(errmsg,"File probably dammaged\n file in error: %s\n",FGFDT[index_fnom].file_name);
           return(error_msg("c_xdfopn",ERR_BAD_DIR,ERROR));
           }
@@ -2751,7 +2759,7 @@ int c_xdfsta(int iun,word *stat,int nstat,
  */
      c_waopen(iun);
      c_waread(iun,&header64,1,W64TOWD(2));
-     if (header64.data[0] != 'XDF0' && header64.data[0] !='xdf0') {
+     if (header64.data[0] != XDF0_sign && header64.data[0] != xdf0_sign) {
      /*if (strncmp(&header64.data[0], "XDF0", 4) != 0 && strncmp(&header64.data[0], "xdf0", 4) != 0) {*/
         sprintf(errmsg,"file is not XDF type\n");
         return(error_msg("c_xdfsta",ERR_NOT_XDF,ERRFATAL));
