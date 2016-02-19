@@ -206,32 +206,36 @@ void MinMaxSums(float *z_in, int n, float *Max, float *Min, float *Sum, float *S
   *Sum2=ssum2;
   return;
 }
-void MinMax(float *z_in, int n, float *Max, float *Min)
+void MinMax(float *z_in, int n, float *Max, float *Min)  // universal version, can take advantage of AVX2 if present
 {
-  float zmin[8], zmax[8];
   float smin, smax ;
-  float *z = z_in;
-  __m256 z0, z1, zzmin0, zzmax0, zzmin1, zzmax1;
   int i, j;
   int i0, i1;
+#ifdef __AVX2__
+  float *z = z_in;
+  float zmin[8], zmax[8];
+  __m256 z0, z1, zzmin0, zzmax0, zzmin1, zzmax1;
   int block = 8;
   int limit ;              //         = n - block + 1;
   int nminus ;
-
-  if(n > 2*block){
-    nminus = (n / (2*block)) * (2*block);  // multiple of block * 2
-    i1 = nminus/2;                         // multiple of block
-    limit = i1 - block + 1;
+#endif
+  if(n >= block){   // and avx2 is available  Cpu_has_feature(AVX2), needs #include cpu_type.h
+#ifdef __AVX2__
+//    nminus = (n / (2*block)) * (2*block);  // multiple of block * 2
+//    i1 = nminus/2;                         // multiple of block
+//    limit = i1 - block + 1;
+    nminus = ((n+1)>>2);                // ceiling(n/2)
+    limit = ((nminus+7)>>3)<<3 ;         // first multiple of 8 >= nminus
 
     zzmin0 = _mm256_loadu_ps(&z[0]);
     zzmax0 = zzmin0;
     zzmin1 = zzmin0;
     zzmax1 = zzmax0;
 
-    for (i0 = 0 ; i0 < limit ; i0 += block, i1 += block){
+    for (i0 = 0, i1 = n - limit ; i0 < limit ; i0 += block, i1 += block){    //    i0 = 0, limit-1, 8  ; i1 = i1, n-1, 8
 
       z0 = _mm256_loadu_ps(&z[i0]);   // stream from beginning
-      z1 = _mm256_loadu_ps(&z[i1]);   // stream from half way point
+      z1 = _mm256_loadu_ps(&z[i1]);   // stream from "half way point"
 
       zzmin0 = _mm256_min_ps(zzmin0,z0);       // min
       zzmax0 = _mm256_max_ps(zzmax0,z0);       // max
@@ -249,8 +253,9 @@ void MinMax(float *z_in, int n, float *Max, float *Min)
       smax = (smax > zmax[j]) ? smax : zmax[j] ;
       smin = (smin < zmin[j]) ? smin : zmin[j] ;
     }
-  }else {   // n is less than 2 * blocks
-    i1 = 0;
+#endif
+  }else {   // n is less than 1 block or AVX2 is not available
+    i1 = 1;
     smax = z_in[0] ;
     smin = z_in[0] ;
   }
