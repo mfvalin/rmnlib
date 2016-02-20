@@ -224,8 +224,9 @@ void MinMax(float *z_in, int n, float *Max, float *Min)  // universal version, c
 //    nminus = (n / (2*block)) * (2*block);  // multiple of block * 2
 //    i1 = nminus/2;                         // multiple of block
 //    limit = i1 - block + 1;
-    nminus = ((n+1)>>2);                // ceiling(n/2)
+    nminus = ((n+1)>>1);                // ceiling(n/2)
     limit = ((nminus+7)>>3)<<3 ;         // first multiple of 8 >= nminus
+//  printf("DEBUG: n = %d, nminus = %d, limit = %d\n",n,nminus,limit);
 
     zzmin0 = _mm256_loadu_ps(&z[0]);
     zzmax0 = zzmin0;
