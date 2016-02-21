@@ -10,7 +10,14 @@ static unsigned char shuf8[40] = {0,1,4,5,8,9,12,13,128,128,128,128,128,128,128,
                                   0,1,4,5,8,9,12,13,128,128,128,128,128,128,128,128,
                                   0,1,4,5,8,9,12,13};
 
+void c_squash_32_16(short *dst,int *src,int n) {
+  int i;
+//  printf("c_squash_32_16\n");
+  for (i=0 ; i<n ; i++) dst[i] = src[i] & 0xFFFF ;
+}
+
 void avx_squash_32_16(short *dst,int *src,int n) {
+#ifdef __AVX2__
   int i, i1;
   int n2 = n>>1;
   __m256i shuf, shuf2, s, s2;
@@ -33,12 +40,9 @@ void avx_squash_32_16(short *dst,int *src,int n) {
 //    _mm_storeu_si128 ((__m128i*) &dst[i+8], d2);
     _mm256_storeu_si256 ((__m256i *) &dst[i], s);
   }
-}
-
-void c_squash_32_16(short *dst,int *src,int n) {
-  int i;
-//  printf("c_squash_32_16\n");
-  for (i=0 ; i<n ; i++) dst[i] = src[i] & 0xFFFF ;
+#else
+  c_squash_32_16(dst,src,n);
+#endif
 }
 #include <sys/time.h>
 #if ! defined(NREP)
