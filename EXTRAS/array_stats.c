@@ -269,6 +269,88 @@ void MinMax(float *z_in, int n, float *Max, float *Min)  // universal version, c
   *Min=smin;
   return;
 }
+// Min, Max, and rough average
+void MinMaxAvg(float *z_in, int n, float *Max, float *Min, float *Avg)  // universal version, can take advantage of AVX2 if present
+{
+  float smin, smax, ssum, factor;
+  int i, j;
+  int i0, i1;
+#ifdef __AVX2__
+  float *z = z_in;
+  float zmin[8], zmax[8], zsum[8];
+  float zero = 0.0;
+  __m256 z0, z1, zzmin0, zzmax0, zzmin1, zzmax1, zzsum0, zzsum1;
+  const int block = 8;
+  int limit = 0 ;              //         = n - block + 1;
+  int nminus ;
+#endif
+  if(n >= block){   // and avx2 is available  Cpu_has_feature(AVX2), needs #include cpu_type.h
+#ifdef __AVX2__
+//    nminus = (n / (2*block)) * (2*block);  // multiple of block * 2
+//    i1 = nminus/2;                         // multiple of block
+//    limit = i1 - block + 1;
+    nminus = ((n+1)>>1);                // ceiling(n/2)
+    limit = ((nminus+7)>>3)<<3 ;         // first multiple of 8 >= nminus
+    i1 = n - limit;
+//  printf("DEBUG: n = %d, nminus = %d, limit = %d\n",n,nminus,limit);
+
+    zzmin0 = _mm256_loadu_ps(&z[0]);
+    zzmax0 = zzmin0;
+    zzmin1 = zzmin0;
+    zzmax1 = zzmax0;
+    zzsum0 = _mm256_set1_ps(zero);
+    zzsum1 = zzsum0;
+    factor = 0.5 / limit; // reflects actual number of values that will be added together (2*limit)
+
+    limit = ((n>>4) << 3);
+    i1 = limit;
+    factor = 1.0 / n;
+    for (i0 = 0 ; i0 < limit ; i0 += block, i1 += block){    //    i0 = 0, limit-1, 8  ; i1 = i1, n-1, 8
+
+      z0 = _mm256_loadu_ps(&z[i0]);   // stream from beginning
+      z1 = _mm256_loadu_ps(&z[i1]);   // stream from "half way point"
+
+      zzsum0 = _mm256_add_ps(zzsum0,z0);
+      zzsum1 = _mm256_add_ps(zzsum1,z1);
+      zzmin0 = _mm256_min_ps(zzmin0,z0);       // min
+      zzmax0 = _mm256_max_ps(zzmax0,z0);       // max
+      zzmin1 = _mm256_min_ps(zzmin1,z1);
+      zzmax1 = _mm256_max_ps(zzmax1,z1);
+    }
+
+    zzmin0 = _mm256_min_ps(zzmin0,zzmin1);
+    zzmax0 = _mm256_max_ps(zzmax0,zzmax1);
+    zzsum0 =  _mm256_add_ps(zzsum1,zzsum0);
+    _mm256_storeu_ps(zmin,zzmin0);
+    _mm256_storeu_ps(zmax,zzmax0);
+    _mm256_storeu_ps(zsum,zzsum0);
+    smax = zmax[0];
+    smin = zmin[0];
+    ssum = zsum[0];
+    for (j=1 ; j<8 ; j++){
+      smax = (smax > zmax[j]) ? smax : zmax[j] ;
+      smin = (smin < zmin[j]) ? smin : zmin[j] ;
+      ssum = ssum + zsum[j];
+    }
+#endif
+  }else {   // n is less than 1 block or AVX2 is not available
+    factor = 1.0 / n; // reflects actual number of values that will be added together (n)
+    i1 = 1;
+    smax = z_in[0] ;
+    smin = z_in[0] ;
+    ssum = z_in[0] ;
+  }
+
+  for (i=i1 ; i<n ; i++){  // only executed if AVX2 not available or n is less than 1 block
+    smax = (smax > z_in[i]) ? smax : z_in[i] ;
+    smin = (smin < z_in[i]) ? smin : z_in[i] ;
+    ssum = ssum + z_in[i] ;
+  }
+  *Max = smax;
+  *Min = smin;
+  *Avg = ssum * factor;  // rough approximation to average
+  return;
+}
 void MinMaxIndex(float *z_in, int n, float *Max, float *Min, int *Imax, int *Imin)
 {
   float zmin[8], zmax[8];
@@ -448,7 +530,12 @@ void MinMaxIndexSums(float *z_in, int n, float *Max, float *Min, int *Imax, int 
   return;
 }
 #endif
+#if ! defined(NREP)
+#define NREP 1
+#endif
+#if ! defined(NPTS)
 #define NPTS (200000*1024+5)
+#endif
 #include <sys/time.h>
 main()
 {
@@ -456,7 +543,7 @@ main()
   long long T1, T2;
   int duree;
   float Z[NPTS];
-  float Max, Min, Sum, Sum2;
+  float Max, Min, Sum, Sum2, Avg;
   double Div;
   int Imax, Imin;
   int i, j;
@@ -558,6 +645,15 @@ main()
     duree = T2-T1;
     printf("MinMax time = %d usec, %dMtok/s\n",duree,NPTS/duree);
     if (j==0) printf("Min=%f, Max=%f \n",Min,Max);
+
+    gettimeofday(&t1,NULL);
+    MinMaxAvg(Z, NPTS, &Max, &Min, &Avg);
+    gettimeofday(&t2,NULL);
+    T1 = t1.tv_sec ; T1 = T1*1000000 + t1.tv_usec ;
+    T2 = t2.tv_sec ; T2 = T2*1000000 + t2.tv_usec ;
+    duree = T2-T1;
+    printf("MinMaxAvg time = %d usec, %dMtok/s\n",duree,NPTS/duree);
+    if (j==0) printf("Min=%f, Max=%f, Avg=%f \n",Min,Max,Avg);
 
     gettimeofday(&t1,NULL);
     MinMaxIndex(Z, NPTS, &Max, &Min, &Imax, &Imin);
