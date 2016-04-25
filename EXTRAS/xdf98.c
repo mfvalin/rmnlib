@@ -434,6 +434,9 @@ static void build_gen_prim_keys(word *buf, word *keys,
 
 int c_qdfdiag(int iun)
 {
+#define swap_4(mot) { register unsigned INT_32 tmp =(unsigned INT_32)mot; \
+   mot = (tmp>>24) | (tmp<<24) | ((tmp>>8)&0xFF00) | ((tmp&0xFF00)<<8); }
+
    int index, index_fnom, ier, wasopen=0, addr, nw;
    int nrec_tot=0, nrec_act=0, nrec_eff=0, ndirect=0, leplusgros=0;
    int readpos, eofile=0, thesame;
@@ -474,10 +477,20 @@ int c_qdfdiag(int iun)
       fh = file_table[index]->header;
       }
    nw = c_wasize(iun);
-   if(*little_endian){ int  ct=fh->vrsn ; vers[0]=(ct>>24)&&0xFF ; vers[1]=(ct>>16)&&0xFF ; vers[2]=(ct>>8)&&0xFF ; vers[3]=ct&&0xFF ;  }
+   if(*little_endian) {  
+     int  ct=fh->vrsn ;
+     swap_4(ct);
+     strncpy(vers,(char *)&(ct),4);
+   }
    else strncpy(vers,(char *)&(fh->vrsn),4);
-   if(*little_endian){ int  ct=fh->sign ; appl[0]=(ct>>24)&&0xFF ; appl[1]=(ct>>16)&&0xFF ; appl[2]=(ct>>8)&&0xFF ; appl[3]=ct&&0xFF ;  }
+   if(*little_endian)
+   {
+     int  ct=fh->sign ;
+     swap_4(ct);
+     strncpy(appl,(char *)&(ct),4);
+   }
    else strncpy(appl,(char *)&(fh->sign),4);
+
    vers[4] = '\0';
    appl[4] = '\0';
    readpos = 1 + W64TOwd(header64.lng);
@@ -525,7 +538,7 @@ int c_qdfdiag(int iun)
    fprintf(stdout,"\t application signature           %s\n",appl);
 
    if (! thesame) {
-      fprintf(stdout,"\n **** This file has been dammaged ****\n"); 
+      fprintf(stdout,"\n **** This file has been damaged ****\n"); 
       fprintf(stdout,"\nStatistics from file scan\n");
       fprintf(stdout,"\t number of extensions            %d\n",nrec_tot); 
       fprintf(stdout,"\t number of directory pages       %d\n",ndirect); 
@@ -1111,7 +1124,15 @@ int c_xdfdel(int handle)
  *  OUT   buf     buffer to contain record                                   * 
  *                                                                           * 
  *****************************************************************************/
+int c_xdfget2_64(int handle, buffer_interface_ptr buf, int *aux_ptr, unsigned long long *nbits64);
+int c_xdfget_64(int handle, buffer_interface_ptr buf, unsigned long long *nbits64)
+{
+   int *aux_keys = NULL;
 
+   return(c_xdfget2_64(handle,buf,aux_keys,nbits64));
+}
+
+int c_xdfget2(int handle, buffer_interface_ptr buf, int *aux_ptr);
 int c_xdfget(int handle, buffer_interface_ptr buf)
 {
    int *aux_keys = NULL;
@@ -1134,6 +1155,16 @@ int c_xdfget(int handle, buffer_interface_ptr buf)
  *****************************************************************************/
 
 int c_xdfget2(int handle, buffer_interface_ptr buf, int *aux_ptr)
+{
+  unsigned long long nbits64;
+  int status = c_xdfget2_64(handle, buf, aux_ptr, &nbits64) ;
+  if (nbits64 != buf->nbits) {
+    sprintf(errmsg,"nbits from record is too large = %ld\n",nbits64);
+    return(error_msg("c_xdfget",ERR_BAD_DIM,ERROR));
+  }
+  return ( status ) ;
+}
+int c_xdfget2_64(int handle, buffer_interface_ptr buf, int *aux_ptr, unsigned long long *nbits64)
 {
    int index, record_number, page_number, i, idtyp, addr, lng, lngw;
    int offset, nw, nread;
@@ -1233,7 +1264,10 @@ int c_xdfget2(int handle, buffer_interface_ptr buf, int *aux_ptr)
       return(error_msg("c_xdfget",ERR_BAD_DIM,ERROR));
       }
 
-   buf->nbits = lngw * 8 * sizeof(word);
+   *nbits64 = 8 * sizeof(word);     // number of bits
+   *nbits64 *= lngw;
+//   buf->nbits = lngw * 8 * sizeof(word);
+   buf->nbits = (*nbits64 & 0x7FFFFFFF) ;  // lower 31 bits
    buf->record_index = RECADDR;
    buf->data_index = buf->record_index + W64TOWD(f->primary_len + f->info_len);
    buf->iun = f->iun;
@@ -1879,6 +1913,8 @@ int c_xdfopn(int iun,char *mode,word_2 *pri,int npri,
   ftnword f_datev;
   double nhours;
   int deet,npas,i_nhours,run,datexx;
+  word STDR_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'R';
+  word STDS_sign = 'S' << 24 | 'T' << 16 | 'D' << 8 | 'S';
 
   if (!init_package_done) {
      init_package();
@@ -2379,7 +2415,13 @@ int c_xdfprm(int handle,int *addr,int *lng,int *idtyp,word *primk,int nprim)
  *                                                                           * 
  *****************************************************************************/
 
+int c_xdfput_64(int iun, int handle, buffer_interface_ptr buf,unsigned long long nb64);
 int c_xdfput(int iun, int handle, buffer_interface_ptr buf)
+{
+  unsigned long long nbits64=0;
+  return ( c_xdfput_64(iun, handle, buf,nbits64) );
+}
+int c_xdfput_64(int iun, int handle, buffer_interface_ptr buf,unsigned long long nb64)
 {
    int index, record_number, page_number, i, idtyp, addr, lng, lngw;
    int index_from_buf, index_from_iun, write_to_end=0, nwords;
@@ -2390,6 +2432,9 @@ int c_xdfput(int iun, int handle, buffer_interface_ptr buf)
    xdf_record_header header64;
    burp_record *debug_record;
    postfix_seq postfix;
+   unsigned long long nbits64;
+
+   nbits64 = (nb64 == 0) ? buf->nbits : nb64 ;
 
    index_fnom = fnom_index(iun);
    if ((index_from_buf = file_index(buf->iun)) == ERR_NO_FILE) {
@@ -2402,12 +2447,14 @@ int c_xdfput(int iun, int handle, buffer_interface_ptr buf)
       return(error_msg("c_xdfput",ERR_BAD_UNIT,ERROR));
       }
 
-   if ((buf->nbits & 0x3f) != 0) {
+//   if ((buf->nbits & 0x3f) != 0) {
+   if ((nbits64 & 0x3f) != 0) {
       sprintf(errmsg,"buf->nbits is not a multiple of 64 bits\n");
       return(error_msg("c_xdfput",ERR_BAD_ADDR,SYSTEM));
       }
 
-   nwords = buf->nbits / (8 * sizeof(word));
+//   nwords = buf->nbits / (8 * sizeof(word));
+   nwords = nbits64 / (8 * sizeof(word));
    index = index_from_iun;
    f = file_table[index_from_iun];
 
