@@ -1158,12 +1158,16 @@ int c_xdfget2(int handle, buffer_interface_ptr buf, int *aux_ptr)
 {
   unsigned long long nbits64;
   int status = c_xdfget2_64(handle, buf, aux_ptr, &nbits64) ;
-  if (nbits64 != buf->nbits) {
+  if (nbits64 != buf->nbits) {  // error, nbits too large for old style call
     sprintf(errmsg,"nbits from record is too large = %ld\n",nbits64);
     return(error_msg("c_xdfget",ERR_BAD_DIM,ERROR));
   }
   return ( status ) ;
 }
+// c_xdfget2_64 returns the number of bits for record in *nbits64
+// and puts a truncated to 31 bit value into buf->nbits for back compatibility
+// c_xdfget2_64 is used for standard files, but not for burp files
+// c_xdfget2 call c_xdfget2_64 but does not pass the full value back to its caller
 int c_xdfget2_64(int handle, buffer_interface_ptr buf, int *aux_ptr, unsigned long long *nbits64)
 {
    int index, record_number, page_number, i, idtyp, addr, lng, lngw;
@@ -2421,6 +2425,10 @@ int c_xdfput(int iun, int handle, buffer_interface_ptr buf)
   unsigned long long nbits64=0;
   return ( c_xdfput_64(iun, handle, buf,nbits64) );
 }
+// if nb64 != 0, the number of bits to write from buffer comes from nb64
+// instead of buf->nbits
+// c_xdfput_64 is used for standard files, but not for burp files
+// c_xdfput calls c_xdfput_64 with a value of 0 in nb64
 int c_xdfput_64(int iun, int handle, buffer_interface_ptr buf,unsigned long long nb64)
 {
    int index, record_number, page_number, i, idtyp, addr, lng, lngw;

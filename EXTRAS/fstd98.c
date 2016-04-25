@@ -397,6 +397,7 @@ int c_fstecr(word *field_in, void * work, int npak,
   int in_datyp = in_datyp_ori & 0xFFBF ; /* suppress missing value flag (64) */
   int sizefactor ; /* number of bytes per data item */
   int IEEE_64=0  ; /* flag 64 bit IEEE (type 5 or 8) */
+  unsigned long long nbits64 = 0;
   
   file_table_entry *f;
   stdf_dir_keys *stdf_entry;
@@ -519,7 +520,7 @@ int c_fstecr(word *field_in, void * work, int npak,
   if ((npak == 0) || (npak == 1)) 
     datyp = 0;                     /* no compaction */
   
-  /* allocate and initialize a buffer interface for xdfput */
+  /* allocate and initialize a buffer interface for xdf put */
   /* an extra 512 bytes are allocated for cluster alignment purpose (seq) */
   
   if (! image_mode_copy)
@@ -593,7 +594,10 @@ int c_fstecr(word *field_in, void * work, int npak,
     return(error_msg("c_fstecr",ERR_MEM_FULL,ERRFATAL));    
   }
   buffer->nwords = 10 + keys_len + nw;
-  buffer->nbits = (keys_len + nw) * bitmot;
+  nbits64 = bitmot;
+  nbits64 *= (keys_len + nw);
+  buffer->nbits = nbits64 & 0x7FFFFFFF;
+//  buffer->nbits = (keys_len + nw) * bitmot;
   buffer->record_index = RECADDR;
   buffer->data_index = buffer->record_index + 
                        W64TOWD((f->primary_len + f->info_len));
@@ -664,14 +668,17 @@ int c_fstecr(word *field_in, void * work, int npak,
   if ((rewrit) && (!f->xdf_seq)) {       /* find handle for rewrite operation */
     handle = c_fstinf(iun,&niout,&njout,&nkout,-1,etiket,ip1,ip2,ip3,typvar,nomvar);
     if (handle < 0)
-      handle = 0;      /* append mode for xdfput */
+      handle = 0;      /* append mode for xdf put */
   }
 
   if (image_mode_copy) {                /* no pack/unpack, used by editfst */
     if (datyp > 128) {
       lngw = field[0];                  /* first element is length */
 /*      fprintf(stderr,"Debug+ datyp=%d ecriture mode image lngw=%d\n",datyp,lngw); */
-      buffer->nbits = (keys_len + lngw) * bitmot;
+      nbits64 = bitmot;
+      nbits64 *= (keys_len + lngw);
+      buffer->nbits = nbits64 & 0x7FFFFFFF;
+//      buffer->nbits = (keys_len + lngw) * bitmot;
       for (i=0; i < lngw+1; i++)
         buffer->data[keys_len+i] = field[i];
      }
@@ -736,7 +743,10 @@ int c_fstecr(word *field_in, void * work, int npak,
            nw = W64TOWD(nw); 
            buffer->data[keys_len] = nw;
     /*        fprintf(stderr,"Debug+ pack buffer->data[keys_len]=%d\n",buffer->data[keys_len]); */
-           buffer->nbits = (keys_len + nw) * bitmot;
+           nbits64 = bitmot;
+           nbits64 *= (keys_len + nw);
+           buffer->nbits = nbits64 & 0x7FFFFFFF;
+//           buffer->nbits = (keys_len + nw) * bitmot;
            }
          }
       else    
@@ -783,7 +793,10 @@ int c_fstecr(word *field_in, void * work, int npak,
           nw = (nbytes * 8 + 63) / 64;
           nw = W64TOWD(nw); 
           buffer->data[keys_len] = nw;
-          buffer->nbits = (keys_len + nw) * bitmot;                      
+          nbits64 = bitmot;
+          nbits64 *= (keys_len + nw);
+          buffer->nbits = nbits64 & 0x7FFFFFFF;
+//          buffer->nbits = (keys_len + nw) * bitmot;                      
         }
       }
       else {
@@ -879,7 +892,10 @@ fprintf(stderr,"NEW PACK CODE======================================\n");
             nw = (nbytes * 8 + 63) / 64;
             nw = W64TOWD(nw); 
             buffer->data[keys_len] = nw;
-            buffer->nbits = (keys_len + nw) * bitmot;
+            nbits64 = bitmot;
+            nbits64 *= (keys_len + nw);
+            buffer->nbits = nbits64 & 0x7FFFFFFF;
+//            buffer->nbits = (keys_len + nw) * bitmot;
             }
           }
         else {
@@ -907,7 +923,10 @@ fprintf(stderr,"NEW PACK CODE======================================\n");
             nw = W64TOWD(nw); 
             buffer->data[keys_len] = nw;
         /*   fprintf(stderr,"Debug+ pack buffer->data[keys_len]=%d\n",buffer->data[keys_len]); */
-            buffer->nbits = (keys_len + nw) * bitmot;
+            nbits64 = bitmot;
+            nbits64 *= (keys_len + nw);
+            buffer->nbits = nbits64 & 0x7FFFFFFF;
+//            buffer->nbits = (keys_len + nw) * bitmot;
           }
 
         }
@@ -936,7 +955,8 @@ fprintf(stderr,"NEW PACK CODE======================================\n");
 
    
   /* write record to file and add entry to directory */
-  ier = c_xdfput(iun,handle,buffer);
+  ier = c_xdfput_64(iun,handle,buffer,nbits64);
+//  ier = c_xdfput(iun,handle,buffer);
   if (msg_level <= INFORM) {
     sprintf(string,"Write(%d)",iun);
     print_std_parms(stdf_entry,string,prnt_options,0);
@@ -1767,6 +1787,7 @@ int c_fstluk(word *field, int handle, int *ni, int *nj, int *nk)
   int *field_out;
   short *s_field_out;
   signed char *b_field_out;
+  unsigned long long nbits64;
 
   stdf_entry = (stdf_dir_keys *) calloc(1,sizeof(stdf_dir_keys));
   pkeys = (word *) stdf_entry;
@@ -1823,7 +1844,9 @@ int c_fstluk(word *field, int handle, int *ni, int *nj, int *nk)
   }
   buf->nwords = -(lng+10);   /* negative value means get data only */
   buf->nbits = -1;
-  ier = c_xdfget2(handle,buf,stdf_aux_keys);
+  nbits64 = 0;
+//  ier = c_xdfget2(handle,buf,stdf_aux_keys);
+  ier = c_xdfget2_64(handle,buf,stdf_aux_keys,&nbits64);
   if (ier < 0) return(ier);
   if ((stdf_aux_keys[0] != 0) && (stdf_aux_keys[1] != 0)) {
     printf("c_fstluk aux_keys[0]=%d, aux_keys[1]=%d\n",stdf_aux_keys[0],stdf_aux_keys[1]);
