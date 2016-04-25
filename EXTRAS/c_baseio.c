@@ -656,37 +656,6 @@ int c_fnom(int *iun,char *nom,char *type,int lrec)
   if (ier < 0) junk=c_fclos(liun);
   return(ier<0?-1:0);
 }  
-#if defined(FORMER_FORTRAN_CODE)
-ftnword f77name(fnom)(ftnword *iun,char *nom,char *type,ftnword *flrec,F2Cl l1,F2Cl l2)
-{
-   int lrec,lng,tmp,liun=*iun;
-   char filename[1025],filetype[257];
-
-   lrec = *flrec;
-
-   lng = (l1 <= 1024) ? l1 : 1024;
-   strncpy(filename,nom,lng);        /*  copy filename into a C string  */
-   filename[lng] = '\0';
-
-   while ((filename[lng-1] == ' ') && (lng > 1)) {  /* strip trailing blanks */
-      lng--;
-      filename[lng] = '\0';
-      }
-
-   lng = (l2 <= 256) ? l2 : 256;
-   strncpy(filetype,type,lng);   /*  copy file type into a C string  */
-   filetype[lng] = '\0';
-
-   while ((filetype[lng-1] == ' ') && (lng > 1)) { /* strip trailing blanks */
-      lng--;
-      filetype[lng] = '\0';
-      }
-
-   tmp=(c_fnom(&liun,filename,filetype,lrec));
-   if(*iun==0) *iun = liun;
-   return (tmp);
-}
-#endif
 
 /****************************************************************************
 *                            C _ F C L O S,   F C L O S                     *
@@ -735,16 +704,6 @@ int c_fclos(int iun)
    reset_file_entry(i);
    return(ier);
 }
-
-#if defined(FORMER_FORTRAN_CODE)
-ftnword f77name(fclos)(ftnword *fiun)
-{
-   int iun,ier;
-   iun = *fiun;
-   ier=c_fclos(iun);
-   return(ier);
-}
-#endif
 
 /****************************************************************************
 *                          C _ Q Q Q F S C R                                *
@@ -951,21 +910,6 @@ int c_waopen2(int iun)   /* open unit iun for WORD ADDRESSABLE access */
    }
    return ier;
 }
-#if defined(FORMER_FORTRAN_CODE)
-ftnword f77name(waopen2)(ftnword *fiun)
-{
-   int iun;
-   iun = *fiun;
-   return(c_waopen2(iun));
-}
-
-void f77name(waopen)(ftnword *fiun)
-{
-   int iun;
-   iun = *fiun;
-   c_waopen(iun);
-}
-#endif
 /****************************************************************************
 * C _ W A C L O S ,   C _ W A C L O S 2 ,   W A C L O S ,   W A C L O S 2   *
 *****************************************************************************
@@ -1001,20 +945,6 @@ int c_waclos2(int iun)
    FGFDT[i].attr.wap = 0;
    return(ier);
 }
-#if defined(FORMER_FORTRAN_CODE)
-ftnword f77name(waclos2)(ftnword *fiun)
-{
-   int iun;
-   iun = *fiun;
-   return(c_waclos2(iun));
-}
-void f77name(waclos)(ftnword *fiun)
-{
-   int iun;
-   iun = *fiun;
-   iun=c_waclos2(iun);
-}
-#endif
 
 /****************************************************************************
 *   C _ W A W R I T ,   C _ W A W R I T 2 ,   W A W R I T ,   W A W R I T 2 *
@@ -1118,24 +1048,6 @@ int c_wawrit2(int iun,void *buf,unsigned int adr,int nmots)
    return( nmots>0 ? nmots : 0);
 #endif
 }
-#if defined(FORMER_FORTRAN_CODE)
-void f77name(wawrit)(ftnword *fiun,void *buf,unsigned ftnword *fadr,ftnword *fnmots){
-     f77name(wawrit2)(fiun,buf,fadr,fnmots);
-     }
-ftnword f77name(wawrit2)(ftnword *fiun,void *buf,unsigned ftnword *fadr,ftnword *fnmots)
-{
-   int iun,adr,nmots;
-   iun = *fiun; adr = *fadr; nmots = *fnmots;
-#if defined (ALL64)
-   if ( adr > 0 )
-      return(c_wawrit2(iun,buf,(2*adr)-1,nmots*2));
-   else
-      return(c_wawrit2(iun,buf,adr,nmots));
-#else
-   return(c_wawrit2(iun,buf,adr,nmots));
-#endif
-}
-#endif
 
 /****************************************************************************
 * C _ W A R E A D ,   C _ W A R E A D 2 ,   W A R E A D ,   W A R E A D 2   *
@@ -1229,27 +1141,6 @@ int c_waread2(int iun,void *buf,unsigned int adr,int nmots)
    return(nmots);
 #endif
 }
-#if defined(FORMER_FORTRAN_CODE)
-void f77name(waread)(ftnword *fiun,void *buf,unsigned ftnword *fadr,
-                     ftnword *fnmots)
-{
-  f77name(waread2)(fiun,buf,fadr,fnmots);
-}
-ftnword f77name(waread2)(ftnword *fiun,void *buf,unsigned ftnword *fadr,
-                         ftnword *fnmots)
-{
-   int iun,adr,nmots;
-   iun = *fiun; adr = *fadr; nmots = *fnmots;
-#if defined (ALL64)
-   if ( adr > 0 )
-      return(c_waread2(iun,buf,(2*adr)-1,nmots*2));
-   else
-      return(c_waread2(iun,buf,adr,nmots));
-#else
-   return(c_waread2(iun,buf,adr,nmots));
-#endif
-}
-#endif
 
 /****************************************************************************
 *                      C _ W A S I Z E ,   W A S I Z E                      *
@@ -1283,14 +1174,6 @@ INT_32 c_wasize(int iun)
 
    return(n);
 }
-#if defined(FORMER_FORTRAN_CODE)
-ftnword f77name(wasize)(ftnword *fiun)  /* return file size in FORTRAN WORDS */
-{
-   int iun;
-   iun = *fiun;
-   return(c_wasize(iun));
-}
-#endif
 /****************************************************************************
 *                    C _ N U M B L K S ,   N U M B L K S                    *
 *****************************************************************************
@@ -1316,14 +1199,6 @@ INT_32 c_numblks(int iun)
    i = 1024 / sizeof(INT_32);
    return ( (n+i-1) / i );
 }
-#if defined(FORMER_FORTRAN_CODE)
-ftnword f77name(numblks)(ftnword *fiun)     /* return file size in KiloBytes */
-{
-   int iun;
-   iun = *fiun;
-   return(c_numblks(iun));
-}
-#endif
 
 /****************************************************************************
 *                             E X I S T E                                   *
@@ -1365,14 +1240,6 @@ void c_openda(int iun)
 {
    c_waopen(iun);
 }
-#if defined(FORMER_FORTRAN_CODE)
-void f77name(openda)(ftnword *iun)
-{
-   int liun;
-   liun = (int) *iun;
-   c_waopen(liun);
-}
-#endif
 /****************************************************************************
 *                   C _ C L O S D A ,   C L O S D A                         *
 *****************************************************************************
@@ -1388,14 +1255,6 @@ void c_closda(int iun)
 {
    c_waclos(iun);
 }
-#if defined(FORMER_FORTRAN_CODE)
-void f77name(closda)(ftnword *iun)
-{
-   int liun;
-   liun = (int) *iun;
-   c_closda(liun);
-}
-#endif
 /****************************************************************************
 *                     C _ C H E C D A ,   C H E C D A                       *
 *****************************************************************************
@@ -1417,14 +1276,6 @@ void c_checda(int iun)
          }
 }
 
-#if defined(FORMER_FORTRAN_CODE)
-void f77name(checda)(ftnword *iun)
-{
-   int liun;
-   liun = (int) *iun;
-   c_checda(liun);
-}
-#endif
 /****************************************************************************
 *                     C _ R E A D D A ,   R E A D D A                       *
 *****************************************************************************
@@ -1460,18 +1311,6 @@ void c_readda(int iun,int *bufptr,int ns,int is)
       }
    *pt = iun;
 }
-#if defined(FORMER_FORTRAN_CODE)
-void f77name(readda)(ftnword *iun,ftnword *bufptr,ftnword *ns,ftnword *is)
-{
-   int liun,lns,lis,save=BLKSIZE;
-   liun = (int) *iun;
-   lns = (int) *ns;
-   lis = (int) *is;
-   BLKSIZE = BLKSIZE * (sizeof(ftnword)/sizeof(word));
-   c_readda(liun,bufptr,lns,lis);
-   BLKSIZE=save;
-}
-#endif
 /****************************************************************************
 *                      C _ W R I T D A ,   W R I T D A                      *
 *****************************************************************************
@@ -1506,18 +1345,6 @@ void c_writda(int iun,int *bufptr,int ns,int is)
       }
    *pt = iun;
 }
-#if defined(FORMER_FORTRAN_CODE)
-void f77name(writda)(ftnword *iun,ftnword *bufptr,ftnword *ns,ftnword *is)
-{
-   int liun,lns,lis,save=BLKSIZE;
-   liun = (int) *iun;
-   lns = (int) *ns;
-   lis = (int) *is;
-   BLKSIZE = BLKSIZE * (sizeof(ftnword)/sizeof(word));
-   c_writda(liun,bufptr,lns,lis);
-   BLKSIZE=save;
-}
-#endif
 
 /***************************************************************************
 *                     C _ G E T F D S C ,   G E T F D S C                  *
@@ -1549,9 +1376,6 @@ int c_getfdsc(int iun) {
 
    return(FGFDT[i].fd) ;
    }
-#if defined(FORMER_FORTRAN_CODE)
-ftnword f77name(getfdsc)( ftnword *iun) { return(c_getfdsc((int) *iun)) ;}
-#endif
 /***************************************************************************
 *                     C _ S Q O P E N ,   S Q O P E N                      *
 ****************************************************************************
@@ -1587,9 +1411,6 @@ void c_sqopen(int iun)
   else
     c_waopen(iun) ;
 }
-#if defined(FORMER_FORTRAN_CODE)
-void f77name(sqopen)(ftnword *iun) { c_sqopen((int) *iun) ; }
-#endif
 /***************************************************************************
 *                     C _ S Q C L O S ,   S Q C L O S                      *
 ****************************************************************************
@@ -1608,9 +1429,6 @@ void c_sqclos(int iun)
    if ((i=find_file_entry("c_sqclos",iun)) < 0) return;
    if (FGFDT[i].attr.wa == 1) c_waclos(iun) ;
 }
-#if defined(FORMER_FORTRAN_CODE)
-void f77name(sqclos)(ftnword *iun) { c_sqclos((int) *iun) ; }
-#endif
 /***************************************************************************
 *                     C _ S Q R E W ,   S Q R E W                          *
 ****************************************************************************
@@ -1634,9 +1452,6 @@ void c_sqrew(int iun) {
    if (fd <= 0) return;
    lseek(fd,(off_t) 0,SEEK_SET);
 }
-#if defined(FORMER_FORTRAN_CODE)
-void f77name(sqrew)(ftnword *iun) { c_sqrew((int) *iun) ; }
-#endif
 /***************************************************************************
 *                     C _ S Q E O I ,   S Q E O I                          *
 ****************************************************************************
@@ -1660,9 +1475,6 @@ void c_sqeoi(int iun) {
    if (fd <= 0) return;
    lseek(fd,(off_t) 0,SEEK_END);
 }
-#if defined(FORMER_FORTRAN_CODE)
-void f77name(sqeoi)(ftnword *iun) { c_sqeoi((int) *iun) ; }
-#endif
 /**************************************************************************
 *                     C _ S Q G E T W ,   S Q G E T W                     * 
 ***************************************************************************
@@ -1697,12 +1509,6 @@ int c_sqgetw(int iun, word *bufptr, int nmots) {
    }
    return( (alire == 0) ? alu/sizeof(INT_32) : -1);
 }
-#if defined(FORMER_FORTRAN_CODE)
-ftnword f77name(sqgetw)(ftnword *iun, ftnword *bufptr, ftnword *nmots) {
-   int mult = sizeof(ftnword) / sizeof(word);
-   return(c_sqgetw((int) *iun, (word *) bufptr, (int) (*nmots * mult)));
-}
-#endif
 /***************************************************************************
 *                     C _ S Q P U T W ,   S Q P U T W                      *
 ****************************************************************************
@@ -1737,12 +1543,6 @@ int c_sqputw(int iun, word *bufptr, int nmots) {
    }
    return( (aecrire == 0) ? necrit/sizeof(INT_32) : -1);
 }
-#if defined(FORMER_FORTRAN_CODE)
-ftnword f77name(sqputw)(ftnword *iun, ftnword *bufptr, ftnword *nmots) {
-   int mult = sizeof(ftnword) / sizeof(word);
-   return(c_sqputw((int) *iun, (word *) bufptr, (int) (*nmots * mult)));
-}
-#endif
 /***************************************************************************
 *                     C _ S Q G E T S ,   S Q G E T S                      *
 ****************************************************************************
@@ -1767,15 +1567,6 @@ int c_sqgets(int iun, char *bufptr, int nchar) {
    nlu = read(fd,bufptr,nchar);
    return( (nlu > 0) ? nlu : -1);
 }
-#if defined(FORMER_FORTRAN_CODE)
-ftnword f77name(sqgets)(ftnword *iun, char  *bufptr, ftnword *nchar, F2Cl llbuf) {
-   int lbuf=llbuf;
-   if (lbuf >= *nchar)
-      return( c_sqgets(*iun, bufptr , *nchar));
-   else
-      return( c_sqgets(*iun, bufptr , lbuf));
-}
-#endif
 /***************************************************************************
 *                     C _ S Q P U T S ,   S Q P U T S                      *
 ****************************************************************************
@@ -1800,15 +1591,6 @@ int c_sqputs(int iun, char *bufptr, int nchar) {
    nlu = write(fd,bufptr,nchar);
    return( (nlu > 0) ? nlu : -1);
 }
-#if defined(FORMER_FORTRAN_CODE)
-ftnword f77name(sqputs)(ftnword *iun, char  *bufptr, ftnword *nchar, F2Cl llbuf) {
-   int lbuf=llbuf;
-   if (lbuf >= *nchar)
-      return( c_sqputs(*iun, bufptr , *nchar));
-   else
-      return( c_sqputs(*iun, bufptr , lbuf));
-}
-#endif
 
 /****************************************************************************
 *                           S C R A P _ P A G E                             *
@@ -3313,78 +3095,6 @@ static void ZERO ( INT_32 *dest, int nwords)
 int i;
 for (i=0 ; i<nwords ; i++) {dest[i]=0;};
 }
-#if defined(FORMER_FORTRAN_CODE)
-/****************************************************************************
-*                              check_host_id                                *
-*                 THIS FUNCTION SHOULD NO LONGER BE USED                    *
-****************************************************************************/
-/*
- check that RMNLIB license file (node locked) is valid
- check_host_id is FORTRAN callable
- check_host_id returns the HOST id as obtained by gethostid
-*/
-# if !defined(USE_OLD_CODE)
-unsigned INT_32 f77name(check_host_id)() { return(gethostid()); }
-#else
-unsigned INT_32 f77name(check_host_id)()
-{
-#if defined NEC || !defined CHECK_RMNLIB_LIC
-return(0);
-#else
-FILE *id_file;
-unsigned INT_32 sysid, key, domain_ok , junk;
-char ypdomain[200];
-char *ARMNLIB;
-
-/* find YP(NIS) domain name */
-junk=getdomainname(ypdomain,19);
-/* find HOST id */
-sysid=gethostid();
-/* check that ARMNLIB is an environment variable */
-ARMNLIB=getenv("ARMNLIB");
-if (ARMNLIB==NULL){
-  printf("ERROR: ARMNLIB environment variable not defined\n");
-  exit(1);
-}
-
-/* if NIS domain name is cmcnet, no further check */
-domain_ok= (ypdomain[0]=='c') && (ypdomain[1]=='m') &&
-           (ypdomain[2]=='c') && (ypdomain[3]=='n') &&
-           (ypdomain[4]=='e') && (ypdomain[5]=='t');
-
-/* in test mode, ignore the NIS domain name */
-#if defined(TEST)
-domain_ok=0;
-#endif
-
-if(domain_ok)return(sysid);
-
-/* license file name is $ARMNLIB/data/.LIC */
-sprintf(ypdomain,"%s/data/.LIC",ARMNLIB);
-id_file=fopen(ypdomain,"r");
-if (id_file == NULL) {
-  printf(" ERROR: RMNLIB LICENSE FILE IS NOT VALID\n");
-  exit(1);
-}
-
-/* check all numeric tokens found in license file */
-while( EOF != fscanf(id_file,"%u",&key)){
-  domain_ok = domain_ok || (sysid ^ 0xCAFEFADE)==key ;
-}
-
-fclose(id_file);
-
-if ( domain_ok) {
-  /*  printf(" LICENSE is VALID\n"); */
-  return(sysid);
-}else{
-  printf(" ERROR: RMNLIB LICENSE FILE IS NOT VALID\n");
-  exit(1);
-}
-#endif      /* defined NEC || !defined CHECK_RMNLIB_LIC */
-}
-#endif      /* USE_OLD_CODE */
-#endif      /* FORMER_FORTRAN_CODE */
 #if defined(SELF_TEST)
 main()
 {
