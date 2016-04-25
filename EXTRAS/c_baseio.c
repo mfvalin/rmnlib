@@ -75,7 +75,7 @@
 #endif
 
 #define FNOM_OWNER
-#include "../common/fnom64.h"
+#include "../INTRALIB_INCLUDES/fnom64.h"
 #include "wafile64.h"
 
 #if defined(__linux__) || defined(__AIX__)
