@@ -322,7 +322,12 @@ static int find_file_entry(char *caller, int iun)
 *
 */
 // the original c_fnom entry point has been moved to f_baseio.F90 because of needed fortran callbacks
-int c_fnom_callback(int *iun,char *nom,char *type,int lrec,int (*f90open)(), int (*f90clos)())
+void c_fnom_externals(int (*f90open)(), int (*f90clos)()){
+  f90_open = f90open;
+  f90_clos = f90clos;
+}
+
+int c_fnom(int *iun,char *nom,char *type,int lrec)
 {
   int liun,ier = 0, minus = 0, majus = 0, lng, i, j, pid, rndflag, unfflag, lngt, junk, mode;
   char *c, *c2, *tmpdir, *cmcarc, *pos2p;
@@ -331,8 +336,8 @@ int c_fnom_callback(int *iun,char *nom,char *type,int lrec,int (*f90open)(), int
   PTR_AS_INT ptr_as_int;
 
   if(fnom_initialized == 0) {
-    f90_open = f90open;
-    f90_clos = f90clos;
+//     f90_open = f90open;
+//     f90_clos = f90clos;
     /* Make sure that file descriptor 0 (stdin) will not be returned by open for use with a regular file */
     /* This is a workaround for a particular case on Linux in batch mode with PBS */
     mode = O_RDONLY;

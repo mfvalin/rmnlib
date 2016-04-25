@@ -186,6 +186,7 @@ static INT_32 add_dir_page(int file_index,int wflag)
    page->dir.addr=WDTO64(f->nxtadr -1) +1;
    page->dir.reserved1=0;
    page->dir.reserved2=0;
+   page->dir.reserved3=0;
    page->dir.nxt_addr=0;
    page->dir.nent=0;
    page->dir.chksum=0;

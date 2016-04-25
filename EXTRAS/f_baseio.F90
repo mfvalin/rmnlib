@@ -30,13 +30,19 @@
 module fnom_helpers
   use ISO_C_BINDING
   interface
-    function cfnom(iun,name,opti,reclen,qqqfopen,qqqfclos) result (status) bind(C,name='c_fnom_callback')
+    subroutine c_fnom_ext(qqqfopen,qqqfclos) bind(C,name='c_fnom_externals')
       import
-      type(C_PTR), intent(IN), value :: iun
-      integer(C_INT), intent(IN), value :: reclen
-      type(C_PTR), intent(IN),value :: name,opti
       type(C_FUNPTR), intent(IN), value :: qqqfopen
       type(C_FUNPTR), intent(IN), value :: qqqfclos
+    end subroutine c_fnom_ext
+    function cfnom(iun,name,opti,reclen) result (status) bind(C,name='c_fnom')
+      import
+      integer(C_INT), intent(INOUT) :: iun
+      integer(C_INT), intent(IN), value :: reclen
+      character(C_CHAR), dimension(*), intent(IN) :: name,opti
+!       type(C_PTR), intent(IN),value :: name,opti
+!       type(C_FUNPTR), intent(IN), value :: qqqfopen
+!       type(C_FUNPTR), intent(IN), value :: qqqfclos
       integer :: status
     end function cfnom
     FUNCTION ftnclos(iun) result(status) bind(C,name='F90clos_for_c')
@@ -68,7 +74,7 @@ function fnom(iun,name,opti,reclen) result (status)
   use ISO_C_BINDING
   use fnom_helpers
   implicit none
-  type(C_PTR), intent(IN), value :: iun
+  integer, intent(INOUT) :: iun
   integer, intent(IN) :: reclen
   character(len=*), intent(IN) :: name,opti
   integer :: status
@@ -79,23 +85,24 @@ function fnom(iun,name,opti,reclen) result (status)
   name1 = transfer(trim(name)//achar(0),name1)
   opti1 = transfer(trim(opti)//achar(0),opti1)
 
-! int c_fnom(int *iun,char *nom,      char *type,     int lrec, int (*open)()      , int (*clos)()
-  status = cfnom(iun, c_loc(name1(1)), c_loc(opti1(1)), reclen, C_FUNLOC(qqqf7op_c), C_FUNLOC(ftnclos))
+! int c_fnom(int *iun,char *nom,      char *type,     int lrec )
+  call c_fnom_ext(C_FUNLOC(qqqf7op_c), C_FUNLOC(ftnclos))
+  status = cfnom(iun, name1, opti1, reclen)
 end function fnom
 
 !int c_fnom(int *iun,char *nom,char *type,int lrec) 
-function fnom_for_c(iun,name,opti,reclen) result(status) bind(C,name='c_fnom')
-  use ISO_C_BINDING
-  use fnom_helpers
-  implicit none
-  type(C_PTR), intent(IN), value :: iun
-  integer(C_INT), intent(IN), value :: reclen
-  type(C_PTR), intent(IN), value :: name,opti
-  integer :: status
-
-  status = cfnom(iun,name,opti,reclen, C_FUNLOC(qqqf7op_c), C_FUNLOC(ftnclos))
-  return
-end function fnom_for_c
+! function fnom_for_c(iun,name,opti,reclen) result(status) bind(C,name='c_fnom')
+!   use ISO_C_BINDING
+!   use fnom_helpers
+!   implicit none
+!   type(C_PTR), intent(IN), value :: iun
+!   integer(C_INT), intent(IN), value :: reclen
+!   type(C_PTR), intent(IN), value :: name,opti
+!   integer :: status
+! 
+!   status = cfnom(iun,name,opti,reclen)
+!   return
+! end function fnom_for_c
 
 !int F_qqqfnom(int iun,char *nom,char *type,int *flrec,int l1,int l2)
 function qqqfnom(iun,name,ftyp,flrec) result(status)  ! get filename, properties, record length  info from unit number
@@ -363,23 +370,25 @@ print *,'waread, adr, nmots',adr,nmots
   call cwaread(iun,buf,adr,nmots)
 end subroutine waread
 
-subroutine waread64(iun,buf,adr,nmots,partition)
+function waread64(iun,buf,adr,nmots,partition) result(n)
   use ISO_C_BINDING
   implicit none
   interface
-    subroutine cwaread64(iun,buf,adr,nmots,partition) bind(C,name='c_waread64')
+    function cwaread64(iun,buf,adr,nmots,partition) result(n) bind(C,name='c_waread64')
       import
       integer(C_INT), intent(IN), value :: iun, nmots, partition
       integer(C_LONG_LONG), intent(IN), value :: adr
       integer(C_INT), intent(OUT), dimension(nmots) :: buf
-    end subroutine cwaread64
+      integer(C_INT) :: n
+    end function cwaread64
   end interface
   integer, intent(IN) :: iun, nmots, partition
   integer*8, intent(IN) :: adr
   integer, intent(OUT), dimension(nmots) :: buf
+  integer :: n
 
-  call cwaread64(iun,buf,adr,nmots,partition)
-end subroutine waread64
+  n = cwaread64(iun,buf,adr,nmots,partition)
+end function waread64
 
 subroutine wawrit(iun,buf,adr,nmots)
   use ISO_C_BINDING
@@ -399,23 +408,26 @@ subroutine wawrit(iun,buf,adr,nmots)
   call cwawrit(iun,buf,adr,nmots)
 end subroutine wawrit
 
-subroutine wawrit64(iun,buf,adr,nmots,partition)
+function wawrit64(iun,buf,adr,nmots,partition) result(n)
   use ISO_C_BINDING
   implicit none
   interface
-    subroutine cwawrit64(iun,buf,adr,nmots,partition) bind(C,name='c_wawrit64')
+    function cwawrit64(iun,buf,adr,nmots,partition) result(n) bind(C,name='c_wawrit64')
       import
       integer(C_INT), intent(IN), value :: iun, nmots, partition
       integer(C_LONG_LONG), intent(IN), value :: adr
       integer(C_INT), intent(IN), dimension(nmots) :: buf
-    end subroutine cwawrit64
+      integer(C_INT) :: n
+    end function cwawrit64
   end interface
   integer, intent(IN) :: iun, nmots, partition
   integer*8, intent(IN) :: adr
   integer, intent(IN), dimension(nmots) :: buf
+  integer :: n
+  
 
-  call cwawrit64(iun,buf,adr,nmots,partition)
-end subroutine wawrit64
+  n = cwawrit64(iun,buf,adr,nmots,partition)
+end function wawrit64
 
 function existe(name) result(status)
   use ISO_C_BINDING
