@@ -104,7 +104,7 @@ set -x
 ${compiler} f90_pointer_regression_[0-4].f90
 set +x
 echo "===== test with the ${compiler} compiler ===="
-[[ ${compiler} == gfortran ||  ${compiler} == flang ]] &&  ${compiler} --version
+[[ ${compiler} == gfortran ||  ${compiler} == flang ||  ${compiler} == ifort* ]] &&  ${compiler} --version
 [[ ${compiler} == pg* ]] &&  ${compiler} -V
 [[ -x ./a.out ]] && ./a.out
 rm -f f90_pointer_regression_[0-4].f90 f90_pointer_regression_[0-4].o pointers_nd.mod a.out
