@@ -53,18 +53,17 @@ subroutine calxhxt(xhxt,rholoc,trlloc,trllocsum,trlnov,trlnovsum,ireg)
 !    trllocbar(ipart,igridsv)=con*(sumparts-trllocsum(igridsv,ipart))
 !   enddo
 !  enddo
- sumparts(1:ngridsv)=0.0D0
- do ipart=1,npart
-   do igridsv=1,ngridsv
-     sumparts(igridsv)=sumparts(igridsv)+trllocsum(igridsv,ipart)
-   enddo
- enddo
-!$OMP PARALLEL DO PRIVATE(ipart,igridsv)
- do ipart=1,npart
-   do igridsv=1,ngridsv
-     trllocbar(igridsv,ipart)=con*(sumparts(igridsv)-trllocsum(igridsv,ipart))
-   enddo
- enddo
+!$OMP PARALLEL DO PRIVATE(ipart,igridsv,igridsv0) SHARED(sumparts,trllocsum,trllocbar,con)
+do igridsv0=1,ngridsv,256
+  igridsv1 = min(ngridsv,igridsv0+255)
+  sumparts(igridsv0:igridsv1) = trllocsum(igridsv0:igridsv1,1)
+  do ipart=2,npart
+    sumparts(igridsv0:igridsv1)=sumparts(igridsv0:igridsv1)+trllocsum(igridsv0:igridsv1,ipart)
+  enddo
+  do ipart=1,npart
+    trllocbar(igridsv0:igridsv1,ipart)=con*(sumparts(igridsv0:igridsv1)-trllocsum(igridsv0:igridsv1,ipart))
+  enddo
+enddo
 !$OMP END PARALLEL DO
 !===============================================================================
 
