@@ -42,7 +42,7 @@ program tsoltri
 
   call mpi_finalize(ierr)
 
-1 format(20f6.3)
+1 format(20f7.3)
 end
 subroutine analyze(msg,t,n)
   implicit none
