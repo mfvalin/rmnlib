@@ -65,5 +65,5 @@ subroutine analyze(msg,t,n)
   tavg = tsum / n
   tdev = sqrt(tsqr/n-tavg*tavg)
   write(6,1)trim(msg),' min,max,avg,dev,jit% ',tmin,tmax,tavg,tdev,( (tmax-tmin)/tmin )*100
-1 format(A,A,20F6.1)
+1 format(A,A,20F8.1)
 end subroutine analyze
