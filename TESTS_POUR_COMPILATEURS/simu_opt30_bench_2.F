@@ -11,15 +11,19 @@
 #ifdef MPI
       include 'mpif.h'
       common /mpi_world/ OWN_COMM_WORLD
+      integer(C_SIZE_T), parameter :: L128 = 128
       integer :: OWN_COMM_WORLD, host_id
       double precision T1,T2,TAVG,TMIN,TMAX,TSQR,TSUM
       real :: tjit
       integer, dimension(0:21) :: tj
-      double precision, dimension(:), pointer :: TIMES, BARRIER
-      double precision, dimension(:,:), pointer :: ALLTIMES
+      real, dimension(:), pointer :: TIMES, BARRIER
+      real, dimension(:,:), pointer :: ALLTIMES
       double precision :: TIME0
-      character(len=1), dimension(128) :: hostname
-      character(len=128) :: host_128
+      character(len=1), dimension(L128) :: hostname
+      character(len=8), dimension(:), pointer :: hosts_8
+      character(len=L128) :: host_128
+      integer :: my_proc, total_procs, err
+      integer :: pe_to, pe_from, pe0, total0
 !       int gethostname(char *name, size_t len);
       interface
         integer(C_INT) function f_gethostid()BIND(C,name='gethostid')
@@ -51,21 +55,25 @@
       integer pe_me,pe_npes
       integer  itime1, itime2 , time_base
 
-      integer my_proc, total_procs, err, pe_to, pe_from, pe0
 
       my_proc=0
       total_procs=1
 #ifdef MPI
       call mpi_init(err)
       call mpi_comm_rank(MPI_COMM_WORLD,pe0,err)
+      call mpi_comm_size(MPI_COMM_WORLD,total0,err)
 !       print *,'rank in world=',my_proc
       host_id = f_gethostid()
       host_128 = ' '
-      i = f_gethostname(hostname,128)
-      do i = 1,128
+      i = f_gethostname(hostname,L128)
+      do i = 1,L128
         if(hostname(i) == achar(0)) hostname(i) = ' '
         host_128(i:i) = hostname(i)
       enddo
+      allocate(hosts_8(total0))
+      call MPI_gather(host_128(1:8), 8, MPI_CHAR, 
+     %                hosts_8      , 8, MPI_CHAR, 
+     %                0, MPI_COMM_WORLD, err)
       host_id = abs(host_id)
       call MPI_COMM_SPLIT(MPI_COMM_WORLD, host_id, pe0, 
      %                    OWN_COMM_WORLD, err)
@@ -83,7 +91,7 @@
 !       endif
       open(5,file='nsteps',form='FORMATTED')
       NREP=1
-      MAXSTEPS=660
+      MAXSTEPS=600
       DIM=1024
       read(5,*,iostat=err)MAXSTEPS,DIM,NREP
       R8DIM=DIM
@@ -159,8 +167,8 @@ c     INITIALISATION
       else
             print *,'ONE MPI process, no tabl bcst done'
       endif
-      allocate(TIMES(0:MAXSTEPS))
-      allocate(BARRIER(0:MAXSTEPS))
+      allocate(TIMES(MAXSTEPS))
+      allocate(BARRIER(MAXSTEPS))
 #endif
       if(my_proc .eq.0) then
             call signature(tabl(-2,-2,0),DIM+4,DIM+4,AVG,1)
@@ -175,7 +183,7 @@ c     BOUCLE SUR LE TEMPS
       deltat=1.0/(R8DIM*100)
       nsteps=0
 #ifdef MPI
-      TIMES(nsteps)=MPI_Wtime()
+!       TIMES(nsteps)=MPI_Wtime()
 #endif
          call MPI_barrier(OWN_COMM_WORLD,err)
  10   if (nsteps.lt.abs(MAXSTEPS)) then
@@ -270,11 +278,34 @@ c     FIN BOUCLE EN TEMPS
       call signature(tabl(-2,-2,2),DIM+4,DIM+4,AVG,3)
 #ifdef MPI
       T2=MPI_Wtime()
-      allocate(ALLTIMES(0:MAXSTEPS,2))
+!       print *,'Total Run time = ',T2-T1
+      allocate(ALLTIMES(MAXSTEPS,total0))
+      TIMES = TIMES * 1000.0  ! convert to milliseconds
+      call MPI_gather(TIMES,    MAXSTEPS, MPI_REAL, 
+     %                ALLTIMES, MAXSTEPS, MPI_REAL, 
+     %                0, MPI_COMM_WORLD, err)
+      if (pe0 == 0) then
+      print *,'min =',minval(ALLTIMES)
+      print *,'max =',maxval(ALLTIMES)
+      call analyze2d(hosts_8, ALLTIMES(1:nsteps:2,1),
+     %               nsteps/2,1,1)
+      call analyze2d(hosts_8,ALLTIMES(2:nsteps:2,1),
+     %               nsteps/2,1,1)
+!       call analyze2d(hosts_8,ALLTIMES(1:nsteps,1),
+!      %               nsteps,1,1)
+!       call analyze2d(hosts_8,ALLTIMES(1:nsteps,1),
+!      %               nsteps,1,2)
+!       hosts_8 = 'Global'
+      call analyze2d(hosts_8, ALLTIMES(1:nsteps:2,:),
+     %               nsteps/2,total_procs,total0/total_procs)
+      call analyze2d(hosts_8, ALLTIMES(2:nsteps:2,:),
+     %               nsteps/2,total_procs,total0/total_procs)
+      endif
+      goto 999
       call MPI_allreduce(TIMES, ALLTIMES(:,1), nsteps+1, 
-     %     MPI_DOUBLE_PRECISION, MPI_MAX, OWN_COMM_WORLD, err)
+     %     MPI_REAL, MPI_MAX, OWN_COMM_WORLD, err)
       call MPI_allreduce(TIMES, ALLTIMES(:,2), nsteps+1, 
-     %     MPI_DOUBLE_PRECISION, MPI_MIN, OWN_COMM_WORLD, err)
+     %     MPI_REAL, MPI_MIN, OWN_COMM_WORLD, err)
       if(my_proc .eq. 0) then
         tmax = maxval(ALLTIMES(1:nsteps:2,1))
         tmin = minval(ALLTIMES(1:nsteps:2,2))
@@ -299,11 +330,11 @@ c     FIN BOUCLE EN TEMPS
 
 !       allocate(ALLTIMES(0:MAXSTEPS,total_procs))
       call MPI_allreduce(TIMES, ALLTIMES(:,1), nsteps+1, 
-     %     MPI_DOUBLE_PRECISION, MPI_MAX, MPI_COMM_WORLD, err)
+     %     MPI_REAL, MPI_MAX, MPI_COMM_WORLD, err)
       call MPI_allreduce(TIMES, ALLTIMES(:,2), nsteps+1, 
-     %     MPI_DOUBLE_PRECISION, MPI_MIN, MPI_COMM_WORLD, err)
-!       call MPI_allgather(TIMES,MAXSTEPS+1,MPI_DOUBLE_PRECISION,
-!      %                   ALLTIMES,MAXSTEPS+1,MPI_DOUBLE_PRECISION,
+     %     MPI_REAL, MPI_MIN, MPI_COMM_WORLD, err)
+!       call MPI_allgather(TIMES,MAXSTEPS+1,MPI_REAL,
+!      %                   ALLTIMES,MAXSTEPS+1,MPI_REAL,
 !      %                   OWN_COMM_WORLD,err)
       if(pe0 .eq. 0) then
 !         do i = 1, nsteps
@@ -360,8 +391,8 @@ c     FIN BOUCLE EN TEMPS
 !       TSQR=sqrt(TSQR/nsteps-TAVG*TAVG)
 !       if(my_proc .eq. 0) print 2,'Barrier_Time=',T2-T1,
 !      %   ' avg,dev,min,max=',TAVG,TSQR,TMIN,TMAX
-      call MPI_allgather(BARRIER,MAXSTEPS+1,MPI_DOUBLE_PRECISION,
-     %                   ALLTIMES,MAXSTEPS+1,MPI_DOUBLE_PRECISION,
+      call MPI_allgather(BARRIER,MAXSTEPS+1,MPI_REAL,
+     %                   ALLTIMES,MAXSTEPS+1,MPI_REAL,
      %                   OWN_COMM_WORLD,err)
       call MPI_barrier(MPI_COMM_WORLD,err)
       if(my_proc .eq. 0) then
@@ -644,14 +675,53 @@ c     CALCUL DES DERIVEES
       enddo
 #endif
       end
+
+      subroutine analyze2d(msg,t,nt,ns,nn)
+        implicit none
+        integer, intent(IN) :: nt, ns, nn
+        real*4, dimension(nt,ns,nn), intent(IN) :: t
+        character(len=*), dimension(ns,nn) :: msg
+        integer :: i, j, k
+        real*4 :: tmax, tmin
+        real*8 :: tsum, tsqr, tavg, tdev
+        real*4 :: tpct, mpct
+        integer, dimension(0:20) :: tp
+        integer :: ip
+
+        tmax = maxval(t)
+        tmin = minval(t)
+        tp = 0
+        mpct = 0
+        print 2,'Analyzing',nt,' time frames on',
+     %           nn,' node(s) with',ns,' cores'
+        do k = 1, nn
+        do j = 1, ns
+        do i = 1, nt
+          tpct = 0
+          if(tmin > 0) tpct = ( (t(i,j,k)-tmin)/tmin )*100.0
+          mpct = max(tpct,mpct)
+          ip = min(20, nint(tpct))
+          tp(ip) = tp(ip) + 1
+        enddo
+        enddo
+        ip = ns*nt
+        write(6,1)trim(msg(1,k)),' min,max,maxjit%,jt',
+     %            tmin,tmax,mpct,tp,ip
+        enddo
+1       format(A10,A,3F8.1,21I6,I8)
+2       format(A,3(I6,A))
+      end subroutine analyze2d
+
       subroutine analyze(msg,t,n)
         implicit none
         integer, intent(IN) :: n
-        real*8, dimension(n), intent(IN) :: t
+        real*4, dimension(n), intent(IN) :: t
         character(len=*) :: msg
         integer :: i
-        real*8 :: tmax, tmin, tsum, tsqr, tavg, tdev
+        real*4 :: tmax, tmin
+        real*8 :: tsum, tsqr, tavg, tdev
         real*4 :: tpct
+        integer, dimension(0:20) :: tp
 
         tmax = t(1)
         tmin = t(1)
