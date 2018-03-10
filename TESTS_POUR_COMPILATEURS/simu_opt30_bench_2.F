@@ -28,13 +28,13 @@
 !       int gethostname(char *name, size_t len);
       interface
         integer(C_INT) function f_gethostid()BIND(C,name='gethostid')
-        import :: C_INT
+          import :: C_INT
         end function f_gethostid
         integer(C_INT) function f_gethostname(name,nchar)
-     %                 BIND(C,name='gethostname')
-        import :: C_INT, C_CHAR, C_SIZE_T
-        integer(C_SIZE_T), intent(IN), value :: nchar
-        character(C_CHAR), dimension(nchar), intent(OUT) :: name
+     %                   BIND(C,name='gethostname')
+          import :: C_INT, C_CHAR, C_SIZE_T
+          integer(C_SIZE_T), intent(IN), value :: nchar
+          character(C_CHAR), dimension(nchar), intent(OUT) :: name
         end function f_gethostname
       end interface
 #endif
@@ -78,7 +78,7 @@
       host_id = abs(host_id)
       call MPI_COMM_SPLIT(MPI_COMM_WORLD, host_id, pe0, 
      %                    OWN_COMM_WORLD, err)
-      T1=MPI_Wtime()
+      T1=MPI_Wtime()                                      ! start of run
       call mpi_comm_rank(OWN_COMM_WORLD,my_proc,err)
 !       print *,'rank in own world=',my_proc
       call mpi_comm_size(OWN_COMM_WORLD,total_procs,err)
@@ -97,15 +97,18 @@
       read(5,*,iostat=err)MAXSTEPS,DIM,NREP
       R8DIM=DIM
       if(pe0 .eq. 0)
-     %write(6,1)' Will integrate forward for ',abs(MAXSTEPS),' steps',
+     %  write(6,1)
+     %       ' Will integrate forward for ',abs(MAXSTEPS),' steps',
      %       ' grid size=',DIM,' NREP=',NREP,' iostat=',err
 #ifdef MPI
-     %,' proc ',my_proc,' of ',total_procs
-     %,' pe_to ',pe_to,' pe_from ',pe_from
+     %      ,' proc ',my_proc,' of ',total_procs
+     %      ,' pe_to ',pe_to,' pe_from ',pe_from
 #endif
 1     format(A,I4,A,A,I4,A,I2,A,I3,A,I4,A,I4,A,I4,A,I4)
       close(5)
-c     INITIALISATION
+!======================================================================
+!     INITIALISATION, setup initial conditions and needed tables
+!======================================================================
       pi=acos(-one)
 !      print *,'PI=',pi
       allocate(sini(0:DIM-1))
@@ -129,7 +132,7 @@ c     INITIALISATION
             call mpi_bcast(cosi,DIM,MPI_REAL,0,OWN_COMM_WORLD,err)
             call mpi_bcast(cosj,DIM,MPI_REAL,0,OWN_COMM_WORLD,err)
       else
-            print *,'ONE MPI process, no sin/cos bcst done'
+            print *,'ONE MPI process, no sin/cos bcst needed'
       endif
 #endif
       allocate(tabl(-2:DIM+1,-2:DIM+1,0:2))
@@ -166,99 +169,102 @@ c     INITIALISATION
             call mpi_bcast(old_old_tabl,(DIM+4)*(DIM+4)*3,
      %           MPI_REAL,0,OWN_COMM_WORLD,err)
       else
-            print *,'ONE MPI process, no tabl bcst done'
+            print *,'ONE MPI process, no tabl bcst needed'
       endif
       allocate(TIMES(MAXSTEPS))
       allocate(BARRIER(MAXSTEPS))
 #endif
       if(my_proc .eq.0) then
-            call signature(tabl(-2,-2,0),DIM+4,DIM+4,AVG,1)
-            call signature(tabl(-2,-2,1),DIM+4,DIM+4,AVG,2)
-            call signature(tabl(-2,-2,2),DIM+4,DIM+4,AVG,3)
+!             call signature(tabl(-2,-2,0),DIM+4,DIM+4,AVG,1)
+!             call signature(tabl(-2,-2,1),DIM+4,DIM+4,AVG,2)
+!             call signature(tabl(-2,-2,2),DIM+4,DIM+4,AVG,3)
       endif
       t = 0.0
       call step_euler    (old_old_tabl, old_tabl, tabl, -1, t,DIM)
       call step_euler    (old_tabl, tabl, old_old_tabl, -1, t,DIM)
       call step_euler    (tabl, old_old_tabl, old_tabl, -1, t,DIM)
-c     BOUCLE SUR LE TEMPS
+!======================================================================
+!     BOUCLE SUR LE TEMPS
+!======================================================================
       deltat=1.0/(R8DIM*100)
       nsteps=0
+ 10   if (nsteps+6 .le. abs(MAXSTEPS)) then
 #ifdef MPI
-!       TIMES(nsteps)=MPI_Wtime()
-#endif
          call MPI_barrier(OWN_COMM_WORLD,err)
- 10   if (nsteps.lt.abs(MAXSTEPS)) then
          TIME0 = MPI_Wtime()
+#endif
          call step_euler    (old_old_tabl, old_tabl, tabl, 1, t,DIM)
-         call pseudo_halo(buffer,BUFDIM,4,NREP,pe_to,pe_from)
+!          call pseudo_halo(buffer,BUFDIM,4,NREP,pe_to,pe_from)
          t = t + deltat
          nsteps=nsteps+1
 #ifdef MPI
          TIMES(nsteps) = MPI_Wtime() - TIME0
-         TIME0 = MPI_Wtime()
+!          TIME0 = MPI_Wtime()
          call MPI_barrier(OWN_COMM_WORLD,err)
-         BARRIER(nsteps) = MPI_Wtime() - TIME0
-#endif
+!          BARRIER(nsteps) = MPI_Wtime() - TIME0
          TIME0 = MPI_Wtime()
+#endif
          call step_leapfrog (old_tabl, tabl, old_old_tabl, 1, t,DIM)
-         call pseudo_halo(buffer,BUFDIM,4,NREP,pe_to,pe_from)
+!          call pseudo_halo(buffer,BUFDIM,4,NREP,pe_to,pe_from)
          t = t + deltat
          nsteps=nsteps+1
 #ifdef MPI
          TIMES(nsteps) = MPI_Wtime() - TIME0
-         TIME0 = MPI_Wtime()
+!          TIME0 = MPI_Wtime()
          call MPI_barrier(OWN_COMM_WORLD,err)
-         BARRIER(nsteps) = MPI_Wtime() - TIME0
-#endif
+!          BARRIER(nsteps) = MPI_Wtime() - TIME0
          TIME0 = MPI_Wtime()
+#endif
          call step_euler    (tabl, old_old_tabl, old_tabl, 1, t,DIM)
-         call pseudo_halo(buffer,BUFDIM,4,NREP,pe_to,pe_from)
+!          call pseudo_halo(buffer,BUFDIM,4,NREP,pe_to,pe_from)
          t = t + deltat
          nsteps=nsteps+1
 #ifdef MPI
          TIMES(nsteps) = MPI_Wtime() - TIME0
-         TIME0 = MPI_Wtime()
+!          TIME0 = MPI_Wtime()
          call MPI_barrier(OWN_COMM_WORLD,err)
-         BARRIER(nsteps) = MPI_Wtime() - TIME0
-#endif
+!          BARRIER(nsteps) = MPI_Wtime() - TIME0
          TIME0 = MPI_Wtime()
+#endif
          call step_leapfrog (old_old_tabl, old_tabl, tabl, 1, t,DIM)
-         call pseudo_halo(buffer,BUFDIM,4,NREP,pe_to,pe_from)
+!          call pseudo_halo(buffer,BUFDIM,4,NREP,pe_to,pe_from)
          t = t + deltat
          nsteps=nsteps+1
 #ifdef MPI
          TIMES(nsteps) = MPI_Wtime() - TIME0
-         TIME0 = MPI_Wtime()
+!          TIME0 = MPI_Wtime()
          call MPI_barrier(OWN_COMM_WORLD,err)
-         BARRIER(nsteps) = MPI_Wtime() - TIME0
-#endif
+!          BARRIER(nsteps) = MPI_Wtime() - TIME0
          TIME0 = MPI_Wtime()
+#endif
          call step_euler    (old_tabl, tabl, old_old_tabl, 1, t,DIM)
-         call pseudo_halo(buffer,BUFDIM,4,NREP,pe_to,pe_from)
+!          call pseudo_halo(buffer,BUFDIM,4,NREP,pe_to,pe_from)
          t = t + deltat
          nsteps=nsteps+1
 #ifdef MPI
          TIMES(nsteps) = MPI_Wtime() - TIME0
-         TIME0 = MPI_Wtime()
+!          TIME0 = MPI_Wtime()
          call MPI_barrier(OWN_COMM_WORLD,err)
-         BARRIER(nsteps) = MPI_Wtime() - TIME0
+!          BARRIER(nsteps) = MPI_Wtime() - TIME0
+         TIME0 = MPI_Wtime()
 #endif
-         TIME0 = MPI_Wtime()
          call step_leapfrog (tabl, old_old_tabl, old_tabl, 1, t,DIM)
-         call pseudo_halo(buffer,BUFDIM,4,NREP,pe_to,pe_from)
+!          call pseudo_halo(buffer,BUFDIM,4,NREP,pe_to,pe_from)
          t = t + deltat
          nsteps=nsteps+1
 #ifdef MPI
          TIMES(nsteps) = MPI_Wtime() - TIME0
-         TIME0 = MPI_Wtime()
-         call MPI_barrier(OWN_COMM_WORLD,err)
-         BARRIER(nsteps) = MPI_Wtime() - TIME0
+!          TIME0 = MPI_Wtime()
+!          call MPI_barrier(OWN_COMM_WORLD,err)
+!          BARRIER(nsteps) = MPI_Wtime() - TIME0
 #endif
         if( mod(nsteps,67).eq.0 .and. my_proc.eq.-1 )
      %      write(6,'(A,f9.7)') 'T=',t
          goto 10
       endif
-c     FIN BOUCLE EN TEMPS
+!======================================================================
+!     FIN DE LA BOUCLE SUR LE TEMPS
+!======================================================================
 
       if(my_proc .eq. -1)then   ! code is deactivated
          if(nsteps .eq. 3000 .and. DIM .eq.1024 )then
@@ -272,21 +278,27 @@ c     FIN BOUCLE EN TEMPS
             write(6,*)'current number of timesteps is ',nsteps
          endif
       endif
-      if(my_proc .eq.0) then
-            call signature(tabl(-2,-2,0),DIM+4,DIM+4,AVG,1)
-            call signature(tabl(-2,-2,1),DIM+4,DIM+4,AVG,2)
-      endif
-      call signature(tabl(-2,-2,2),DIM+4,DIM+4,AVG,3)
+!======================================================================
+!     IMPRESSION DES DIAGNOSTICS
+!======================================================================
+!       if(my_proc .eq.0) then
+!             call signature(tabl(-2,-2,0),DIM+4,DIM+4,AVG,1)
+!             call signature(tabl(-2,-2,1),DIM+4,DIM+4,AVG,2)
+!       endif
+!       call signature(tabl(-2,-2,2),DIM+4,DIM+4,AVG,3)
 #ifdef MPI
-      T2=MPI_Wtime()
+      T2=MPI_Wtime()                                      ! end of run
 !       print *,'Total Run time = ',T2-T1
-      allocate(ALLTIMES(MAXSTEPS,total0))
-      allocate(NTIMES(MAXSTEPS,total_procs))
+      allocate(ALLTIMES(nsteps,total0))
+      allocate(NTIMES(nsteps,total_procs))
       TIMES = TIMES * 1000.0  ! convert to milliseconds
-      call MPI_gather(TIMES,  MAXSTEPS, MPI_REAL, 
-     %                NTIMES, MAXSTEPS, MPI_REAL, 
+      call MPI_gather(TIMES,  nsteps, MPI_REAL, 
+     %                NTIMES, nsteps, MPI_REAL, 
      %                0, OWN_COMM_WORLD, err)
       if (my_proc == 0) then
+	print *,'node time(sec) =',T2-T1,', ',
+     %          'node minimum(ms) =',minval(NTIMES(1:nsteps:2,:)),
+     %                               minval(NTIMES(2:nsteps:2,:))
 	tmin = minval(NTIMES(1:nsteps:2,:))
 	do j = 1, total_procs
 	  do i = 1, nsteps, 2
@@ -299,15 +311,14 @@ c     FIN BOUCLE EN TEMPS
 	    NTIMES(i,j) = min(99.0 ,(NTIMES(i,j) - tmin)/tmin*100.0)
 	  enddo
 	enddo
-	print *,'global node min =',tmin
-	print *,'max node jitter =',maxval(NTIMES(1:nsteps:2,:)),
-     %                              maxval(NTIMES(2:nsteps:2,:))
-	open(unit=11,file=trim(host_128)//'.odd',form='FORMATTED')
+	print *,'node jitter(%) =',maxval(NTIMES(1:nsteps:2,:)),
+     %                             maxval(NTIMES(2:nsteps:2,:))
+	open(unit=11,file=trim(host_128)//'.euler',form='FORMATTED')
 	do j = 1, total_procs
 	  write(11,11)nint(NTIMES(1:nsteps:2,j))
 	enddo
 	close(unit=11)
-	open(unit=11,file=trim(host_128)//'.even',form='FORMATTED')
+	open(unit=11,file=trim(host_128)//'.leapfrog',form='FORMATTED')
 	do j = 1, total_procs
 	  write(11,11)nint(NTIMES(2:nsteps:2,j))
 	enddo
@@ -315,12 +326,14 @@ c     FIN BOUCLE EN TEMPS
       endif
 11    format(1000I3)
 !       goto 999
-      call MPI_gather(TIMES,    MAXSTEPS, MPI_REAL, 
-     %                ALLTIMES, MAXSTEPS, MPI_REAL, 
-     %                0, MPI_COMM_WORLD, err)
+      call MPI_gather(TIMES,    nsteps, MPI_REAL, 
+     %                ALLTIMES, nsteps, MPI_REAL, 
+     %                0, MPI_COMM_WORLD, err)                  ! get times from all cores, all nodes
       if (pe0 == 0) then
-      print *,'global min =',minval(ALLTIMES),
-     %        ' global max =',maxval(ALLTIMES)
+      print *,'global min(ms) =',minval(ALLTIMES(1:nsteps:2,:)),','
+     %                          ,minval(ALLTIMES(2:nsteps:2,:))
+      print *,'global max(ms) =',maxval(ALLTIMES(1:nsteps:2,:)),','
+     %                          ,maxval(ALLTIMES(2:nsteps:2,:))
       call analyze2d(hosts_8, ALLTIMES(1:nsteps:2,1),
      %               nsteps/2,1,1)                             ! node 0, PE 0, odd
       call analyze2d(hosts_8, ALLTIMES(1:nsteps:2,:),
@@ -362,13 +375,13 @@ c     FIN BOUCLE EN TEMPS
       call MPI_barrier(MPI_COMM_WORLD,err)
 2     format(A,F6.3,a,4f7.4)
 
-!       allocate(ALLTIMES(0:MAXSTEPS,total_procs))
+!       allocate(ALLTIMES(0:nsteps,total_procs))
       call MPI_allreduce(TIMES, ALLTIMES(:,1), nsteps+1, 
      %     MPI_REAL, MPI_MAX, MPI_COMM_WORLD, err)
       call MPI_allreduce(TIMES, ALLTIMES(:,2), nsteps+1, 
      %     MPI_REAL, MPI_MIN, MPI_COMM_WORLD, err)
-!       call MPI_allgather(TIMES,MAXSTEPS+1,MPI_REAL,
-!      %                   ALLTIMES,MAXSTEPS+1,MPI_REAL,
+!       call MPI_allgather(TIMES,nsteps+1,MPI_REAL,
+!      %                   ALLTIMES,nsteps+1,MPI_REAL,
 !      %                   OWN_COMM_WORLD,err)
       if(pe0 .eq. 0) then
 !         do i = 1, nsteps
@@ -425,8 +438,8 @@ c     FIN BOUCLE EN TEMPS
 !       TSQR=sqrt(TSQR/nsteps-TAVG*TAVG)
 !       if(my_proc .eq. 0) print 2,'Barrier_Time=',T2-T1,
 !      %   ' avg,dev,min,max=',TAVG,TSQR,TMIN,TMAX
-      call MPI_allgather(BARRIER,MAXSTEPS+1,MPI_REAL,
-     %                   ALLTIMES,MAXSTEPS+1,MPI_REAL,
+      call MPI_allgather(BARRIER,nsteps+1,MPI_REAL,
+     %                   ALLTIMES,nsteps+1,MPI_REAL,
      %                   OWN_COMM_WORLD,err)
       call MPI_barrier(MPI_COMM_WORLD,err)
       if(my_proc .eq. 0) then

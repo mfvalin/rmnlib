@@ -19,7 +19,7 @@ set cblabel "%jitter"
 
 #set xrange [-0.5:4.5]
 set xrange [1:300]
-set yrange [1:176]
+set yrange [1:352]
 
 #set view map
 set pm3d map
