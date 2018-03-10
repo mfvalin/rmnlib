@@ -13,11 +13,12 @@
       common /mpi_world/ OWN_COMM_WORLD
       integer(C_SIZE_T), parameter :: L128 = 128
       integer :: OWN_COMM_WORLD, host_id
-      double precision T1,T2,TAVG,TMIN,TMAX,TSQR,TSUM
+      double precision T1,T2
+      real :: TMIN,TMAX,TSQR,TSUM,TAVG
       real :: tjit
       integer, dimension(0:21) :: tj
       real, dimension(:), pointer :: TIMES, BARRIER
-      real, dimension(:,:), pointer :: ALLTIMES
+      real, dimension(:,:), pointer :: ALLTIMES, NTIMES
       double precision :: TIME0
       character(len=1), dimension(L128) :: hostname
       character(len=8), dimension(:), pointer :: hosts_8
@@ -67,7 +68,7 @@
       host_128 = ' '
       i = f_gethostname(hostname,L128)
       do i = 1,L128
-        if(hostname(i) == achar(0)) hostname(i) = ' '
+        if(hostname(i) == achar(0)) exit
         host_128(i:i) = hostname(i)
       enddo
       allocate(hosts_8(total0))
@@ -280,26 +281,59 @@ c     FIN BOUCLE EN TEMPS
       T2=MPI_Wtime()
 !       print *,'Total Run time = ',T2-T1
       allocate(ALLTIMES(MAXSTEPS,total0))
+      allocate(NTIMES(MAXSTEPS,total_procs))
       TIMES = TIMES * 1000.0  ! convert to milliseconds
+      call MPI_gather(TIMES,  MAXSTEPS, MPI_REAL, 
+     %                NTIMES, MAXSTEPS, MPI_REAL, 
+     %                0, OWN_COMM_WORLD, err)
+      if (my_proc == 0) then
+	tmin = minval(NTIMES(1:nsteps:2,:))
+	do j = 1, total_procs
+	  do i = 1, nsteps, 2
+	    NTIMES(i,j) = min(99.0 ,(NTIMES(i,j) - tmin)/tmin*100.0)
+	  enddo
+	enddo
+	tmin = minval(NTIMES(2:nsteps:2,:))
+	do j = 1, total_procs
+	  do i = 2, nsteps, 2
+	    NTIMES(i,j) = min(99.0 ,(NTIMES(i,j) - tmin)/tmin*100.0)
+	  enddo
+	enddo
+	print *,'global node min =',tmin
+	print *,'max node jitter =',maxval(NTIMES(1:nsteps:2,:)),
+     %                              maxval(NTIMES(2:nsteps:2,:))
+	open(unit=11,file=trim(host_128)//'.odd',form='FORMATTED')
+	do j = 1, total_procs
+	  write(11,11)nint(NTIMES(1:nsteps:2,j))
+	enddo
+	close(unit=11)
+	open(unit=11,file=trim(host_128)//'.even',form='FORMATTED')
+	do j = 1, total_procs
+	  write(11,11)nint(NTIMES(2:nsteps:2,j))
+	enddo
+	close(unit=11)
+      endif
+11    format(1000I3)
+!       goto 999
       call MPI_gather(TIMES,    MAXSTEPS, MPI_REAL, 
      %                ALLTIMES, MAXSTEPS, MPI_REAL, 
      %                0, MPI_COMM_WORLD, err)
       if (pe0 == 0) then
-      print *,'min =',minval(ALLTIMES)
-      print *,'max =',maxval(ALLTIMES)
+      print *,'global min =',minval(ALLTIMES),
+     %        ' global max =',maxval(ALLTIMES)
       call analyze2d(hosts_8, ALLTIMES(1:nsteps:2,1),
-     %               nsteps/2,1,1)
+     %               nsteps/2,1,1)                             ! node 0, PE 0, odd
+      call analyze2d(hosts_8, ALLTIMES(1:nsteps:2,:),
+     %               nsteps/2,total_procs,total0/total_procs)  ! all nodes, all PEs on node, odd
       call analyze2d(hosts_8,ALLTIMES(2:nsteps:2,1),
-     %               nsteps/2,1,1)
+     %               nsteps/2,1,1)                             ! node 0, PE 0, even
+      call analyze2d(hosts_8, ALLTIMES(2:nsteps:2,:),
+     %               nsteps/2,total_procs,total0/total_procs)  ! all nodes, all PEs on node, even
 !       call analyze2d(hosts_8,ALLTIMES(1:nsteps,1),
 !      %               nsteps,1,1)
 !       call analyze2d(hosts_8,ALLTIMES(1:nsteps,1),
 !      %               nsteps,1,2)
 !       hosts_8 = 'Global'
-      call analyze2d(hosts_8, ALLTIMES(1:nsteps:2,:),
-     %               nsteps/2,total_procs,total0/total_procs)
-      call analyze2d(hosts_8, ALLTIMES(2:nsteps:2,:),
-     %               nsteps/2,total_procs,total0/total_procs)
       endif
       goto 999
       call MPI_allreduce(TIMES, ALLTIMES(:,1), nsteps+1, 
