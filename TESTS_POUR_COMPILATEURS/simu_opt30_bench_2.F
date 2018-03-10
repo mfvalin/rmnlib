@@ -737,23 +737,23 @@ c     CALCUL DES DERIVEES
 
         tmax = maxval(t)
         tmin = minval(t)
-        tp = 0
         mpct = 0
         print 2,'Analyzing',nt,' time frames on',
      %           nn,' node(s) with',ns,' cores'
         do k = 1, nn
-        do j = 1, ns
-        do i = 1, nt
-          tpct = 0
-          if(tmin > 0) tpct = ( (t(i,j,k)-tmin)/tmin )*100.0
-          mpct = max(tpct,mpct)
-          ip = min(20, nint(tpct))
-          tp(ip) = tp(ip) + 1
-        enddo
-        enddo
-        ip = ns*nt
-        write(6,1)trim(msg(1,k)),' min,max,maxjit%,jt',
-     %            tmin,tmax,mpct,tp,ip
+	  tp = 0
+	  do j = 1, ns
+	  do i = 1, nt
+	    tpct = 0
+	    if(tmin > 0) tpct = ( (t(i,j,k)-tmin)/tmin )*100.0
+	    mpct = max(tpct,mpct)
+	    ip = min(20, nint(tpct))
+	    tp(ip) = tp(ip) + 1
+	  enddo
+	  enddo
+	  ip = ns*nt
+	  write(6,1)trim(msg(1,k)),' min,max,maxjit%,jt',
+    %            tmin,tmax,mpct,tp,ip
         enddo
 1       format(A10,A,3F8.1,21I6,I8)
 2       format(A,3(I6,A))

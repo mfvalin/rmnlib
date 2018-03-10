@@ -11,7 +11,8 @@ set tic scale 0
 #set palette rgbformula -7,2,-7
 #set palette color
 #set palette defined ( 0 "white", 3 "green" , 5 "red" )
-set palette defined ( 0 "light-blue", 2 "cyan", 4 "green" , 8 "yellow", 16 "orange" , 32 "magenta" , 64 "red" , 99 "dark-red" )
+#set palette defined ( 0 "white", 100 "dark-red" )
+set palette defined ( 0 "light-blue", 2 "cyan", 4 "green" , 6 "yellow", 10 "orange" , 15 "magenta" , 64 "red" , 99 "dark-red" )
 
 set cbrange [0:100]
 set cblabel "%jitter"
@@ -19,13 +20,13 @@ set cblabel "%jitter"
 
 #set xrange [-0.5:4.5]
 set xrange [1:300]
-set yrange [1:724]
+set yrange [1:3600]
 
-#set view map
-set pm3d map
+set view map
+#set pm3d map
 #set pm3d interpolate 2,2
-set pm3d interpolate 0,0
+#set pm3d interpolate 0,0
 
-#splot 'data.txt' matrix with image
-splot 'data.txt' matrix
+splot 'data.txt' matrix with image
+#splot 'data.txt' matrix
 
