@@ -295,6 +295,9 @@
       call MPI_gather(TIMES,  nsteps, MPI_REAL, 
      %                NTIMES, nsteps, MPI_REAL, 
      %                0, OWN_COMM_WORLD, err)
+      call MPI_gather(TIMES,    nsteps, MPI_REAL, 
+     %                ALLTIMES, nsteps, MPI_REAL, 
+     %                0, MPI_COMM_WORLD, err)                  ! get times from all cores, all nodes
       if (my_proc == 0) then
 	print *,'node time(sec) =',T2-T1,', ',
      %          'node minimum(ms) =',minval(NTIMES(1:nsteps:2,:)),
@@ -326,9 +329,6 @@
       endif
 11    format(1000I3)
 !       goto 999
-      call MPI_gather(TIMES,    nsteps, MPI_REAL, 
-     %                ALLTIMES, nsteps, MPI_REAL, 
-     %                0, MPI_COMM_WORLD, err)                  ! get times from all cores, all nodes
       if (pe0 == 0) then
       print *,'global min(ms) =',minval(ALLTIMES(1:nsteps:2,:)),','
      %                          ,minval(ALLTIMES(2:nsteps:2,:))
