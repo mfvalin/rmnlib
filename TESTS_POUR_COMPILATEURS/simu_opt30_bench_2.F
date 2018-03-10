@@ -753,7 +753,7 @@ c     CALCUL DES DERIVEES
 	  enddo
 	  ip = ns*nt
 	  write(6,1)trim(msg(1,k)),' min,max,maxjit%,jt',
-    %            tmin,tmax,mpct,tp,ip
+     %            tmin,tmax,mpct,tp,ip
         enddo
 1       format(A10,A,3F8.1,21I6,I8)
 2       format(A,3(I6,A))
