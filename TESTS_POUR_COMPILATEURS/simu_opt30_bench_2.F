@@ -299,13 +299,13 @@
 	print *,'node time(sec) =',T2-T1,', ',
      %          'node minimum(ms) =',minval(NTIMES(1:nsteps:2,:)),
      %                               minval(NTIMES(2:nsteps:2,:))
-	tmin = minval(NTIMES(1:nsteps:2,:))
+	tmin = minval(ALLTIMES(1:nsteps:2,:))
 	do j = 1, total_procs
 	  do i = 1, nsteps, 2
 	    NTIMES(i,j) = min(99.0 ,(NTIMES(i,j) - tmin)/tmin*100.0)
 	  enddo
 	enddo
-	tmin = minval(NTIMES(2:nsteps:2,:))
+	tmin = minval(ALLTIMES(2:nsteps:2,:))
 	do j = 1, total_procs
 	  do i = 2, nsteps, 2
 	    NTIMES(i,j) = min(99.0 ,(NTIMES(i,j) - tmin)/tmin*100.0)
