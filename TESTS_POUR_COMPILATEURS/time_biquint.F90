@@ -3,10 +3,36 @@ program tsoltri
   implicit none
   include 'mpif.h'
 
-  integer, parameter :: NP = 2000
-  integer, parameter :: NI = 1000
   integer, parameter :: NREP = 20
-  real, dimension(NP,NI) :: A, B, C, R, RHS
+  interface
+    subroutine intrp_biquint_yx(f, r, ni, ninj, nk, np, x, y) bind(C,name='intrp_biquint_yx')         !InTf!
+      import :: C_INT, C_FLOAT, C_DOUBLE                                                          !InTf!
+      real(C_FLOAT), dimension(*), intent(IN) :: f                                                !InTf!
+      real(C_FLOAT), dimension(*), intent(OUT) :: r                                               !InTf!
+      real(C_DOUBLE), intent(IN), value :: x, y                                                   !InTf!
+      integer(C_INT), intent(IN), value :: ni, ninj, nk, np                                       !InTf!
+    end subroutine intrp_biquint_yx                                                                 !InTf!
+    subroutine intrp_biquint_yx_mono(f, r, ni, ninj, nk, np, x, y) bind(C,name='intrp_biquint_yx_mono') !InTf!
+      import :: C_INT, C_FLOAT, C_DOUBLE                                                          !InTf!
+      real(C_FLOAT), dimension(*), intent(IN) :: f                                                !InTf!
+      real(C_FLOAT), dimension(*), intent(OUT) :: r                                               !InTf!
+      real(C_DOUBLE), intent(IN), value :: x, y                                                   !InTf!
+      integer(C_INT), intent(IN), value :: ni, ninj, nk, np                                       !InTf!
+    end subroutine intrp_biquint_yx_mono                                                            !InTf!
+  end interface
+#define FXY(A,B,C) (1.1*(A)**5 + 1.2*(A)**4 + 1.3*(A)**3 + 1.4*(A)**2 + (A)*1.5 + 2.1*(B)**5 + 2.2*(B)**4 + 2.3*(B)**3 + 2.4*(B)**2 + (B)*2.5 + (C))
+  integer, parameter :: RP=2000    ! repeat count
+  integer, parameter :: NI=31
+  integer, parameter :: NJ=27
+  integer, parameter :: NK=41
+  integer, parameter :: NP=180
+  integer, parameter :: HX=3
+  integer, parameter :: HY=3
+  integer, parameter :: NR=25
+  real(C_FLOAT), dimension(1-HX:NI+HX , 1-HY:NJ+HY , NK) :: f
+  real(C_FLOAT), dimension(NP,NK) :: r
+  real(C_DOUBLE), dimension(NP) :: x, y
+  integer j, k, nidim, ninjdim
   integer :: irep, ierr, rank, csiz, i, host_id, OWN_COMM_WORLD, my_proc, total_procs
   real, dimension(:), pointer :: ttmp1
   real, dimension(:,:), pointer :: ttmp2
@@ -25,11 +51,6 @@ program tsoltri
       character(C_CHAR), dimension(nchar), intent(OUT) :: name
     end function f_gethostname
   end interface
-
-  A = 1.0
-  B = .90
-  c = .80
-  RHS = 1.5
 
   call mpi_init(ierr)
   call mpi_comm_rank(MPI_COMM_WORLD,rank,ierr)
@@ -52,11 +73,32 @@ program tsoltri
   allocate(ttmp1(NREP))
   allocate(ttmp2(NREP,csiz))
 
+  r = 9999.99
+  do k = 1 , NK
+    do j = 1-HY , NJ+HY
+      do i = 1-HX , NI+HX
+!        f(i,j,k) = i + j  + k
+        f(i,j,k) = FXY(i*1.0 , j*1.0 , k*1.0)
+      enddo
+    enddo
+!    print *,f(1,1,k),f(2,2,k)
+  enddo
+  do i = 1 , NP
+    x(i) = i*ni/np*.9 - .999
+    y(i) = i*nj/np*.9 - .999
+  enddo
+  nidim = NI + 2*HX
+  ninjdim = nidim * (NJ + HY*2)
+  ttmp1 = 0
+  ttmp2 = 0
+
   do irep = 1 , NREP
     call mpi_barrier(MPI_COMM_WORLD,ierr)
     t0 = MPI_wtime()
-    do i = 1, 40
-      call soltri_m ( r, rhs, a, b, c, np, ni)
+    do k = 1,RP
+      do i = 1 , NP
+        call intrp_biquint_yx( f(1,1,1), r(i,1), nidim, ninjdim, NK, NP, x(i), y(i) )
+      enddo
     enddo
     t1 = MPI_wtime() - t0
     ttmp1(irep) = t1
@@ -70,7 +112,7 @@ program tsoltri
   call mpi_gather(ttmp1,NREP,MPI_REAL,ttmp2,NREP,MPI_REAL,0,MPI_COMM_WORLD,ierr)
   if(rank == 0) then
     do i = 1, NREP
-      call analyze('soltri',ttmp2(i,:),csiz)
+      call analyze('biquint',ttmp2(i,:),csiz)
     enddo
 !     print 1,tavg(1:10)
 !     print 1,tmax(1:10) - tmin(1:10)

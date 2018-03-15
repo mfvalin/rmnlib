@@ -279,7 +279,7 @@
          endif
       endif
 !======================================================================
-!     IMPRESSION DES DIAGNOSTICS
+!     IMPRESSION DES DIAGNOSTICS (en mode MPI seulement)
 !======================================================================
 !       if(my_proc .eq.0) then
 !             call signature(tabl(-2,-2,0),DIM+4,DIM+4,AVG,1)
@@ -349,6 +349,9 @@
 !       hosts_8 = 'Global'
       endif
       goto 999
+!======================================================================
+!     THE END
+!======================================================================
       call MPI_allreduce(TIMES, ALLTIMES(:,1), nsteps+1, 
      %     MPI_REAL, MPI_MAX, OWN_COMM_WORLD, err)
       call MPI_allreduce(TIMES, ALLTIMES(:,2), nsteps+1, 
