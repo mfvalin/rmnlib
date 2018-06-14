@@ -102,7 +102,7 @@ end
 EOT
 rm -f a.out pointers_nd.mod
 set -x
-${compiler} f90_pointer_regression_[0-4].f90 $*
+${compiler} $* f90_pointer_regression_[0-4].f90
 set +x
 echo "===== test with the ${compiler} compiler ===="
 [[ ${compiler} == gfortran ||  ${compiler} == flang ||  ${compiler} == ifort* ]] &&  ${compiler} --version
