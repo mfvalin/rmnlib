@@ -31,10 +31,11 @@ end module pointers_nd
 EOT
 
 cat <<EOT >f90_pointer_regression_1.f90
-subroutine print_ptr1d(copy_in,locarray,array,ni,i0,stride)
+subroutine print_ptr1d(copy_in,locarray,array,ni,i0,stride,other)
 integer*8, intent(IN) :: locarray
 integer, intent(IN) :: ni, i0, stride
 integer, intent(IN), dimension(ni) :: array
+integer, intent(IN), dimension(:) :: other
 logical :: same
 integer :: errors, delta, i
 character(len=*) :: copy_in
@@ -53,6 +54,8 @@ do i=0,ni-1
 enddo
   print 103,'expected: ',(I0+I*stride , I=0,ni-1)
   print 103,'got     : ',array(1:ni)
+  print 103,'other   : ',other(1:ni)
+  print *,'size of other =',size(other)
 103 format(A,20i4)
 if(copy_in/='         ' .or. errors/=0) then
   if(errors>0) then
@@ -76,6 +79,16 @@ end
 subroutine test1()
 use pointers_nd
 implicit none
+interface
+  subroutine print_ptr1d(copy_in,locarray,array,ni,i0,stride,other)
+  implicit none
+  character(len=*),intent(OUT) :: copy_in
+  integer*8, intent(IN) :: locarray
+  integer, intent(IN) :: ni, i0, stride
+  integer, intent(IN), dimension(ni) :: array
+  integer, intent(IN), dimension(:) :: other
+  end subroutine print_ptr1d
+end interface
 integer, pointer, dimension(:) :: p0d
 integer, pointer, dimension(:) :: p1d
 integer*8 :: locarray
@@ -89,13 +102,19 @@ p1d=>ptr1ds(20,2)  ! array with a stride of 2
 
 p0d(1:8)=>p1d(2:9)
 locarray=loc(p1d(2))
-call print_ptr1d(copy_in,locarray,p0d,8,3,2)
+call print_ptr1d(copy_in,locarray,p0d,8,3,2,p0d)
 print 100,copy_in//'Dc - p1d=>ptr1ds(20,2) p0d(1:8)=>p1d(2:9), passing p0d, COPY-IN expected'
 
 p0d(1:8)=>p1d(2:9)
 locarray=loc(p1d(2))
-call print_ptr1d(copy_in,locarray,p0d(1:8),8,3,2)
-print 100,copy_in//'Df - p1d=>ptr1ds(20,2) p0d(1:8)=>p1d(2:9), passing p0d(1:8), COPY-IN expected'
+call print_ptr1d(copy_in,locarray,p0d(1:8),8,3,2,p0d(1:8))
+
+locarray=loc(p1d(2))
+call print_ptr1d(copy_in,locarray,p1d(2:9),8,3,2,p1d(2:9))
+print 100,copy_in//'Df - p1d=>ptr1ds(20,2) passing p1d(2:9), COPY-IN expected'
+print 101,'p0d : ',p0d(1:8)
+print 101,'p1d : ',p1d(2:9)
+101 format(A,20i4)
 
 return
 end
