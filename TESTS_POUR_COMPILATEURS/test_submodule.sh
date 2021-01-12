@@ -9,6 +9,9 @@ module foo
     module subroutine bar_real(x)
       real(kind=4), intent(in) :: x
     end subroutine
+    module subroutine bar_real8(x)
+      real(kind=8), intent(in) :: x
+    end subroutine
   end interface
 end module
 EOT
@@ -20,7 +23,10 @@ contains
     print *,'bar_integer :',x
   end procedure
   module procedure bar_real
-    print *,'bar_real :',x
+    print *,'bar_real    :',x
+  end procedure
+  module procedure bar_real8
+    print *,'bar_real8   :',x
   end procedure
 end submodule
 EOT
@@ -32,6 +38,7 @@ use foo
   real :: r = 1.5
   call bar(i)
   call bar(r)
+  call bar(1.2345_8)
   print *,'exiting main'
 end program
 EOT
