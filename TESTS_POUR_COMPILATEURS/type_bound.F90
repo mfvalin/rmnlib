@@ -1,7 +1,7 @@
 ! same name for a type bound procedure in 2 different user defined types
 ! both types a and b have a bound procedure called machin
 ! compilers O.K. with this : gfortran, Intel Fortran, AMD aocc (flang), nvidia/pgi, allinea(ARM aarch64), IBM xlf
-! some compilers do not like this
+! some compilers do not like this : Cray Fortran
 ! using -Dmachin=machina -DMACHIN=machinb solves it
 ! declaring machin MACHIN as private also solves it
 module mod_a
