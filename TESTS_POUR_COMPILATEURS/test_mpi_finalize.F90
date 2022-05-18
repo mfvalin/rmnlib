@@ -3,15 +3,16 @@ program test_mpi_finalize
   use mpi
   implicit none
   interface
-    subroutine MPI_Soft_finalize_prep(comm, rank, ierr)
+    subroutine MPI_Soft_finalize_prep(comm, rank, ierr) bind(C, name='MPI_Soft_finalize_prep_fortran')
       implicit none
       integer, intent(IN)    :: comm
       integer, intent(OUT)   :: rank
       integer, intent(INOUT) :: ierr
     end subroutine MPI_Soft_finalize_prep
-    subroutine MPI_Soft_finalize(ierr)
+    subroutine MPI_Soft_finalize(comm, ierr) bind(C, name='MPI_Soft_finalize_fortran')
       implicit none
-      integer, intent(INOUT) :: ierr
+      integer, intent(IN)    :: comm      ! communicator for participating processes (same as MPI_Soft_finalize_prep)
+      integer, intent(INOUT) :: ierr      ! error return
     end subroutine MPI_Soft_finalize
   end interface
 
@@ -30,6 +31,6 @@ program test_mpi_finalize
   call MPI_Barrier(MPI_COMM_WORLD, ierr)
   if(my_rank == 0) read(5,*) junk
 
-  call MPI_Soft_finalize(ierr)
+  call MPI_Soft_finalize(MPI_COMM_WORLD, ierr)
 
 end
