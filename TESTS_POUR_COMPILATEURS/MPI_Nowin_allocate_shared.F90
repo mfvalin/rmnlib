@@ -24,15 +24,78 @@
 ! that can create a shared memory segment that can be accessed by all processes in the group
 ! the allocation is handled in such a way that the shared memory segment
 ! will be automatically freed when the last process terminates
-subroutine MPI_Nowin_allocate_shared(size, comm, base, ierr)
+subroutine MPI_Nowin_allocate_shared_f08(size, comm, base, ierr)
+  use mpi_f08, ONLY : MPI_Comm, MPI_ADDRESS_KIND
+  use ISO_C_BINDING
+  implicit none
+  integer(KIND=MPI_ADDRESS_KIND), INTENT(IN)   :: size      ! size of shared memory segment in bytes
+  type(MPI_Comm), intent(IN)      :: comm      ! communicator (all PEs MUST BE in same SMP node)
+  type(C_PTR), INTENT(OUT)        :: base      ! base local address of shared memory segment
+  integer, intent(OUT), optional  :: ierr      ! error return (MPI_SUCCESS or MPI_ERROR)
+  interface
+    subroutine MPI_Nowin_allocate_shared(size, comm, base, ierr) bind(C, name='MPI_Nowin_allocate_shared_fortran')
+      import :: C_SIZE_T, C_PTR, C_INT32_T
+      implicit none
+      integer(C_SIZE_T), INTENT(IN)   :: size      ! size of shared memory segment in bytes
+      integer(C_INT32_T), intent(IN)  :: comm      ! communicator (all PEs MUST BE in same SMP node)
+      type(C_PTR), INTENT(OUT)        :: base      ! base local address of shared memory segment
+      integer(C_INT32_T), intent(OUT) :: ierr      ! error return (MPI_SUCCESS
+    end subroutine MPI_Nowin_allocate_shared
+  end interface
+
+  integer :: ierror
+  call MPI_Nowin_allocate_shared(size, comm%mpi_val, base, ierror)
+  if(present(ierr)) ierr = ierror
+end subroutine
+subroutine MPI_Nowin_allocate_shared(size, comm, base, ierr) bind(C, name='MPI_Nowin_allocate_shared_fortran')
   use mpi
   use ISO_C_BINDING
   implicit none
+#if ! defined(STAND_ALONE)
 #include <iso_c_binding_extras.hf>
-  integer(C_SIZE_T), INTENT(IN) :: size      ! size of shared memory segment in bytes
-  integer, intent(IN)           :: comm      ! communicator (all PEs MUST BE in same SMP node)
-  type(C_PTR), INTENT(OUT)      :: base      ! base local address of shared memory segment
-  integer, intent(OUT)          :: ierr      ! error return (MPI_SUCCESS
+#else
+  integer, parameter :: C_KEY_T = C_INT32_T
+  integer, parameter :: SIZEOF_SHMID_DS = 112
+  integer, parameter :: IPC_PRIVATE = 0
+  integer, parameter :: IPC_CREAT = 512
+  integer, parameter :: IPC_EXCL = 1024
+  integer, parameter :: IPC_RMID = 0
+  type, bind(C) :: shmid_ds
+    integer(C_INT), dimension(SIZEOF_SHMID_DS/4) :: x
+  end type
+  interface
+    function c_shmget(key, siz, flags) result(memid) bind(C,name='shmget')
+      import :: C_INT, C_KEY_T, C_SIZE_T
+      integer(C_KEY_T), intent(IN),  value :: key
+      integer(C_SIZE_T), intent(IN), value :: siz
+      integer(C_INT), intent(IN),    value :: flags
+      integer(C_INT) :: memid
+    end function c_shmget
+    function c_shmat(memid, shmaddr, flags) result(addr) bind(C,name='shmat')
+      import :: C_INT, C_PTR
+      integer(C_INT), intent(IN),    value :: memid
+      type(C_PTR), intent(IN),       value :: shmaddr
+      integer(C_INT), intent(IN),    value :: flags
+      type(C_PTR) :: addr
+    end function c_shmat
+    function c_shmdt(shmaddr) result(ok) bind(C,name='shmdt')
+      import :: C_INT, C_PTR
+      type(C_PTR), intent(IN),       value :: shmaddr
+      integer(C_INT) :: ok
+    end function c_shmdt
+    function c_shmctl(memid, cmd, buf) result(ok) bind(C,name='shmctl')
+      import :: C_INT, shmid_ds
+      integer(C_INT), intent(IN),    value :: memid
+      integer(C_INT), intent(IN),    value :: cmd
+      type(shmid_ds), intent(OUT)          :: buf
+      integer(C_INT) :: ok
+    end function c_shmctl
+  end interface
+#endif
+  integer(C_SIZE_T), INTENT(IN)   :: size      ! size of shared memory segment in bytes
+  integer(C_INT32_T), intent(IN)  :: comm      ! communicator (all PEs MUST BE in same SMP node)
+  type(C_PTR), INTENT(OUT)        :: base      ! base local address of shared memory segment
+  integer(C_INT32_T), intent(OUT) :: ierr      ! error return (MPI_SUCCESS or MPI_ERROR)
   integer(C_INT) :: my_rank, shmid, status
   type(shmid_ds) :: ds
 
