@@ -6,7 +6,7 @@ module grid_assembly_module
   end type
 
   type :: grid
-    type(grid_inner), dimension(1) :: inner = grid_inner() ! This would be OK for intel if it were just a scalar variable
+    type(grid_inner), dimension(1) :: inner = grid_inner()
   contains
     procedure, pass, public :: get_num
   end type
@@ -35,8 +35,11 @@ module grid_user
   implicit none
 
   type :: user
-!       type(grid) :: g = grid()  ! crashes ifort, OK for gfortran
+#if defined(BUG1)
+      type(grid) :: g = grid()  ! crashes ifort, OK for gfortran
+#else
       type(grid) :: g = grid(grid_inner())          ! OK for both
+#endif
   contains
     procedure, pass :: generate_crash
   end type user
@@ -53,8 +56,11 @@ contains
   subroutine create(object)
     implicit none
     type(user), intent(out) :: object
-!     object = user(grid())              ! crashes ifort, OK for gfortran
+#if defined(BUG2)
+    object = user(grid())              ! crashes ifort, OK for gfortran
+#else
     object = user(grid(grid_inner()))          ! OK for both
+#endif
   end subroutine create
 
   subroutine create_grid_out(g)
