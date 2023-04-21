@@ -4,9 +4,6 @@
 #pragma weak unsat
 void unsat() ;
 
-//static inline int IsValidAddress(void *p){
-//  return (p == NULL) ;
-//}
 #if defined(NO_BUG)
 static inline int IsNullAddress(void *p){
   return (p == NULL) ;
