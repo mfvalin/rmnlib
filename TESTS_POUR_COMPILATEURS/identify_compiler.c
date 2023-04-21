@@ -4,9 +4,10 @@ int main(int argc, char **argv){
 
 #if defined(__x86_64__)
   printf("X86 64 bit mode detected\n") ;
-#endif
-#if defined(__i386__)
+
+#elif defined(__i386__)
   printf("X86 32 bit mode detected\n") ;
+
 #endif
 
 #if defined(__INTEL_COMPILER)
