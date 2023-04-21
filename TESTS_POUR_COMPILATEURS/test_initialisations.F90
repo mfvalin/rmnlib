@@ -13,8 +13,8 @@ subroutine sub(val)
   type :: machin
     integer :: v = 12
   end type
-  type(machin) :: a = machin(13)  ! variable initialisation
-  type(machin) :: b               ! type initialisation
+  type(machin) :: a = machin(13)  ! variable initialisee
+  type(machin) :: b               ! type initialise
   print *,'variable initialisee    machin a =',a%v
   print *,'type initialise (avant) machin b =',b%v
   a%v = a%v + 1
