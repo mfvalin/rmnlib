@@ -14,6 +14,8 @@ module rmn_fstd98
       logical :: is_rsf2
     end function fstd98_is_rsf
   end interface
+#if defined(BUG2)
     ! */
+#endif
 
 end module rmn_fstd98
