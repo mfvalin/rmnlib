@@ -33,7 +33,9 @@ use demo_poly
 type(truc) :: t
 call machin(234)
 call machin(2.34)
+call procedure2(t,123)
 call t%procedure(123)
+call procedure1(t,1.23)
 call t%procedure(1.23)
 end
 subroutine machin1(arg)
