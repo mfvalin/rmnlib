@@ -31,7 +31,6 @@ CONTAINS
                lp1 = l + 1
                ig = Ip + l
 
-! dir NOUNROLL will prevent unroll error dir$ NOUNROLL
                do i = lp1, Nb
                   G(ig,i - k) = G(ig,i)
                end do
