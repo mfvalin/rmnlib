@@ -1,0 +1,27 @@
+ 2, 'D', 'IP1       ', 'range ',  2
+       400, 750
+ 2, 'D', 'IP2       ', 'value ',  3
+       0, 12, 24
+ 2, 'D', 'Dates     ', 'delta ',  3
+       313280000, 313290800, 12
+ 2, 'D', 'Nomvar    ', 'value ',  2
+       'TT  ', 'GZ  '
+ 2, 'D', 'Typvar    ', 'value ',  4
+       'P ', 'V1', 'V2', 'V3'
+ 2, 'D', 'Etiket    ', 'value ',  3
+       'Etiquette #1', 'R2428V4N    ', 'Etiquet #3  '
+ 3, 'D', 'IP1       ', 'range ',  2
+       -2, 750
+ 3, 'D', 'IP2       ', 'range ',  2
+       750, -2
+ 3, 'D', 'IP3       ', 'value ',  3
+       0, 80, 90
+ 3, 'D', 'Dates     ', 'range ',  2
+       313280000, -2
+ 4, 'D', 'IP1       ', 'range ',  2
+       750, -2
+ 4, 'D', 'IP2       ', 'range ',  2
+       -2, 750
+ 4, 'D', 'Dates     ', 'range ',  2
+       -2, 313290800
+ 0

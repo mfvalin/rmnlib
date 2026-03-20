@@ -1,0 +1,158 @@
+
+convert_ip123
+
+  set of generic IP1/2/3 conversion functions (IP1/2/3 from RPN standard files)
+  (ip1,ip2,ip3) triplet <-> 3 (real value,kind) pairs
+
+  the Fortran user will call the generic functions
+  - encode_ip   (real value,kind) pairs -> (ip1,ip2,ip3) triplet
+  - decode_ip   (ip1,ip2,ip3) triplet   -> (real value,kind) pairs
+  the kind of arguments will determine which specific conversion function will be used
+  see in the example below for the allowed calling sequences
+
+EXAMPLE of USAGE
+   ...
+   use ISO_C_BINDING
+   use convert_ip123               ! (ONLY for rmnlib version 014 )
+   implicit none
+   include "convert_ip123.inc"     ! (ONLY for rmnlib version 015 and UP )
+
+   integer :: ip1, ip2, ip3        ! integer ip values
+   integer :: stat                 ! status code returned by function
+   integer, dimension(3) :: vip123 ! vector of ip values
+
+   integer :: k1, k2, k3           ! kind associated to the 3 real values 
+                                   ! (see below for acceptable kind values)
+   integer, dimension(3) :: vk123  ! vector form of above
+
+   real    :: v1, v2, v3           ! values associated with the 3 kind values
+   real, dimension(3)    :: v123   ! vector form of above
+
+   type(FLOAT_IP) :: RP1,RP2,RP3   ! each of RP1/2/3 contains a pair of values and a kind code
+                                   ! see below for definition of type FLOAT_IP
+   type(FLOAT_IP), dimension(3) :: VRP123  ! vector form of above
+
+   ...
+
+!=========================  ENCODING =========================
+
+! ip1, ip2, ip3, vip123 : INPUT   arguments for decode_ip
+!                         OUTPUT  arguments for encode_ip
+! 
+! v1, k1, v2, k2, v3, k3, RP1, RP2, RP3, VRP123
+!                         OUTPUT  arguments for decode_ip
+!                         INPUT   arguments for encode_ip
+
+!  RP1 must contain a level (or a pair of levels) in the atmosphere
+!  RP2 must contain  a time (or a pair of times)
+!  RP3 may contain any valid kind, RP3%hi will be ignored 
+!      (if RP1 or RP2 contains a pair, RP3%lo is also ignored)
+!  (v1,k1) expected to be a level   (see notes for encoding below)
+!  (v2,k2) expected to be a time    (see notes for encoding below)
+!  (v3,k3) expected to be a any valid kind
+
+!  IP1,IP2,IP3 will contain the encoded values in case of success, and are undefined otherwise
+
+   stat = encode_ip(ip1,ip2,ip3,v1,k1,v2,k2,v3,k3)  ! everything explicit
+   stat = encode_ip(vip123,v123,vk123)              ! vector version of above
+   stat = encode_ip(ip1,ip2,ip3,RP1,RP2,RP3)        ! ip <- multiple FLOAT_IP(value,value,kind)
+   stat = encode_ip(vip123,VRP123)                  ! vector version of above
+
+!=========================  DECODING =========================
+
+!  produce valid (real value,kind) pairs from (ip1,ip2,ip3) triplet
+!  ip1/2/3 should be encoded "new style" but old style encoding is acceptable (may produce GUESS return codes)
+
+!  v1,kind1 or RP1  result of IP1 decoding
+!  v2,kind2 or RP1  result of IP2 decoding
+!  v3,kind3 or RP1  result of IP3 decoding
+
+!  RP1 will contain a level (or a pair of levels in atmospheric ascending order) in the atmosphere
+!  RP1%hi = RP1%lo if RP1 is not a pair
+!  RP2 will contain a time (or a pair of times in ascending order)
+!  RP2%hi = RP2%lo if RP2 is not a pair
+!  RP3%hi will be the same as RP3%lo (if RP1 or RP2 contains a pair, RP3 is undefined)
+
+   stat = decode_ip(v1,k1,v2,k2,v3,k3,ip1,ip2,ip3)  ! everything explicit
+   stat = decode_ip(v123,vk123,vip123)              ! vector version of above
+   stat = decode_ip(RP1,RP2,RP3,ip1,ip2,ip3)        ! ip -> multiple FLOAT_IP(value,value,kind)
+   stat = decode_ip(VRP123,vip123)                  ! vector version of above
+
+   ...
+
+NOTES
+  the FORTRAN user must
+    use convert_ip123                ! (ONLY for rmnlib version 014 )
+    include "convert_ip123.inc"      ! (ONLY for rmnlib version 015 and UP )
+  in order to: 
+    - use the derived type 
+    - the symbolic names for kind 
+    - call the encode/decode functions
+    
+NOTES for decode_ip
+    ip1 not a level or ip2 not a time will be flagged as an error
+    in case of error, (value,kind) pairs are undefined (may contain anything)
+    old style ip1/2/3 decoding may produce a status containing GUESS flags
+    RP1/RP2 will contain decoded pair output if a piar is present, in which case
+    RP3 is undefined
+    
+NOTES for encode_ip
+    reordering may happen if RP1 or RP2 contain a pair of values
+      levels: ip1 will be lower in atmosphere than ip2
+      times:  ip2 will be the end of the time range, ip3 will be the start of the time range
+    RP1/(v1,k1) not a level or RP2/(v2/k2) not a time will be flagged as an error
+    RP1 and RP2 both containing a range will be flagged as an error
+    in case of error, one or more of ip1,2,3 may be returned as -1
+    tolerated coding deviations: kind2 a level instead of a time (will be pushed to position 3 and flagged as warning)
+    ip1/ip3 forced to the proper atmospheric ascending order coding (not flagged as warning)
+    ip2/ip3 forced to proper descending order (not flagged as warning)
+    in case of error, the contents of ip1/2/3 is undefined (possibly -1)
+
+---------------------------------------------------------------------------
+
+FLOAT_IP derived type and symbolic constants (PARAMETER)
+
+type, BIND(C)  :: FLOAT_IP
+  real(C_FLOAT)  :: lo         ! low value
+  real(C_FLOAT)  :: hi         ! high value
+  integer(C_INT) :: kind       ! type code (see table below)
+end type
+
+PARAMETER values found in convert_ip123.inc (or module)
+
+value symbolic name        description                 range of values
+
+   0  KIND_ABOVE_SEA   height (m) above mean sea level (-20,000 -> 100,000)
+   1  KIND_SIGMA       sigma coordinates               (0.0 -> 1.0)
+   2  KIND_PRESSURE    pressure (mb)                   (0 -> 1100)
+   3  KIND_ARBITRARY   arbitrary number, no units      (-4.8e8 -> 1.0e10)
+   4  KIND_ABOVE_GND   height (m) above ground         (-20,000 -> 100,000)
+   5  KIND_HYBRID      hybrid coordinates              (0.0 -> 1.0)
+   6  KIND_THETA       theta coordinates               (1 -> 200,000)
+  10  KIND_HOURS       time (hours)                    (0.0 -> 1.0e10)
+  15  KIND_SAMPLES     reserved (integer value)        (0 -> 1 999 999)
+  17  KIND_MTX_IND     conversion matrix x subscript)  (1.0 -> 1.0e10)
+                       (shared with kind=1 
+  21  KIND_M_PRES      pressure-meters                 (0 -> 1,000,000) fact=1E+4
+                       (shared with kind=5)
+
+return codes from encode/decode functions (more than one flag may be set)
+  CONVERT_OK     ( 0 = no FLAG set)
+  CONVERT_WARNING
+  CONVERT_ERROR
+
+return codes from decode functions (more than one flag may be set)
+  CONVERT_GUESS  (= CONVERT_GOOD_GUESS || CONVERT_BAD_GUESS || CONVERT_TERRIBLE_GUESS)
+  CONVERT_GOOD_GUESS
+  CONVERT_BAD_GUESS
+  CONVERT_TERRIBLE_GUESS
+
+NOTES
+  the FORTRAN user must
+    use convert_ip123                ! (ONLY for rmnlib version 014 )
+    include "convert_ip123.inc"      ! (ONLY for rmnlib version 015 and UP )
+  in order to: 
+    - use the derived type 
+    - the symbolic names for kind 
+    - call the encode/decode functions
+    

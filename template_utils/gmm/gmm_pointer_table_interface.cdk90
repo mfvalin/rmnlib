@@ -1,0 +1,1463 @@
+#define INTERFACEONLY
+#ifndef INTERFACEONLY
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2,#3,#4
+#define CODE #1;#2;#3;#4
+#define DIM 4
+#define DATATYPE integer
+#define DATACODE 1
+#define DATALENGTH 8
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2,#3,#4
+#define CODE #1;#2;#3;#4
+#define DIM 4
+#define DATATYPE integer
+#define DATACODE 1
+#define DATALENGTH 4
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2,#3,#4
+#define CODE #1;#2;#3;#4
+#define DIM 4
+#define DATATYPE real
+#define DATACODE 2
+#define DATALENGTH 8
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2,#3,#4
+#define CODE #1;#2;#3;#4
+#define DIM 4
+#define DATATYPE real
+#define DATACODE 2
+#define DATALENGTH 4
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2,#3,#4
+#define CODE #1;#2;#3;#4
+#define DIM 4
+#define DATATYPE complex
+#define DATACODE 3
+#define DATALENGTH 8
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2,#3
+#define CODE #1;#2;#3
+#define DIM 3
+#define DATATYPE integer
+#define DATACODE 1
+#define DATALENGTH 8
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2,#3
+#define CODE #1;#2;#3
+#define DIM 3
+#define DATATYPE integer
+#define DATACODE 1
+#define DATALENGTH 4
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2,#3
+#define CODE #1;#2;#3
+#define DIM 3
+#define DATATYPE real
+#define DATACODE 2
+#define DATALENGTH 8
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2,#3
+#define CODE #1;#2;#3
+#define DIM 3
+#define DATATYPE real
+#define DATACODE 2
+#define DATALENGTH 4
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2,#3
+#define CODE #1;#2;#3
+#define DIM 3
+#define DATATYPE complex
+#define DATACODE 3
+#define DATALENGTH 8
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2
+#define CODE #1;#2
+#define DIM 2
+#define DATATYPE integer
+#define DATACODE 1
+#define DATALENGTH 8
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2
+#define CODE #1;#2
+#define DIM 2
+#define DATATYPE integer
+#define DATACODE 1
+#define DATALENGTH 4
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2
+#define CODE #1;#2
+#define DIM 2
+#define DATATYPE real
+#define DATACODE 2
+#define DATALENGTH 8
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2
+#define CODE #1;#2
+#define DIM 2
+#define DATATYPE real
+#define DATACODE 2
+#define DATALENGTH 4
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1,#2
+#define CODE #1;#2
+#define DIM 2
+#define DATATYPE complex
+#define DATACODE 3
+#define DATALENGTH 8
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1
+#define CODE #1
+#define DIM 1
+#define DATATYPE integer
+#define DATACODE 1
+#define DATALENGTH 8
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1
+#define CODE #1
+#define DIM 1
+#define DATATYPE integer
+#define DATACODE 1
+#define DATALENGTH 4
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1
+#define CODE #1
+#define DIM 1
+#define DATATYPE real
+#define DATACODE 2
+#define DATALENGTH 8
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1
+#define CODE #1
+#define DIM 1
+#define DATATYPE real
+#define DATACODE 2
+#define DATALENGTH 4
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#define Cat #1#2#3#4#5#6
+#define DIMS #1
+#define CODE #1
+#define DIM 1
+#define DATATYPE complex
+#define DATACODE 3
+#define DATALENGTH 8
+#define EXTENSION Cat(DATACODE,DATALENGTH,DIM)
+  module Cat(pointer_table_data_,EXTENSION,)
+  use gmm_internals
+  implicit none
+  save
+    type Cat(gmm_p_,EXTENSION,)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8 key
+    end type
+  type (Cat(gmm_p_,EXTENSION,)) , dimension(MAX_PAGES * PAGE_SIZE) :: Cat(gmm_ptrs, EXTENSION,)
+   integer :: gmm_p_used=0                ! total number of entries in directory
+   integer :: gmm_p_table_size=0          ! number of pages in directory
+   integer :: gmm_p_cur_page=0            ! temporary, set by add_directory_entry
+   integer :: gmm_p_cur_entry=0           ! temporary, set by add_directory_entry
+   integer :: gmm_p_last_entry=MAX_PAGES * PAGE_SIZE  ! last entry in last page
+   integer :: gmm_p_file_unit=0
+   logical :: gmm_p_restart_mode=.false.
+   integer :: gmm_p_ordinal=0             ! total number of array creations
+  contains
+  integer function add_table_entry(p, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer*8, intent(in) :: key
+
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(gmm_p_table_size)%key = key
+    if (gmm_verbose_level == GMM_MSG_DEBUG) then
+    print *, 'add_table_entry', ' of', \' Cat(gmm_ptrs, EXTENSION,) \' , gmm_p_table_size
+    endif
+    add_table_entry = 0
+    return
+  end function add_table_entry
+
+  integer function lgmm_get_nxt_avail_ptr()
+    lgmm_get_nxt_avail_ptr = gmm_p_table_size + 1
+    gmm_p_table_size = gmm_p_table_size + 1
+    return
+  end function lgmm_get_nxt_avail_ptr
+
+  integer function update_table_entry(indx, key)
+    DATATYPE*DATALENGTH, pointer :: p(DIMS(:,:,:,:))
+    integer, intent(in) :: indx
+    integer*8, intent(in) :: key
+    if (indx > gmm_p_table_size) then
+         if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry : wrong index', indx, gmm_p_table_size
+         endif
+      update_table_entry = GMM_POINTER_TABLE_OVERFLOW
+    endif
+
+!    Cat(gmm_ptrs, EXTENSION,)(indx)%p => p
+    Cat(gmm_ptrs, EXTENSION,)(indx)%key = key
+        if (gmm_verbose_level == GMM_MSG_DEBUG) then
+            print *, 'update_table_entry', 'of', indx
+        endif
+    update_table_entry = 0
+    return
+  end function update_table_entry
+  end module Cat(pointer_table_data_, EXTENSION,)
+#undef EXTENSION
+#undef  Cat
+#undef  DIMS
+#undef  CODE
+#undef  DIM
+#undef  DATATYPE
+#undef  DATACODE
+#undef  DATALENGTH
+#endif
